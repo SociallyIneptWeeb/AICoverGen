@@ -1,0 +1,16 @@
+runpod==0.9.11
+yt-dlp==2023.7.6
+librosa>=0.6.3,<0.9
+onnxruntime_gpu
+deemix
+numpy==1.23.5
+--find-links https://download.pytorch.org/whl/torch_stable.html
+torch==2.0.1+cu118
+praat-parselmouth>=0.4.2
+pyworld>=0.3.2
+faiss-cpu==1.7.3
+torchcrepe
+ffmpeg-python
+fairseq==0.12.2
+pedalboard
+pydub

@@ -1,0 +1,2 @@
+RVC Models can be added as a folder here. Each folder should contain the model file (.pth extension), and an index file (.index extension).
+For example, a folder called Maya, containing 2 files, Maya.pth and added_IVF1905_Flat_nprobe_Maya_v2.index.

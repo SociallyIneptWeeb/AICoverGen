@@ -1,0 +1,1 @@
+Output is stored in this folder, where directory names represent the YouTube IDs from the original song.

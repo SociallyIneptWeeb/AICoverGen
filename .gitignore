@@ -7,7 +7,7 @@ rvc_models/*/*.index
 rvc_models/hubert_base.pt
 
 # Output
-song_output/*
+song_output/*/*.wav
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

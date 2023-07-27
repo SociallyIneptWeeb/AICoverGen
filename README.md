@@ -19,7 +19,7 @@ Follow the instructions [here](https://git-scm.com/book/en/v2/Getting-Started-In
 
 Follow the instructions [here](https://www.hostinger.com/tutorials/how-to-install-ffmpeg) to install ffmpeg on your computer.
 
-### Clone AniVoiceChanger repository
+### Clone AICoverGen repository
 
 Open a command line window and run these commands to clone this entire repository and install the additional dependencies required.
 

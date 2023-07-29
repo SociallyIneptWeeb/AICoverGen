@@ -135,6 +135,9 @@ def song_cover_pipeline(yt_link, voice_model, pitch_change):
     with open(os.path.join(mdxnet_models_dir, 'model_data.json')) as infile:
         mdx_model_params = json.load(infile)
 
+    if '&' in yt_link:
+        yt_link = yt_link.split('&')[0]
+
     match = re.search(r"v=([^&]+)", yt_link)
     song_id = match.group(1)
     song_dir = os.path.join(output_dir, song_id)

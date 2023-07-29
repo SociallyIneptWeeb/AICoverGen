@@ -237,6 +237,11 @@ class MDX:
 
 def run_mdx(model_params, output_dir, model_path, filename, exclude_main=False, exclude_inversion=False, suffix=None, invert_suffix=None, denoise=False, keep_orig=True, m_threads=2):
     device = torch.device('cuda:0') if torch.cuda.is_available() else torch.device('cpu')
+
+    device_properties = torch.cuda.get_device_properties(device)
+    vram_gb = device_properties.total_memory / 1024**3
+    m_threads = 1 if vram_gb < 8 else 2
+
     model_hash = MDX.get_hash(model_path)
     mp = model_params.get(model_hash)
     model = MDXModel(

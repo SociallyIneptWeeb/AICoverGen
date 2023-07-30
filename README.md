@@ -67,7 +67,7 @@ To run the AI cover generation pipeline, run the following command.
 python src/main.py -yt YOUTUBE_LINK -dir MODEL_DIR_NAME -p PITCH_CHANGE
 ```
 
-- Replace YOUTUBE_LINK with any link to a song on YouTube.
+- Replace YOUTUBE_LINK with any link to a song on YouTube. Link should be enclosed in double quotes for Windows and single quotes for Unix-like systems
 - Replace MODEL_DIR_NAME with the name of the folder in the [rvc_models](rvc_models) directory containing your `.pth` and `.index` files.
 - Replace PITCH_CHANGE with 0 for no change in pitch to the AI vocals. Generally use 12 for male to female conversions or -12 for vice-versa.
 

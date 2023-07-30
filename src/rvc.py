@@ -1,4 +1,5 @@
 from multiprocessing import cpu_count
+from pathlib import Path
 
 import torch
 from fairseq import checkpoint_utils
@@ -12,6 +13,8 @@ from infer_pack.models import (
 )
 from my_utils import load_audio
 from vc_infer_pipeline import VC
+
+BASE_DIR = Path(__file__).resolve().parent.parent
 
 
 class Config:
@@ -37,13 +40,13 @@ class Config:
                 print("16 series/10 series P40 forced single precision")
                 self.is_half = False
                 for config_file in ["32k.json", "40k.json", "48k.json"]:
-                    with open(f"configs/{config_file}", "r") as f:
+                    with open(BASE_DIR / "src" / "configs" / config_file, "r") as f:
                         strr = f.read().replace("true", "false")
-                    with open(f"configs/{config_file}", "w") as f:
+                    with open(BASE_DIR / "src" / "configs" / config_file, "w") as f:
                         f.write(strr)
-                with open("trainset_preprocess_pipeline_print.py", "r") as f:
+                with open(BASE_DIR / "src" / "trainset_preprocess_pipeline_print.py", "r") as f:
                     strr = f.read().replace("3.7", "3.0")
-                with open("trainset_preprocess_pipeline_print.py", "w") as f:
+                with open(BASE_DIR / "src" / "trainset_preprocess_pipeline_print.py", "w") as f:
                     f.write(strr)
             else:
                 self.gpu_name = None
@@ -55,9 +58,9 @@ class Config:
                 + 0.4
             )
             if self.gpu_mem <= 4:
-                with open("trainset_preprocess_pipeline_print.py", "r") as f:
+                with open(BASE_DIR / "src" / "trainset_preprocess_pipeline_print.py", "r") as f:
                     strr = f.read().replace("3.7", "3.0")
-                with open("trainset_preprocess_pipeline_print.py", "w") as f:
+                with open(BASE_DIR / "src" / "trainset_preprocess_pipeline_print.py", "w") as f:
                     f.write(strr)
         elif torch.backends.mps.is_available():
             print("No supported N-card found, use MPS for inference")

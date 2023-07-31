@@ -4,6 +4,7 @@ import urllib.request
 import zipfile
 from argparse import ArgumentParser
 from urllib.parse import urlparse, parse_qs
+from contextlib import suppress
 
 import gradio as gr
 
@@ -16,27 +17,33 @@ rvc_models_dir = os.path.join(BASE_DIR, 'rvc_models')
 output_dir = os.path.join(BASE_DIR, 'song_output')
 
 
-def get_youtube_video_id(value):
+def get_youtube_video_id(url, ignore_playlist=False):
     """
-    Examples:
-    - http://youtu.be/SA2iWivDJiE
-    - http://www.youtube.com/watch?v=_oPAwA_Udwc&feature=feedu
-    - http://www.youtube.com/embed/SA2iWivDJiE
-    - http://www.youtube.com/v/SA2iWivDJiE?version=3&amp;hl=en_US
+    Examples: \n
+    http://youtu.be/SA2iWivDJiE \n
+    http://www.youtube.com/watch?v=_oPAwA_Udwc&feature=feedu \n
+    http://www.youtube.com/embed/SA2iWivDJiE \n
+    http://www.youtube.com/v/SA2iWivDJiE?version=3&amp;hl=en_US \n
     """
-    query = urlparse(value)
+    query = urlparse(url)
     if query.hostname == 'youtu.be':
+        if query.path[1:] == 'watch':
+            return query.query[2:]
         return query.path[1:]
-    if query.hostname in ('www.youtube.com', 'youtube.com'):
-        if query.path == '/watch':
-            p = parse_qs(query.query)
-            return p['v'][0]
-        if query.path[:7] == '/embed/':
+    if query.hostname in {'www.youtube.com', 'youtube.com', 'music.youtube.com'}:
+        if not ignore_playlist:
+        # use case: get playlist id not current video in playlist
+            with suppress(KeyError):
+                return parse_qs(query.query)['list'][0]
+        if query.path == '/watch': 
+            return parse_qs(query.query)['v'][0]
+        if query.path[:7] == '/watch/': 
+            return query.path.split('/')[1]
+        if query.path[:7] == '/embed/': 
             return query.path.split('/')[2]
-        if query.path[:3] == '/v/':
+        if query.path[:3] == '/v/': 
             return query.path.split('/')[2]
-    
-    return None
+   # returns None for invalid YouTube url
 
 
 def song_cover_pipeline(yt_link, voice_model, pitch_change):

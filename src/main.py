@@ -94,10 +94,9 @@ def voice_change(voice_model, vocals_path, pitch_change):
     # determine pitch to change if none provided
     rvc_model_path, rvc_index_path = get_rvc_models(voice_model)
     device = 'cuda:0'
-    is_half = True
-    config = Config(device, is_half)
-    hubert_model = load_hubert(device, is_half, os.path.join(rvc_models_dir, 'hubert_base.pt'))
-    cpt, version, net_g, tgt_sr, vc = get_vc(device, is_half, config, rvc_model_path)
+    config = Config(device, True)
+    hubert_model = load_hubert(device, config.is_half, os.path.join(rvc_models_dir, 'hubert_base.pt'))
+    cpt, version, net_g, tgt_sr, vc = get_vc(device, config.is_half, config, rvc_model_path)
 
     output_path = f'{os.path.splitext(vocals_path)[0]}_{voice_model}.wav'
     # convert main vocals

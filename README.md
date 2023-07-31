@@ -3,6 +3,10 @@ An autonomous pipeline to create covers with any RVC v2 trained AI voice from Yo
 
 Showcase: https://www.youtube.com/watch?v=2qZuE4WM7CM
 
+![](images/webui_generate.png?raw=true)
+
+Local WebUI is still under development and testing, but you can try it out right now! To be integrated with Colab use soon.
+
 ## Colab notebook
 
 For those without a powerful enough NVIDIA GPU, you may try AICoverGen out using Google Colab.
@@ -38,9 +42,40 @@ Run the following command to download the required MDXNET vocal separation model
 python src/download_models.py
 ```
 
-### Download RVC models
 
-You may search the [AI Hub Discord](https://discord.gg/aihub) where already trained voice models are available for download.
+## Usage with WebUI
+
+To run the AICoverGen WebUI, run the following command.
+
+```
+python src/webui.py
+```
+
+### Download RVC models via WebUI
+
+![](images/webui_dl_model.png?raw=true)
+
+Navigate to the `Download model` tab, and paste the download link to the RVC model and give it a unique name.
+You may search the [AI Hub Discord](https://discord.gg/aihub) where already trained voice models are available for download. You may refer to the examples for how the download link should look like.
+The downloaded zip file should contain the .pth model file and an optional .index file.
+
+Once the 2 input fields are filled in, simply click `Download`! Once the output message says `[NAME] Model successfully downloaded!`, you should be able to use it in the `Generate` tab!
+
+
+### Running the pipeline via WebUI
+
+![](images/webui_generate.png?raw=true)
+
+- In the YouTube link field, copy and paste the link to any song on YouTube.
+- From the Voice Models dropdown menu, select the voice model to use. Click `Update` if you added the files manually to the [rvc_models](rvc_models) directory to refresh the list.
+- Pitch should be set to either -12, 0, or 12 depending on the original vocals and the RVC AI modal. This ensures the voice is not *out of tune*.
+
+Once all fields are filled in, click `Generate` and the AI generated cover should appear in a less than a few minutes depending on your GPU.
+
+## Usage with CLI
+
+### Manual Download of RVC models
+
 Unzip (if needed) and transfer the `.pth` and `.index` files to a new folder in the [rvc_models](rvc_models) directory. Each folder should only contain one `.pth` and one `.index` file.
 
 The directory structure should look something like this:
@@ -59,9 +94,9 @@ The directory structure should look something like this:
 └── src
  ```
 
-## Usage
+### Running the pipeline
 
-To run the AI cover generation pipeline, run the following command.
+To run the AI cover generation pipeline using the command line, run the following command.
 
 ```
 python src/main.py -yt YOUTUBE_LINK -dir MODEL_DIR_NAME -p PITCH_CHANGE

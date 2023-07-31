@@ -17,33 +17,36 @@ rvc_models_dir = os.path.join(BASE_DIR, 'rvc_models')
 output_dir = os.path.join(BASE_DIR, 'song_output')
 
 
-def get_youtube_video_id(url, ignore_playlist=False):
+def get_youtube_video_id(url, ignore_playlist=True):
     """
-    Examples: \n
-    http://youtu.be/SA2iWivDJiE \n
-    http://www.youtube.com/watch?v=_oPAwA_Udwc&feature=feedu \n
-    http://www.youtube.com/embed/SA2iWivDJiE \n
-    http://www.youtube.com/v/SA2iWivDJiE?version=3&amp;hl=en_US \n
+    Examples:
+    http://youtu.be/SA2iWivDJiE
+    http://www.youtube.com/watch?v=_oPAwA_Udwc&feature=feedu
+    http://www.youtube.com/embed/SA2iWivDJiE
+    http://www.youtube.com/v/SA2iWivDJiE?version=3&amp;hl=en_US
     """
     query = urlparse(url)
     if query.hostname == 'youtu.be':
         if query.path[1:] == 'watch':
             return query.query[2:]
         return query.path[1:]
+
     if query.hostname in {'www.youtube.com', 'youtube.com', 'music.youtube.com'}:
         if not ignore_playlist:
-        # use case: get playlist id not current video in playlist
+            # use case: get playlist id not current video in playlist
             with suppress(KeyError):
                 return parse_qs(query.query)['list'][0]
         if query.path == '/watch': 
             return parse_qs(query.query)['v'][0]
         if query.path[:7] == '/watch/': 
             return query.path.split('/')[1]
-        if query.path[:7] == '/embed/': 
+        if query.path[:7] == '/embed/':
             return query.path.split('/')[2]
-        if query.path[:3] == '/v/': 
+        if query.path[:3] == '/v/':
             return query.path.split('/')[2]
-   # returns None for invalid YouTube url
+
+    # returns None for invalid YouTube url
+    return None
 
 
 def song_cover_pipeline(yt_link, voice_model, pitch_change):
@@ -101,23 +104,24 @@ def update_models_list():
     return gr.Dropdown.update(choices=models_l)
 
 
-def download_and_extract_zip(url, folder_name):
-    print(f'[~] Download voice model with name {folder_name}')
-    # getting name  
-    file_name = url.split('/')[-1]
-    # download zip
-    urllib.request.urlretrieve(url, file_name)
-    extraction_folder = os.path.join(rvc_models_dir, folder_name)
-    os.makedirs(extraction_folder, exist_ok=True)
-    print(f'[~] Start extracting zip')
-    # unzip
-    with zipfile.ZipFile(file_name, 'r') as zip_ref:
+def download_and_extract_zip(url, dir_name, progress=gr.Progress()):
+    progress(0, desc=f'[~] Downloading voice model with name {dir_name}...')
+    zip_name = url.split('/')[-1]
+    extraction_folder = os.path.join(rvc_models_dir, dir_name)
+    if os.path.exists(extraction_folder):
+        raise gr.Error(f'Voice model directory {dir_name} already exists! Choose a different name for your voice model.')
+
+    os.makedirs(extraction_folder)
+    urllib.request.urlretrieve(url, zip_name)
+
+    progress(0.5, desc='[~] Extracting zip...')
+
+    with zipfile.ZipFile(zip_name, 'r') as zip_ref:
         zip_ref.extractall(extraction_folder)
-    # remove downloaded zip
-    os.remove(file_name)
-    obj = update_models_list()
-    print(f'[+] Model {folder_name} was downloaded!')
-    return obj
+    os.remove(zip_name)
+    update_models_list()
+
+    return f'[+] {dir_name} Model successfully downloaded!'
 
 
 if __name__ == '__main__':
@@ -128,33 +132,48 @@ if __name__ == '__main__':
 
     # new web ui
     voice_models = get_models_list(rvc_models_dir)
-    with gr.Blocks(title='WebAICoverGen') as app:
+    with gr.Blocks(title='AICoverGenWebUI') as app:
         
-        gr.Label('Created with love ❤️',show_label=False)
+        gr.Label('AICoverGen WebUI created with ❤️', show_label=False)
        
         # main tab
         with gr.Tab("Generate"):
             with gr.Row():
                 with gr.Column():
-                    yt_link = gr.Text(label='YouTabe link')
+                    video_link = gr.Text(label='YouTube link')
                     with gr.Row():
-                        voice_model = gr.Dropdown(voice_models, label='Voice Models', info='Models folder "AICoverGen --> rvc_models", after you paste models, press update button')
-                        ref_btn = gr.Button("Update 🔁", variant='primary', size='sm', min_width=50)
+                        rvc_model = gr.Dropdown(voice_models, label='Voice Models', info='Models folder "AICoverGen --> rvc_models", after the models are added into this folder, press update button')
+                        ref_btn = gr.Button('Update 🔁', variant='primary', size='sm', min_width=50)
                     pitch = gr.Slider(-12, 12, value=0, step=1, label='Pitch')
                     with gr.Row():
-                        clear_btn = gr.ClearButton(value='Clear',components=[yt_link,voice_model,pitch])
-                        generate_btn = gr.Button("Generate",variant='primary')
-                with gr.Column():
-                    audio = gr.Audio(label='Audio', show_share_button=False)
-                ref_btn.click(update_models_list, None, outputs=voice_model)
-                generate_btn.click(song_cover_pipeline, inputs=[yt_link,voice_model,pitch], outputs=[audio])
+                        clear_btn = gr.ClearButton(value='Clear',components=[video_link, rvc_model, pitch])
+                        generate_btn = gr.Button("Generate", variant='primary')
+
+                audio = gr.Audio(label='Audio', show_share_button=False)
+                ref_btn.click(update_models_list, None, outputs=rvc_model)
+                generate_btn.click(song_cover_pipeline, inputs=[video_link, rvc_model, pitch], outputs=[audio])
         
         # Download tab
-        with gr.Tab("Download model"):     
-            model_zip_link = gr.Text(label='Link for your model', info='Example link: https://example.com/voice_model.zip')
-            model_name = gr.Text(label='Name of your model')
-            download_btn = gr.Button("Download 🌐", variant='primary')
-            
-            download_btn.click(download_and_extract_zip, inputs=[model_zip_link,model_name], outputs=voice_model)
+        with gr.Tab("Download model"):
 
-    app.launch(share=share_enabled)
+            model_zip_link = gr.Text(label='Download link to model', info='Should be a zip file containing a .pth model file and an optional .index file.')
+            model_name = gr.Text(label='Name your model', info='Give your new model a unique name from your other voice models.')
+
+            with gr.Row():
+                download_btn = gr.Button("Download 🌐", variant='primary', show_progress=True)
+                dl_output_message = gr.Text(label='Output Message', interactive=False)
+
+            download_btn.click(download_and_extract_zip, inputs=[model_zip_link, model_name], outputs=dl_output_message)
+
+            gr.Markdown('## Input Examples')
+            gr.Examples(
+                [
+                    ["https://huggingface.co/daibi1998/RVC_v2_Punishing_Gray_Raven/resolve/main/KareninaEN_RVC_v2_RMVPE_250e.zip", "Karenina"],
+                    ["https://huggingface.co/RinkaEmina/RVC_Sharing/resolve/main/Emilia%20V2%2048000.zip", "Emilia"]
+                ],
+                [model_zip_link, model_name],
+                [],
+                download_and_extract_zip,
+            )
+
+    app.launch(share=share_enabled, enable_queue=True)

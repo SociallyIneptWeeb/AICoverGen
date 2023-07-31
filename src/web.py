@@ -1,16 +1,19 @@
-import gradio as gr
-from urllib.parse import urlparse
+import json
+import os
 import urllib.request
-import zipfile,os,json
-from main import preprocess_song,get_audio_paths,voice_change,combine_audio,add_audio_effects
+import zipfile
 from argparse import ArgumentParser
+from urllib.parse import urlparse, parse_qs
+
+import gradio as gr
+
+from main import preprocess_song, get_audio_paths, voice_change, combine_audio, add_audio_effects
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 mdxnet_models_dir = os.path.join(BASE_DIR, 'mdxnet_models')
 rvc_models_dir = os.path.join(BASE_DIR, 'rvc_models')
 output_dir = os.path.join(BASE_DIR, 'song_output')
-
 
 
 def get_youtube_video_id(value):
@@ -26,7 +29,7 @@ def get_youtube_video_id(value):
         return query.path[1:]
     if query.hostname in ('www.youtube.com', 'youtube.com'):
         if query.path == '/watch':
-            p = urlparse.parse_qs(query.query)
+            p = parse_qs(query.query)
             return p['v'][0]
         if query.path[:7] == '/embed/':
             return query.path.split('/')[2]
@@ -34,8 +37,6 @@ def get_youtube_video_id(value):
             return query.path.split('/')[2]
     
     return None
-
-
 
 
 def song_cover_pipeline(yt_link, voice_model, pitch_change):
@@ -59,9 +60,6 @@ def song_cover_pipeline(yt_link, voice_model, pitch_change):
         else:
             orig_song_path, instrumentals_path, main_vocals_dereverb_path, backup_vocals_path = paths
 
-    
-    
-    
     ai_vocals_path, ai_vocals_mixed_path = None, None
     ai_cover_path = os.path.join(song_dir, f'{os.path.splitext(orig_song_path)[0]} ({voice_model} Ver).wav')
 
@@ -84,18 +82,17 @@ def song_cover_pipeline(yt_link, voice_model, pitch_change):
     return ai_cover_path
 
 
-
-
-
 def get_models_list(models_dir):
     models_list = os.listdir(models_dir)
     items_to_remove = ['hubert_base.pt', 'MODELS.txt']
     models_clear_list = [item for item in models_list if item not in items_to_remove]
     return models_clear_list
 
+
 def update_models_list():
     models_l = get_models_list(rvc_models_dir)
     return gr.Dropdown.update(choices=models_l)
+
 
 def download_and_extract_zip(url, folder_name):
     print(f'[~] Download voice model with name {folder_name}')
@@ -111,7 +108,7 @@ def download_and_extract_zip(url, folder_name):
         zip_ref.extractall(extraction_folder)
     # remove downloaded zip
     os.remove(file_name)
-    obj =update_models_list()
+    obj = update_models_list()
     print(f'[+] Model {folder_name} was downloaded!')
     return obj
 
@@ -122,41 +119,35 @@ if __name__ == '__main__':
     args = parser.parse_args()
     share_enabled = args.share_enabled
 
-    
     # new web ui
     voice_models = get_models_list(rvc_models_dir)
     with gr.Blocks(title='WebAICoverGen') as app:
         
         gr.Label('Created with love ❤️',show_label=False)
        
-        #main tab
+        # main tab
         with gr.Tab("Generate"):
-            
             with gr.Row():
                 with gr.Column():
                     yt_link = gr.Text(label='YouTabe link')
                     with gr.Row():
-                        voice_model = gr.Dropdown(voice_models,label='Voice Models',info='Models folder "AICoverGen --> rvc_models", after you paste models, press update button')
-                        ref_btn = gr.Button("Update 🔁",variant='primary',size='sm',min_width=50)
-                    pitch = gr.Slider(-12,12,value=0,step=1,label='Pitch')
+                        voice_model = gr.Dropdown(voice_models, label='Voice Models', info='Models folder "AICoverGen --> rvc_models", after you paste models, press update button')
+                        ref_btn = gr.Button("Update 🔁", variant='primary', size='sm', min_width=50)
+                    pitch = gr.Slider(-12, 12, value=0, step=1, label='Pitch')
                     with gr.Row():
                         clear_btn = gr.ClearButton(value='Clear',components=[yt_link,voice_model,pitch])
                         generate_btn = gr.Button("Generate",variant='primary')
                 with gr.Column():
-                    audio = gr.Audio(label='Audio',show_share_button=False)
-                ref_btn.click(update_models_list,None,outputs=voice_model)
+                    audio = gr.Audio(label='Audio', show_share_button=False)
+                ref_btn.click(update_models_list, None, outputs=voice_model)
                 generate_btn.click(song_cover_pipeline, inputs=[yt_link,voice_model,pitch], outputs=[audio])
         
-        #Download tab       
+        # Download tab
         with gr.Tab("Download model"):     
             model_zip_link = gr.Text(label='Link for your model', info='Example link: https://example.com/voice_model.zip')
             model_name = gr.Text(label='Name of your model')
-            download_btn = gr.Button("Download 🌐",variant='primary')
+            download_btn = gr.Button("Download 🌐", variant='primary')
             
-            download_btn.click(download_and_extract_zip,inputs=[model_zip_link,model_name],outputs=voice_model)
-            
-
-    
+            download_btn.click(download_and_extract_zip, inputs=[model_zip_link,model_name], outputs=voice_model)
 
     app.launch(share=share_enabled)
-

@@ -14,3 +14,4 @@ ffmpeg-python
 fairseq==0.12.2
 pedalboard
 pydub
+gradio

@@ -1,6 +1,5 @@
-runpod==0.9.11
 yt-dlp==2023.7.6
-librosa>=0.6.3,<0.9
+librosa==0.9.1
 onnxruntime_gpu
 deemix
 numpy==1.23.5
@@ -9,9 +8,9 @@ torch==2.0.1+cu118
 praat-parselmouth>=0.4.2
 pyworld>=0.3.2
 faiss-cpu==1.7.3
-torchcrepe
-ffmpeg-python
+torchcrepe==0.0.20
+ffmpeg-python>=0.2.0
 fairseq==0.12.2
 pedalboard
-pydub
-gradio
+pydub>=0.25.1
+gradio==3.35.0

@@ -140,13 +140,17 @@ if __name__ == '__main__':
         with gr.Tab("Generate"):
             with gr.Row():
                 with gr.Column():
-                    video_link = gr.Text(label='YouTube link')
+
                     with gr.Row():
-                        rvc_model = gr.Dropdown(voice_models, label='Voice Models', info='Models folder "AICoverGen --> rvc_models", after the models are added into this folder, press update button')
-                        ref_btn = gr.Button('Update 🔁', variant='primary', size='sm', min_width=50)
-                    pitch = gr.Slider(-12, 12, value=0, step=1, label='Pitch')
+                        rvc_model = gr.Dropdown(voice_models, label='Voice Models', scale=10, info='Models folder "AICoverGen --> rvc_models". After the models are added into this folder, click the update button')
+                        ref_btn = gr.Button('Update 🔁', variant='primary', scale=9)
+
                     with gr.Row():
-                        clear_btn = gr.ClearButton(value='Clear',components=[video_link, rvc_model, pitch])
+                        video_link = gr.Text(label='YouTube link')
+                        pitch = gr.Slider(-12, 12, value=0, step=1, label='Pitch')
+
+                    with gr.Row():
+                        clear_btn = gr.ClearButton(value='Clear', components=[video_link, rvc_model, pitch])
                         generate_btn = gr.Button("Generate", variant='primary')
 
                 audio = gr.Audio(label='Audio', show_share_button=False)
@@ -155,13 +159,13 @@ if __name__ == '__main__':
         
         # Download tab
         with gr.Tab("Download model"):
-
-            model_zip_link = gr.Text(label='Download link to model', info='Should be a zip file containing a .pth model file and an optional .index file.')
-            model_name = gr.Text(label='Name your model', info='Give your new model a unique name from your other voice models.')
+            with gr.Row():
+                model_zip_link = gr.Text(label='Download link to model', info='Should be a zip file containing a .pth model file and an optional .index file.')
+                model_name = gr.Text(label='Name your model', info='Give your new model a unique name from your other voice models.')
 
             with gr.Row():
-                download_btn = gr.Button("Download 🌐", variant='primary', show_progress=True)
-                dl_output_message = gr.Text(label='Output Message', interactive=False)
+                download_btn = gr.Button('Download 🌐', variant='primary', show_progress=True, scale=19)
+                dl_output_message = gr.Text(label='Output Message', interactive=False, scale=20)
 
             download_btn.click(download_and_extract_zip, inputs=[model_zip_link, model_name], outputs=dl_output_message)
 

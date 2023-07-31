@@ -51,6 +51,8 @@ To run the AICoverGen WebUI, run the following command.
 python src/webui.py
 ```
 
+Once the following output message `Running on local URL:  http://127.0.0.1:7860` appears, you can click on the link to open a tab with the WebUI.
+
 ### Download RVC models via WebUI
 
 ![](images/webui_dl_model.png?raw=true)
@@ -66,8 +68,8 @@ Once the 2 input fields are filled in, simply click `Download`! Once the output 
 
 ![](images/webui_generate.png?raw=true)
 
-- In the YouTube link field, copy and paste the link to any song on YouTube.
 - From the Voice Models dropdown menu, select the voice model to use. Click `Update` if you added the files manually to the [rvc_models](rvc_models) directory to refresh the list.
+- In the YouTube link field, copy and paste the link to any song on YouTube.
 - Pitch should be set to either -12, 0, or 12 depending on the original vocals and the RVC AI modal. This ensures the voice is not *out of tune*.
 
 Once all fields are filled in, click `Generate` and the AI generated cover should appear in a less than a few minutes depending on your GPU.

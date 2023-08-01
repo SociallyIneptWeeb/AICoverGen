@@ -163,7 +163,7 @@ def song_cover_pipeline(yt_link, voice_model, pitch_change):
             orig_song_path, instrumentals_path, main_vocals_dereverb_path, backup_vocals_path = paths
 
     ai_vocals_path, ai_vocals_mixed_path = None, None
-    ai_cover_path = os.path.join(song_dir, f'{os.path.splitext(orig_song_path)[0]} ({voice_model} Ver).mp3')
+    ai_cover_path = os.path.join(song_dir, f'{os.path.splitext(orig_song_path)[0]} ({voice_model} Ver {pitch_change}).mp3')
 
     if not os.path.exists(ai_cover_path):
         print('[~] Converting voice using RVC...')

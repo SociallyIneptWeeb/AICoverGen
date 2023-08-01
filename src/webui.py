@@ -74,7 +74,7 @@ def song_cover_pipeline(yt_link, voice_model, pitch_change, progress=gr.Progress
                 orig_song_path, instrumentals_path, main_vocals_dereverb_path, backup_vocals_path = paths
 
         ai_vocals_path, ai_vocals_mixed_path = None, None
-        ai_cover_path = os.path.join(song_dir, f'{os.path.splitext(orig_song_path)[0]} ({voice_model} Ver).mp3')
+        ai_cover_path = os.path.join(song_dir, f'{os.path.splitext(orig_song_path)[0]} ({voice_model} Ver {pitch_change}).mp3')
 
         if not os.path.exists(ai_cover_path):
             progress(0.5, desc='[~] Converting voice using RVC...')
@@ -147,7 +147,6 @@ if __name__ == '__main__':
     args = parser.parse_args()
     share_enabled = args.share_enabled
 
-    # new web ui
     voice_models = get_models_list(rvc_models_dir)
     with gr.Blocks(title='AICoverGenWebUI') as app:
         
@@ -164,7 +163,7 @@ if __name__ == '__main__':
 
                     with gr.Row():
                         video_link = gr.Text(label='YouTube link')
-                        pitch = gr.Slider(-12, 12, value=0, step=1, label='Pitch')
+                        pitch = gr.Slider(-12, 12, value=0, step=1, label='Pitch', info='Pitch should be set to either -12, 0, or 12 to ensure the vocals are not out of tune.')
 
                     with gr.Row():
                         clear_btn = gr.ClearButton(value='Clear', components=[video_link, rvc_model, pitch])

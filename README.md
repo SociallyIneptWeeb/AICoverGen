@@ -5,7 +5,7 @@ Showcase: https://www.youtube.com/watch?v=2qZuE4WM7CM
 
 ![](images/webui_generate.png?raw=true)
 
-Local WebUI is still under development and testing, but you can try it out right now on both local and colab!
+WebUI is under constant development and testing, but you can try it out right now on both local and colab!
 
 ## Colab notebook
 

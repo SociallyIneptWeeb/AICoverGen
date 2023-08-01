@@ -49,47 +49,53 @@ def get_youtube_video_id(url, ignore_playlist=True):
     return None
 
 
-def song_cover_pipeline(yt_link, voice_model, pitch_change):
-    with open(os.path.join(mdxnet_models_dir, 'model_data.json')) as infile:
-        mdx_model_params = json.load(infile)
+def song_cover_pipeline(yt_link, voice_model, pitch_change, progress=gr.Progress()):
+    try:
+        progress(0, desc='[~] Starting AI Cover Generation Pipeline...')
 
-    song_id = get_youtube_video_id(yt_link)
-    song_dir = os.path.join(output_dir, song_id)
+        with open(os.path.join(mdxnet_models_dir, 'model_data.json')) as infile:
+            mdx_model_params = json.load(infile)
 
-    if not os.path.exists(song_dir):
-        os.makedirs(song_dir)
-        orig_song_path, vocals_path, instrumentals_path, main_vocals_path, backup_vocals_path, main_vocals_dereverb_path = preprocess_song(yt_link, mdx_model_params, song_id)
+        song_id = get_youtube_video_id(yt_link)
+        song_dir = os.path.join(output_dir, song_id)
 
-    else:
-        vocals_path, main_vocals_path = None, None
-        paths = get_audio_paths(song_dir)
+        if not os.path.exists(song_dir):
+            os.makedirs(song_dir)
+            orig_song_path, vocals_path, instrumentals_path, main_vocals_path, backup_vocals_path, main_vocals_dereverb_path = preprocess_song(yt_link, mdx_model_params, song_id, progress)
 
-        # if any of the audio files aren't available, rerun preprocess
-        if any(path is None for path in paths):
-            orig_song_path, vocals_path, instrumentals_path, main_vocals_path, backup_vocals_path, main_vocals_dereverb_path = preprocess_song(yt_link, mdx_model_params, song_id)
         else:
-            orig_song_path, instrumentals_path, main_vocals_dereverb_path, backup_vocals_path = paths
+            vocals_path, main_vocals_path = None, None
+            paths = get_audio_paths(song_dir)
 
-    ai_vocals_path, ai_vocals_mixed_path = None, None
-    ai_cover_path = os.path.join(song_dir, f'{os.path.splitext(orig_song_path)[0]} ({voice_model} Ver).wav')
+            # if any of the audio files aren't available, rerun preprocess
+            if any(path is None for path in paths):
+                orig_song_path, vocals_path, instrumentals_path, main_vocals_path, backup_vocals_path, main_vocals_dereverb_path = preprocess_song(yt_link, mdx_model_params, song_id, progress)
+            else:
+                orig_song_path, instrumentals_path, main_vocals_dereverb_path, backup_vocals_path = paths
 
-    if not os.path.exists(ai_cover_path):
-        print('Converting voice using RVC...')
-        ai_vocals_path = voice_change(voice_model, main_vocals_dereverb_path, pitch_change)
+        ai_vocals_path, ai_vocals_mixed_path = None, None
+        ai_cover_path = os.path.join(song_dir, f'{os.path.splitext(orig_song_path)[0]} ({voice_model} Ver).mp3')
 
-        print('Applying audio effects to vocals...')
-        ai_vocals_mixed_path = add_audio_effects(ai_vocals_path)
+        if not os.path.exists(ai_cover_path):
+            progress(0.5, desc='[~] Converting voice using RVC...')
+            ai_vocals_path = voice_change(voice_model, main_vocals_dereverb_path, pitch_change)
 
-        print('Combining AI Vocals and Instrumentals...')
-        combine_audio([ai_vocals_mixed_path, backup_vocals_path, instrumentals_path], ai_cover_path)
+            progress(0.8, desc='[~] Applying audio effects to vocals...')
+            ai_vocals_mixed_path = add_audio_effects(ai_vocals_path)
 
-    print('Removing intermediate audio files...')
-    intermediate_files = [vocals_path, main_vocals_path, ai_vocals_path, ai_vocals_mixed_path]
-    for file in intermediate_files:
-        if file and os.path.exists(file):
-            os.remove(file)
+            progress(0.9, desc='[~] Combining AI Vocals and Instrumentals...')
+            combine_audio([ai_vocals_mixed_path, backup_vocals_path, instrumentals_path], ai_cover_path)
 
-    return ai_cover_path
+        progress(0.95, desc='[~] Removing intermediate audio files...')
+        intermediate_files = [vocals_path, main_vocals_path, ai_vocals_path, ai_vocals_mixed_path]
+        for file in intermediate_files:
+            if file and os.path.exists(file):
+                os.remove(file)
+
+        return ai_cover_path
+
+    except Exception as e:
+        raise gr.Error(str(e))
 
 
 def get_models_list(models_dir):
@@ -105,23 +111,34 @@ def update_models_list():
 
 
 def download_and_extract_zip(url, dir_name, progress=gr.Progress()):
-    progress(0, desc=f'[~] Downloading voice model with name {dir_name}...')
-    zip_name = url.split('/')[-1]
-    extraction_folder = os.path.join(rvc_models_dir, dir_name)
-    if os.path.exists(extraction_folder):
-        raise gr.Error(f'Voice model directory {dir_name} already exists! Choose a different name for your voice model.')
+    try:
+        progress(0, desc=f'[~] Downloading voice model with name {dir_name}...')
+        zip_name = url.split('/')[-1]
+        extraction_folder = os.path.join(rvc_models_dir, dir_name)
+        if os.path.exists(extraction_folder):
+            raise gr.Error(f'Voice model directory {dir_name} already exists! Choose a different name for your voice model.')
+        urllib.request.urlretrieve(url, zip_name)
 
-    os.makedirs(extraction_folder)
-    urllib.request.urlretrieve(url, zip_name)
+        progress(0.5, desc='[~] Extracting zip...')
+        os.makedirs(extraction_folder)
+        with zipfile.ZipFile(zip_name, 'r') as zip_ref:
+            zip_ref.extractall(extraction_folder)
+        os.remove(zip_name)
 
-    progress(0.5, desc='[~] Extracting zip...')
+        # check if model file exists in extracted zip
+        model_present = False
+        for file in os.listdir(extraction_folder):
+            if file.endswith('.pth'):
+                model_present = True
 
-    with zipfile.ZipFile(zip_name, 'r') as zip_ref:
-        zip_ref.extractall(extraction_folder)
-    os.remove(zip_name)
-    update_models_list()
+        if not model_present:
+            raise gr.Error(f'No .pth model file was found in the extracted zip. Please check {extraction_folder}.')
 
-    return f'[+] {dir_name} Model successfully downloaded!'
+        update_models_list()
+        return f'[+] {dir_name} Model successfully downloaded!'
+
+    except Exception as e:
+        raise gr.Error(str(e))
 
 
 if __name__ == '__main__':

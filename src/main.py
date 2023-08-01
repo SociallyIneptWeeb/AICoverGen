@@ -72,19 +72,26 @@ def get_audio_paths(song_dir):
     return orig_song_path, instrumentals_path, main_vocals_dereverb_path, backup_vocals_path
 
 
-def preprocess_song(yt_link, mdx_model_params, song_id):
-    print('Downloading song...')
+def display_progress(message, percent, progress=None):
+    if progress is not None:
+        progress(percent, desc=message)
+    else:
+        print(message)
+
+
+def preprocess_song(yt_link, mdx_model_params, song_id, progress=None):
+    display_progress('[~] Downloading song...', 0, progress)
     orig_song_path = download_audio(yt_link)
 
     song_output_dir = os.path.join(output_dir, song_id)
 
-    print('Separating Vocals from Instrumental...')
+    display_progress('[~] Separating Vocals from Instrumental...', 0.1, progress)
     vocals_path, instrumentals_path = run_mdx(mdx_model_params, song_output_dir, os.path.join(mdxnet_models_dir, 'UVR-MDX-NET-Voc_FT.onnx'), orig_song_path, denoise=True, keep_orig=False)
 
-    print('Separating Main Vocals from Backup Vocals...')
+    display_progress('[~] Separating Main Vocals from Backup Vocals...', 0.2, progress)
     backup_vocals_path, main_vocals_path = run_mdx(mdx_model_params, song_output_dir, os.path.join(mdxnet_models_dir, 'UVR_MDXNET_KARA_2.onnx'), vocals_path, suffix='Backup', invert_suffix='Main', denoise=True)
 
-    print('Applying DeReverb to Vocals...')
+    display_progress('[~] Applying DeReverb to Vocals...', 0.3, progress)
     _, main_vocals_dereverb_path = run_mdx(mdx_model_params, song_output_dir, os.path.join(mdxnet_models_dir, 'Reverb_HQ_By_FoxJoy.onnx'), main_vocals_path, invert_suffix='DeReverb', exclude_main=True, denoise=True)
 
     return orig_song_path, vocals_path, instrumentals_path, main_vocals_path, backup_vocals_path, main_vocals_dereverb_path
@@ -159,16 +166,16 @@ def song_cover_pipeline(yt_link, voice_model, pitch_change):
     ai_cover_path = os.path.join(song_dir, f'{os.path.splitext(orig_song_path)[0]} ({voice_model} Ver).mp3')
 
     if not os.path.exists(ai_cover_path):
-        print('Converting voice using RVC...')
+        print('[~] Converting voice using RVC...')
         ai_vocals_path = voice_change(voice_model, main_vocals_dereverb_path, pitch_change)
 
-        print('Applying audio effects to vocals...')
+        print('[~] Applying audio effects to vocals...')
         ai_vocals_mixed_path = add_audio_effects(ai_vocals_path)
 
-        print('Combining AI Vocals and Instrumentals...')
+        print('[~] Combining AI Vocals and Instrumentals...')
         combine_audio([ai_vocals_mixed_path, backup_vocals_path, instrumentals_path], ai_cover_path)
 
-    print('Removing intermediate audio files...')
+    print('[~] Removing intermediate audio files...')
     intermediate_files = [vocals_path, main_vocals_path, ai_vocals_path, ai_vocals_mixed_path]
     for file in intermediate_files:
         if file and os.path.exists(file):
@@ -189,4 +196,4 @@ if __name__ == '__main__':
         raise Exception(f'The folder {os.path.join(rvc_models_dir, rvc_dirname)} does not exist.')
 
     cover_path = song_cover_pipeline(args.youtube_link, rvc_dirname, args.pitch_change)
-    print(f'Cover generated at {cover_path}')
+    print(f'[+] Cover generated at {cover_path}')

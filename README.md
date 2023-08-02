@@ -31,6 +31,7 @@ Open a command line window and run these commands to clone this entire repositor
 
 ```
 git clone https://github.com/SociallyIneptWeeb/AICoverGen
+cd AICoverGen
 pip install -r requirements.txt
 ```
 

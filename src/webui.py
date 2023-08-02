@@ -154,6 +154,60 @@ def download_and_extract_zip(url, dir_name, progress=gr.Progress()):
     except Exception as e:
         raise gr.Error(str(e))
 
+def load_available_models(url):
+    with urllib.request.urlopen(url) as response:
+        text = response.read()
+
+    available_models_json = json.loads(text)
+    models_now = get_models_list(rvc_models_dir)
+    table_of_models = []
+   
+    
+    for model in available_models_json['voice_models']:
+        if not model['name'] in models_now:
+            model = [[model['name'],model['description'],model['url']]]
+            table_of_models+=model  
+    
+    all_tags = list(available_models_json['tags'].keys())
+    return gr.DataFrame.update(value=table_of_models),gr.CheckboxGroup.update(choices=all_tags)
+
+
+
+def search_models(url,tags=[],search_text=''):
+    with urllib.request.urlopen(url) as response:
+        text = response.read()
+
+    models_json = json.loads(text)
+    models_now = get_models_list(rvc_models_dir)
+    table_of_models = []
+    
+    for model in models_json['voice_models']:
+        if not model['name'] in models_now:
+            # check if only tags selected
+            if len(tags) > 0:
+                if all(tag in model['tags'] for tag in tags):
+                # if tags in model['tags']:
+                    model = [[model['name'],model['description'],model['url']]]
+                    table_of_models+=model  
+            
+            # check if only search text input 
+            elif len(search_text) > 0:
+                if (search_text.lower() in model['description'].lower()) or (search_text.lower() in model['name'].lower()):
+                    model = [[model['name'],model['description'],model['url']]]
+                    table_of_models+=model
+            
+            # check if selected search text and tags 
+            elif ( len(search_text) > 0 ) and ( len(tags) > 0 ):
+                if search_text.lower() in model['description'].lower():
+                    # if tags in model['tags']:
+                    if all(tag in model['tags'] for tag in tags):
+                        model = [[model['name'],model['description'],model['url']]]
+                        table_of_models+=model  
+            else:
+                model = [[model['name'],model['description'],model['url']]]
+                table_of_models+=model  
+    return gr.DataFrame.update(value=table_of_models)    
+       
 
 if __name__ == '__main__':
     parser = ArgumentParser(description='Generate a AI cover song in the song_output/id directory.', add_help=True)
@@ -189,25 +243,48 @@ if __name__ == '__main__':
         
         # Download tab
         with gr.Tab("Download model"):
-            with gr.Row():
-                model_zip_link = gr.Text(label='Download link to model', info='Should be a zip file containing a .pth model file and an optional .index file.')
-                model_name = gr.Text(label='Name your model', info='Give your new model a unique name from your other voice models.')
+            
+            with gr.Tab("Install from URL") as Install_Tab:
+            
+                with gr.Row():
+                    model_zip_link = gr.Text(label='Download link to model',elem_id='dl_model_link', info='Should be a zip file containing a .pth model file and an optional .index file.')
+                    model_name = gr.Text(label='Name your model',elem_id='dl_model_name', info='Give your new model a unique name from your other voice models.')
 
-            with gr.Row():
-                download_btn = gr.Button('Download 🌐', variant='primary', show_progress=True, scale=19)
-                dl_output_message = gr.Text(label='Output Message', interactive=False, scale=20)
+                with gr.Row():
+                    download_btn = gr.Button('Download 🌐', variant='primary',elem_id='dl_model_btn', show_progress=True, scale=19)
+                    dl_output_message = gr.Text(label='Output Message', interactive=False, scale=20)
 
-            download_btn.click(download_and_extract_zip, inputs=[model_zip_link, model_name], outputs=dl_output_message)
+                download_btn.click(download_and_extract_zip, inputs=[model_zip_link, model_name], outputs=dl_output_message)
 
-            gr.Markdown('## Input Examples')
-            gr.Examples(
-                [
-                    ["https://huggingface.co/daibi1998/RVC_v2_Punishing_Gray_Raven/resolve/main/KareninaEN_RVC_v2_RMVPE_250e.zip", "Karenina"],
-                    ["https://huggingface.co/RinkaEmina/RVC_Sharing/resolve/main/Emilia%20V2%2048000.zip", "Emilia"]
-                ],
-                [model_zip_link, model_name],
-                [],
-                download_and_extract_zip,
-            )
+                gr.Markdown('## Input Examples')
+                exmpl = gr.Examples(
+                    [
+                        ["https://huggingface.co/daibi1998/RVC_v2_Punishing_Gray_Raven/resolve/main/KareninaEN_RVC_v2_RMVPE_250e.zip", "Karenina"],
+                        ["https://huggingface.co/RinkaEmina/RVC_Sharing/resolve/main/Emilia%20V2%2048000.zip", "Emilia"]
+                    ],
+                    [model_zip_link, model_name],
+                    [],
+                    download_and_extract_zip,
+                )
+                
+            with gr.Tab("Available"):
+                with gr.Row():
+                    load_available_models_button = gr.Button(value="Load from:", variant="primary", interactive=True)
+                    models_index_url = 'https://raw.githubusercontent.com/MrTimoxaYT/WebAICoverGen/main/src/available_models_index.json'
+                    available_models_index = gr.Text(value=models_index_url, label="Models index URL").style(container=False)
+               
+                with gr.Row():
+                    hide_tags = gr.CheckboxGroup(value=[], label="Show voice models with tags", choices=["English", "Japanese", "Other Language", "Anime","Vtuber"],interactive=True)
+                    
+                with gr.Row():
+                    search_extensions_text = gr.Text(label="Search").style(container=False)
+            
+                available_voice_models_table = gr.DataFrame(value=[],headers=['Model Name', 'Description', 'URL'],label='Available Models List')
+                
+                
+                load_available_models_button.click(load_available_models,inputs=[available_models_index],outputs=[available_voice_models_table,hide_tags])
+                search_extensions_text.change(search_models,inputs=[available_models_index,hide_tags,search_extensions_text],outputs=available_voice_models_table)
+                hide_tags.change(search_models,inputs=[available_models_index,hide_tags,search_extensions_text],outputs=available_voice_models_table)
+            
 
     app.launch(share=share_enabled, enable_queue=True)

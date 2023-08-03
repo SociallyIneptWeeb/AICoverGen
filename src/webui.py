@@ -6,10 +6,10 @@ import shutil
 from argparse import ArgumentParser
 from urllib.parse import urlparse, parse_qs
 from contextlib import suppress
-
 import gradio as gr
 
-from main import preprocess_song, get_audio_paths, voice_change, combine_audio, add_audio_effects
+
+from main import  generate_random_name, preprocess_song, get_audio_paths, preprocess_song_local, voice_change, combine_audio, add_audio_effects
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -48,6 +48,61 @@ def get_youtube_video_id(url, ignore_playlist=True):
 
     # returns None for invalid YouTube url
     return None
+
+
+def song_cover_pipeline_local(input_audio, voice_model, pitch_change, progress=gr.Progress()):
+    try:
+        if input_audio is None:
+            return "You need to upload an audio", None
+
+        song_id = generate_random_name()
+        song_dir = os.path.join(output_dir, song_id)
+     
+
+        progress(0, desc='[~] Starting AI Cover Generation Pipeline...')
+
+        with open(os.path.join(mdxnet_models_dir, 'model_data.json')) as infile:
+            mdx_model_params = json.load(infile)
+      
+
+
+        if not os.path.exists(song_dir):
+            os.makedirs(song_dir)
+            orig_song_path, vocals_path, instrumentals_path, main_vocals_path, backup_vocals_path, main_vocals_dereverb_path = preprocess_song_local(str(input_audio), mdx_model_params, song_id, progress)
+
+        else:
+            vocals_path, main_vocals_path = None, None
+            paths = get_audio_paths(song_dir)
+
+            # if any of the audio files aren't available, rerun preprocess
+            if any(path is None for path in paths):
+                orig_song_path, vocals_path, instrumentals_path, main_vocals_path, backup_vocals_path, main_vocals_dereverb_path = preprocess_song_local(str(input_audio),mdx_model_params, song_id, progress)
+            else:
+                orig_song_path, instrumentals_path, main_vocals_dereverb_path, backup_vocals_path = paths
+
+        ai_vocals_path, ai_vocals_mixed_path = None, None
+        ai_cover_path = os.path.join(song_dir, f'{os.path.splitext(orig_song_path)[0]} ({voice_model} Ver {pitch_change}).mp3')
+
+        if not os.path.exists(ai_cover_path):
+            progress(0.5, desc='[~] Converting voice using RVC...')
+            ai_vocals_path = voice_change(voice_model, main_vocals_dereverb_path, pitch_change)
+
+            progress(0.8, desc='[~] Applying audio effects to vocals...')
+            ai_vocals_mixed_path = add_audio_effects(ai_vocals_path)
+
+            progress(0.9, desc='[~] Combining AI Vocals and Instrumentals...')
+            combine_audio([ai_vocals_mixed_path, backup_vocals_path, instrumentals_path], ai_cover_path)
+
+        progress(0.95, desc='[~] Removing intermediate audio files...')
+        intermediate_files = [vocals_path, main_vocals_path, ai_vocals_path, ai_vocals_mixed_path]
+        for file in intermediate_files:
+            if file and os.path.exists(file):
+                os.remove(file)
+
+        return ai_cover_path
+
+    except Exception as e:
+        raise gr.Error(str(e))
 
 
 def song_cover_pipeline(yt_link, voice_model, pitch_change, progress=gr.Progress()):
@@ -177,7 +232,7 @@ if __name__ == '__main__':
 
                     with gr.Row():
                         video_link = gr.Text(label='YouTube link')
-                        pitch = gr.Slider(-12, 12, value=0, step=1, label='Pitch', info='Pitch should be set to either -12, 0, or 12 to ensure the vocals are not out of tune.')
+                        pitch = gr.Slider(-12, 12, value=0, step=1, label='Pitch', info='Pitch should be set to either -12(female to male), 0, or 12 to ensure the vocals are not out of tune.')
 
                     with gr.Row():
                         clear_btn = gr.ClearButton(value='Clear', components=[video_link, rvc_model, pitch])
@@ -186,7 +241,27 @@ if __name__ == '__main__':
                 audio = gr.Audio(label='Audio', show_share_button=False)
                 ref_btn.click(update_models_list, None, outputs=rvc_model)
                 generate_btn.click(song_cover_pipeline, inputs=[video_link, rvc_model, pitch], outputs=[audio])
-        
+
+         # main local file
+        with gr.Tab("Generate Local File"):
+            with gr.Row():
+                with gr.Column():
+
+                    with gr.Row():
+                        rvc_model = gr.Dropdown(voice_models, label='Voice Models', scale=10, info='Models folder "AICoverGen --> rvc_models". After the models are added into this folder, click the update button')
+                        ref_btn = gr.Button('Update 🔁', variant='primary', scale=9)
+
+                    with gr.Row():
+                        vc_input = gr.Audio(label="Input Audio File" , type='filepath')
+                        pitch = gr.Slider(-12, 12, value=0, step=1, label='Pitch', info='Pitch should be set to either -12(female to male), 0, or 12 to ensure the vocals are not out of tune.')
+
+                    with gr.Row():
+                        clear_btn = gr.ClearButton(value='Clear', components=[vc_input, rvc_model, pitch])
+                        generate_btn = gr.Button("Generate", variant='primary')
+
+                audio = gr.Audio(label='Audio', show_share_button=False)
+                ref_btn.click(update_models_list, None, outputs=rvc_model)
+                generate_btn.click(song_cover_pipeline_local, inputs=[vc_input, rvc_model, pitch], outputs=[audio])
         # Download tab
         with gr.Tab("Download model"):
             with gr.Row():

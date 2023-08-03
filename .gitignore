@@ -1,14 +1,21 @@
+# huggingfacervc
+Rvc-Version-Huggingface/
+myaienv/
+MY_GENERATED_AUDIOS/
+
 # MDX Models
 mdxnet_models/*.onnx
 
 # RVC Models
 rvc_models/*/*.pth
+rvc_models/*/*.npy
 rvc_models/*/*.index
 rvc_models/hubert_base.pt
 
 # Output
 song_output/*/*.wav
 song_output/*/*.mp3
+song_output/*/*.m4a
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
@@ -21,6 +28,7 @@ __pycache__/
 # Distribution / packaging
 .Python
 build/
+.vscode/
 develop-eggs/
 dist/
 downloads/

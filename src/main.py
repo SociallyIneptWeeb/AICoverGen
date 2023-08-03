@@ -1,13 +1,17 @@
 import gc
 import json
 import os
+import random
 import re
 from argparse import ArgumentParser
+import string
 
 import yt_dlp
 from pedalboard import Pedalboard, Reverb, Compressor, HighpassFilter
 from pedalboard.io import AudioFile
 from pydub import AudioSegment
+import ntpath
+import subprocess
 
 from mdx import run_mdx
 from rvc import Config, load_hubert, get_vc, rvc_infer
@@ -82,7 +86,68 @@ def display_progress(message, percent, progress=None):
 def preprocess_song(yt_link, mdx_model_params, song_id, progress=None):
     display_progress('[~] Downloading song...', 0, progress)
     orig_song_path = download_audio(yt_link)
+    song_output_dir = os.path.join(output_dir, song_id)
+    print(str(song_output_dir))
 
+    display_progress('[~] Separating Vocals from Instrumental...', 0.1, progress)
+    vocals_path, instrumentals_path = run_mdx(mdx_model_params, song_output_dir, os.path.join(mdxnet_models_dir, 'UVR-MDX-NET-Voc_FT.onnx'), orig_song_path, denoise=True, keep_orig=False)
+
+    display_progress('[~] Separating Main Vocals from Backup Vocals...', 0.2, progress)
+    backup_vocals_path, main_vocals_path = run_mdx(mdx_model_params, song_output_dir, os.path.join(mdxnet_models_dir, 'UVR_MDXNET_KARA_2.onnx'), vocals_path, suffix='Backup', invert_suffix='Main', denoise=True)
+
+    display_progress('[~] Applying DeReverb to Vocals...', 0.3, progress)
+    _, main_vocals_dereverb_path = run_mdx(mdx_model_params, song_output_dir, os.path.join(mdxnet_models_dir, 'Reverb_HQ_By_FoxJoy.onnx'), main_vocals_path, invert_suffix='DeReverb', exclude_main=True, denoise=True)
+
+    return orig_song_path, vocals_path, instrumentals_path, main_vocals_path, backup_vocals_path, main_vocals_dereverb_path
+
+
+def generate_random_name(length=8):
+    characters = string.ascii_letters + string.digits
+    random_name = ''.join(random.choice(characters) for _ in range(length))
+    return random_name
+
+def convert_to_aac(input_file, output_file):
+    cmd = ["ffmpeg", "-i", input_file, "-c:a", "aac","-b:a","192k", output_file]
+    print(cmd)
+    subprocess.run(cmd)
+
+def is_supported_format(file_path):
+    supported_formats = ['.wav', '.mp3']
+    _, file_extension = os.path.splitext(file_path)
+    return file_extension in supported_formats
+
+def clean_file_name(file_path):
+    base_name = ntpath.basename(file_path)
+    file_name, file_extension = ntpath.splitext(base_name)
+    
+    # Remove special characters using regex
+    clean_name = re.sub(r'[^\w\s-]', '', file_name)
+    
+    # Replace spaces with underscores
+    clean_name = clean_name.replace(' ', '_')
+    
+    return clean_name
+
+def preprocess_song_local(input_audio, mdx_model_params,song_id, progress=None):
+    song_output_dir = os.path.join(output_dir, song_id)
+    
+    
+    filename = clean_file_name(input_audio)
+    song_output_file = os.path.join(song_output_dir, filename)
+ 
+    print(input_audio)
+    print(song_output_file)
+
+    song_output_file = str(song_output_file)+".m4a"
+    orig_song_path = input_audio
+
+    if is_supported_format(input_audio):
+        convert_to_aac(input_audio,song_output_file)
+        print(f"Audio converted to .m4a format: {filename}")
+        orig_song_path = song_output_file
+
+    
+    print(orig_song_path)
     song_output_dir = os.path.join(output_dir, song_id)
 
     display_progress('[~] Separating Vocals from Instrumental...', 0.1, progress)
@@ -95,6 +160,7 @@ def preprocess_song(yt_link, mdx_model_params, song_id, progress=None):
     _, main_vocals_dereverb_path = run_mdx(mdx_model_params, song_output_dir, os.path.join(mdxnet_models_dir, 'Reverb_HQ_By_FoxJoy.onnx'), main_vocals_path, invert_suffix='DeReverb', exclude_main=True, denoise=True)
 
     return orig_song_path, vocals_path, instrumentals_path, main_vocals_path, backup_vocals_path, main_vocals_dereverb_path
+
 
 
 def voice_change(voice_model, vocals_path, pitch_change):

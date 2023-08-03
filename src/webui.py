@@ -202,8 +202,8 @@ if __name__ == '__main__':
             gr.Markdown('## Input Examples')
             gr.Examples(
                 [
-                    ["https://huggingface.co/daibi1998/RVC_v2_Punishing_Gray_Raven/resolve/main/KareninaEN_RVC_v2_RMVPE_250e.zip", "Karenina"],
-                    ["https://huggingface.co/RinkaEmina/RVC_Sharing/resolve/main/Emilia%20V2%2048000.zip", "Emilia"]
+                    ["https://huggingface.co/phant0m4r/LiSA/resolve/main/LiSA.zip", "Lisa"],
+                    ["https://huggingface.co/Kit-Lemonfoot/kitlemonfoot_rvc_models/resolve/main/AZKi%20(Hybrid).zip", "Azki"]
                 ],
                 [model_zip_link, model_name],
                 [],

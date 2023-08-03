@@ -3,6 +3,8 @@ An autonomous pipeline to create covers with any RVC v2 trained AI voice from Yo
 
 Showcase: https://www.youtube.com/watch?v=2qZuE4WM7CM
 
+Setup Guide: https://www.youtube.com/watch?v=pdlhk4vVHQk
+
 ![](images/webui_generate.png?raw=true)
 
 WebUI is under constant development and testing, but you can try it out right now on both local and colab!

@@ -2,7 +2,7 @@ import gc
 import hashlib
 import json
 import os
-from argparse import ArgumentParser
+import argparse
 from contextlib import suppress
 from urllib.parse import urlparse, parse_qs
 
@@ -195,11 +195,11 @@ def combine_audio(audio_paths, output_path):
     main_vocal_audio.overlay(backup_vocal_audio).overlay(instrumental_audio).export(output_path, format='mp3')
 
 
-def song_cover_pipeline(song_input, voice_model, pitch_change, is_webui=0, progress=gr.Progress()):
+def song_cover_pipeline(song_input, voice_model, pitch_change, keep_files, is_webui=0, progress=gr.Progress()):
     try:
         if not song_input or not voice_model:
             raise_exception('Ensure that the song input field and voice model field is filled.', is_webui)
-            
+
         display_progress('[~] Starting AI Cover Generation Pipeline...', 0, is_webui, progress)
 
         with open(os.path.join(mdxnet_models_dir, 'model_data.json')) as infile:
@@ -234,8 +234,8 @@ def song_cover_pipeline(song_input, voice_model, pitch_change, is_webui=0, progr
             vocals_path, main_vocals_path = None, None
             paths = get_audio_paths(song_dir)
 
-            # if any of the audio files aren't available, rerun preprocess
-            if any(path is None for path in paths):
+            # if any of the audio files aren't available or keep intermediate files, rerun preprocess
+            if any(path is None for path in paths) or keep_files:
                 orig_song_path, vocals_path, instrumentals_path, main_vocals_path, backup_vocals_path, main_vocals_dereverb_path = preprocess_song(song_input, mdx_model_params, song_id, is_webui, input_type, progress)
             else:
                 orig_song_path, instrumentals_path, main_vocals_dereverb_path, backup_vocals_path = paths
@@ -253,11 +253,12 @@ def song_cover_pipeline(song_input, voice_model, pitch_change, is_webui=0, progr
             display_progress('[~] Combining AI Vocals and Instrumentals...', 0.9, is_webui, progress)
             combine_audio([ai_vocals_mixed_path, backup_vocals_path, instrumentals_path], ai_cover_path)
 
-        display_progress('[~] Removing intermediate audio files...', 0.95, is_webui, progress)
-        intermediate_files = [vocals_path, main_vocals_path, ai_vocals_path, ai_vocals_mixed_path]
-        for file in intermediate_files:
-            if file and os.path.exists(file):
-                os.remove(file)
+        if not keep_files:
+            display_progress('[~] Removing intermediate audio files...', 0.95, is_webui, progress)
+            intermediate_files = [vocals_path, main_vocals_path, ai_vocals_path, ai_vocals_mixed_path]
+            for file in intermediate_files:
+                if file and os.path.exists(file):
+                    os.remove(file)
 
         return ai_cover_path
 
@@ -266,15 +267,16 @@ def song_cover_pipeline(song_input, voice_model, pitch_change, is_webui=0, progr
 
 
 if __name__ == '__main__':
-    parser = ArgumentParser(description='Generate a AI cover song in the song_output/id directory.', add_help=True)
+    parser = argparse.ArgumentParser(description='Generate a AI cover song in the song_output/id directory.', add_help=True)
     parser.add_argument('-i', '--song-input', type=str, required=True, help='Link to a YouTube video or the filepath to a local mp3/wav file to create an AI cover of')
     parser.add_argument('-dir', '--rvc-dirname', type=str, required=True, help='Name of the folder in the rvc_models directory containing the RVC model file and optional index file to use')
     parser.add_argument('-p', '--pitch-change', type=int, required=True, help='Change the pitch of the AI voice. Generally use 12 for male to female conversions and -12 for vice-versa. Use 0 for no change')
+    parser.add_argument('-k', '--keep-files', action=argparse.BooleanOptionalAction, help='Whether to keep all intermediate audio files generated in the song_output/id directory, e.g. Isolated Vocals/Instrumentals')
     args = parser.parse_args()
 
     rvc_dirname = args.rvc_dirname
     if not os.path.exists(os.path.join(rvc_models_dir, rvc_dirname)):
         raise Exception(f'The folder {os.path.join(rvc_models_dir, rvc_dirname)} does not exist.')
 
-    cover_path = song_cover_pipeline(args.song_input, rvc_dirname, args.pitch_change)
+    cover_path = song_cover_pipeline(args.song_input, rvc_dirname, args.pitch_change, args.keep_files)
     print(f'[+] Cover generated at {cover_path}')

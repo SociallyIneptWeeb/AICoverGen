@@ -95,6 +95,8 @@ if __name__ == '__main__':
                         song_input = gr.Text(label='Song Input', info='Link to a YouTube video or the full path to a local audio file.')
                         pitch = gr.Slider(-12, 12, value=0, step=1, label='Pitch Change', info='Pitch Change should be set to either -12, 0, or 12 to ensure the vocals are not out of tune.')
 
+                    keep_files = gr.Checkbox(label='Keep intermediate files', info='Keep all audio files generated in the song_output/id directory, e.g. Isolated Vocals/Instrumentals. Leave unchecked to save space.')
+
                     with gr.Row():
                         clear_btn = gr.ClearButton(value='Clear', components=[song_input, rvc_model, pitch])
                         generate_btn = gr.Button("Generate", variant='primary')
@@ -102,7 +104,7 @@ if __name__ == '__main__':
                 ai_cover = gr.Audio(label='AI Cover', show_share_button=False)
                 ref_btn.click(update_models_list, None, outputs=rvc_model)
                 is_webui = gr.Number(value=1, visible=False)
-                generate_btn.click(song_cover_pipeline, inputs=[song_input, rvc_model, pitch, is_webui], outputs=[ai_cover])
+                generate_btn.click(song_cover_pipeline, inputs=[song_input, rvc_model, pitch, keep_files, is_webui], outputs=[ai_cover])
         
         # Download tab
         with gr.Tab("Download model"):

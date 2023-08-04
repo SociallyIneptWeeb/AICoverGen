@@ -4,99 +4,17 @@ import urllib.request
 import zipfile
 import shutil
 from argparse import ArgumentParser
-from urllib.parse import urlparse, parse_qs
-from contextlib import suppress
+
 
 import gradio as gr
 
-from main import preprocess_song, get_audio_paths, voice_change, combine_audio, add_audio_effects
+from main import song_cover_pipeline
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 mdxnet_models_dir = os.path.join(BASE_DIR, 'mdxnet_models')
 rvc_models_dir = os.path.join(BASE_DIR, 'rvc_models')
 output_dir = os.path.join(BASE_DIR, 'song_output')
-
-
-def get_youtube_video_id(url, ignore_playlist=True):
-    """
-    Examples:
-    http://youtu.be/SA2iWivDJiE
-    http://www.youtube.com/watch?v=_oPAwA_Udwc&feature=feedu
-    http://www.youtube.com/embed/SA2iWivDJiE
-    http://www.youtube.com/v/SA2iWivDJiE?version=3&amp;hl=en_US
-    """
-    query = urlparse(url)
-    if query.hostname == 'youtu.be':
-        if query.path[1:] == 'watch':
-            return query.query[2:]
-        return query.path[1:]
-
-    if query.hostname in {'www.youtube.com', 'youtube.com', 'music.youtube.com'}:
-        if not ignore_playlist:
-            # use case: get playlist id not current video in playlist
-            with suppress(KeyError):
-                return parse_qs(query.query)['list'][0]
-        if query.path == '/watch': 
-            return parse_qs(query.query)['v'][0]
-        if query.path[:7] == '/watch/': 
-            return query.path.split('/')[1]
-        if query.path[:7] == '/embed/':
-            return query.path.split('/')[2]
-        if query.path[:3] == '/v/':
-            return query.path.split('/')[2]
-
-    # returns None for invalid YouTube url
-    return None
-
-
-def song_cover_pipeline(yt_link, voice_model, pitch_change, progress=gr.Progress()):
-    try:
-        progress(0, desc='[~] Starting AI Cover Generation Pipeline...')
-
-        with open(os.path.join(mdxnet_models_dir, 'model_data.json')) as infile:
-            mdx_model_params = json.load(infile)
-
-        song_id = get_youtube_video_id(yt_link)
-        song_dir = os.path.join(output_dir, song_id)
-
-        if not os.path.exists(song_dir):
-            os.makedirs(song_dir)
-            orig_song_path, vocals_path, instrumentals_path, main_vocals_path, backup_vocals_path, main_vocals_dereverb_path = preprocess_song(yt_link, mdx_model_params, song_id, progress)
-
-        else:
-            vocals_path, main_vocals_path = None, None
-            paths = get_audio_paths(song_dir)
-
-            # if any of the audio files aren't available, rerun preprocess
-            if any(path is None for path in paths):
-                orig_song_path, vocals_path, instrumentals_path, main_vocals_path, backup_vocals_path, main_vocals_dereverb_path = preprocess_song(yt_link, mdx_model_params, song_id, progress)
-            else:
-                orig_song_path, instrumentals_path, main_vocals_dereverb_path, backup_vocals_path = paths
-
-        ai_vocals_path, ai_vocals_mixed_path = None, None
-        ai_cover_path = os.path.join(song_dir, f'{os.path.splitext(orig_song_path)[0]} ({voice_model} Ver {pitch_change}).mp3')
-
-        if not os.path.exists(ai_cover_path):
-            progress(0.5, desc='[~] Converting voice using RVC...')
-            ai_vocals_path = voice_change(voice_model, main_vocals_dereverb_path, pitch_change)
-
-            progress(0.8, desc='[~] Applying audio effects to vocals...')
-            ai_vocals_mixed_path = add_audio_effects(ai_vocals_path)
-
-            progress(0.9, desc='[~] Combining AI Vocals and Instrumentals...')
-            combine_audio([ai_vocals_mixed_path, backup_vocals_path, instrumentals_path], ai_cover_path)
-
-        progress(0.95, desc='[~] Removing intermediate audio files...')
-        intermediate_files = [vocals_path, main_vocals_path, ai_vocals_path, ai_vocals_mixed_path]
-        for file in intermediate_files:
-            if file and os.path.exists(file):
-                os.remove(file)
-
-        return ai_cover_path
-
-    except Exception as e:
-        raise gr.Error(str(e))
 
 
 def get_models_list(models_dir):
@@ -172,8 +90,8 @@ if __name__ == '__main__':
                 with gr.Column():
 
                     with gr.Row():
-                        rvc_model = gr.Dropdown(voice_models, label='Voice Models', scale=10, info='Models folder "AICoverGen --> rvc_models". After the models are added into this folder, click the update button')
-                        ref_btn = gr.Button('Update 🔁', variant='primary', scale=9)
+                        rvc_model = gr.Dropdown(voice_models, label='Voice Models', scale=10, info='Models folder "AICoverGen --> rvc_models". After new models are added into this folder, click the refresh button')
+                        ref_btn = gr.Button('Refresh 🔁', variant='primary', scale=9)
 
                     with gr.Row():
                         video_link = gr.Text(label='YouTube link')
@@ -183,9 +101,10 @@ if __name__ == '__main__':
                         clear_btn = gr.ClearButton(value='Clear', components=[video_link, rvc_model, pitch])
                         generate_btn = gr.Button("Generate", variant='primary')
 
-                audio = gr.Audio(label='Audio', show_share_button=False)
+                song_cover = gr.Audio(label='Song Cover', show_share_button=False)
                 ref_btn.click(update_models_list, None, outputs=rvc_model)
-                generate_btn.click(song_cover_pipeline, inputs=[video_link, rvc_model, pitch], outputs=[audio])
+                is_webui = gr.Number(value=1, visible=False)
+                generate_btn.click(song_cover_pipeline, inputs=[video_link, rvc_model, pitch, is_webui], outputs=[song_cover])
         
         # Download tab
         with gr.Tab("Download model"):

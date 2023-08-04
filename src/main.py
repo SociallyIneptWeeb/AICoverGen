@@ -7,7 +7,10 @@ from argparse import ArgumentParser
 import yt_dlp
 from pedalboard import Pedalboard, Reverb, Compressor, HighpassFilter
 from pedalboard.io import AudioFile
+from urllib.parse import urlparse, parse_qs
+from contextlib import suppress
 from pydub import AudioSegment
+import gradio as gr
 
 from mdx import run_mdx
 from rvc import Config, load_hubert, get_vc, rvc_infer
@@ -19,7 +22,39 @@ rvc_models_dir = os.path.join(BASE_DIR, 'rvc_models')
 output_dir = os.path.join(BASE_DIR, 'song_output')
 
 
-def download_audio(link):
+def get_youtube_video_id(url, ignore_playlist=True):
+    """
+    Examples:
+    http://youtu.be/SA2iWivDJiE
+    http://www.youtube.com/watch?v=_oPAwA_Udwc&feature=feedu
+    http://www.youtube.com/embed/SA2iWivDJiE
+    http://www.youtube.com/v/SA2iWivDJiE?version=3&amp;hl=en_US
+    """
+    query = urlparse(url)
+    if query.hostname == 'youtu.be':
+        if query.path[1:] == 'watch':
+            return query.query[2:]
+        return query.path[1:]
+
+    if query.hostname in {'www.youtube.com', 'youtube.com', 'music.youtube.com'}:
+        if not ignore_playlist:
+            # use case: get playlist id not current video in playlist
+            with suppress(KeyError):
+                return parse_qs(query.query)['list'][0]
+        if query.path == '/watch':
+            return parse_qs(query.query)['v'][0]
+        if query.path[:7] == '/watch/':
+            return query.path.split('/')[1]
+        if query.path[:7] == '/embed/':
+            return query.path.split('/')[2]
+        if query.path[:3] == '/v/':
+            return query.path.split('/')[2]
+
+    # returns None for invalid YouTube url
+    return None
+
+
+def yt_download(link):
     ydl_opts = {
         'format': 'bestaudio',
         'outtmpl': '%(title)s.%(ext)s',
@@ -36,7 +71,7 @@ def download_audio(link):
     return download_path
 
 
-def get_rvc_models(voice_model):
+def get_rvc_model(voice_model, is_webui):
     rvc_model_filename, rvc_index_filename = None, None
     model_dir = os.path.join(rvc_models_dir, voice_model)
     for file in os.listdir(model_dir):
@@ -47,7 +82,11 @@ def get_rvc_models(voice_model):
             rvc_index_filename = file
 
     if rvc_model_filename is None:
-        raise Exception(f'No model file exists in {model_dir}.')
+        error_msg = f'No model file exists in {model_dir}.'
+        if is_webui:
+            raise gr.Error(error_msg)
+        else:
+            raise Exception(error_msg)
 
     return os.path.join(model_dir, rvc_model_filename), os.path.join(model_dir, rvc_index_filename) if rvc_index_filename else ''
 
@@ -72,41 +111,40 @@ def get_audio_paths(song_dir):
     return orig_song_path, instrumentals_path, main_vocals_dereverb_path, backup_vocals_path
 
 
-def display_progress(message, percent, progress=None):
-    if progress is not None:
+def display_progress(message, percent, is_webui, progress=None):
+    if is_webui:
         progress(percent, desc=message)
     else:
         print(message)
 
 
-def preprocess_song(yt_link, mdx_model_params, song_id, progress=None):
-    display_progress('[~] Downloading song...', 0, progress)
-    orig_song_path = download_audio(yt_link)
+def preprocess_song(yt_link, mdx_model_params, song_id, is_webui, progress=None):
+    display_progress('[~] Downloading song...', 0, is_webui, progress)
+    orig_song_path = yt_download(yt_link)
 
     song_output_dir = os.path.join(output_dir, song_id)
 
-    display_progress('[~] Separating Vocals from Instrumental...', 0.1, progress)
+    display_progress('[~] Separating Vocals from Instrumental...', 0.1, is_webui, progress)
     vocals_path, instrumentals_path = run_mdx(mdx_model_params, song_output_dir, os.path.join(mdxnet_models_dir, 'UVR-MDX-NET-Voc_FT.onnx'), orig_song_path, denoise=True, keep_orig=False)
 
-    display_progress('[~] Separating Main Vocals from Backup Vocals...', 0.2, progress)
+    display_progress('[~] Separating Main Vocals from Backup Vocals...', 0.2, is_webui, progress)
     backup_vocals_path, main_vocals_path = run_mdx(mdx_model_params, song_output_dir, os.path.join(mdxnet_models_dir, 'UVR_MDXNET_KARA_2.onnx'), vocals_path, suffix='Backup', invert_suffix='Main', denoise=True)
 
-    display_progress('[~] Applying DeReverb to Vocals...', 0.3, progress)
+    display_progress('[~] Applying DeReverb to Vocals...', 0.3, is_webui, progress)
     _, main_vocals_dereverb_path = run_mdx(mdx_model_params, song_output_dir, os.path.join(mdxnet_models_dir, 'Reverb_HQ_By_FoxJoy.onnx'), main_vocals_path, invert_suffix='DeReverb', exclude_main=True, denoise=True)
 
     return orig_song_path, vocals_path, instrumentals_path, main_vocals_path, backup_vocals_path, main_vocals_dereverb_path
 
 
-def voice_change(voice_model, vocals_path, pitch_change):
-    # determine pitch to change if none provided
-    rvc_model_path, rvc_index_path = get_rvc_models(voice_model)
+def voice_change(voice_model, vocals_path, pitch_change, is_webui):
+    rvc_model_path, rvc_index_path = get_rvc_model(voice_model, is_webui)
     device = 'cuda:0'
     config = Config(device, True)
     hubert_model = load_hubert(device, config.is_half, os.path.join(rvc_models_dir, 'hubert_base.pt'))
     cpt, version, net_g, tgt_sr, vc = get_vc(device, config.is_half, config, rvc_model_path)
 
-    output_path = f'{os.path.splitext(vocals_path)[0]}_{voice_model}.wav'
     # convert main vocals
+    output_path = f'{os.path.splitext(vocals_path)[0]}_{voice_model}.mp3'
     rvc_infer(rvc_index_path, vocals_path, output_path, pitch_change, cpt, version, net_g, tgt_sr, vc, hubert_model)
     del hubert_model, cpt
     gc.collect()
@@ -137,51 +175,63 @@ def combine_audio(audio_paths, output_path):
     main_vocal_audio.overlay(backup_vocal_audio).overlay(instrumental_audio).export(output_path, format='mp3')
 
 
-def song_cover_pipeline(yt_link, voice_model, pitch_change):
-    with open(os.path.join(mdxnet_models_dir, 'model_data.json')) as infile:
-        mdx_model_params = json.load(infile)
+def song_cover_pipeline(yt_link, voice_model, pitch_change, is_webui=0, progress=gr.Progress()):
+    try:
+        display_progress('[~] Starting AI Cover Generation Pipeline...', 0, is_webui, progress)
 
-    if '&' in yt_link:
-        yt_link = yt_link.split('&')[0]
+        with open(os.path.join(mdxnet_models_dir, 'model_data.json')) as infile:
+            mdx_model_params = json.load(infile)
 
-    match = re.search(r"v=([^&]+)", yt_link)
-    song_id = match.group(1)
-    song_dir = os.path.join(output_dir, song_id)
+        song_id = get_youtube_video_id(yt_link)
+        if song_id is None:
+            error_msg = 'Invalid YouTube url.'
+            if is_webui:
+                raise gr.Error(error_msg)
+            else:
+                raise Exception(error_msg)
 
-    if not os.path.exists(song_dir):
-        os.makedirs(song_dir)
-        orig_song_path, vocals_path, instrumentals_path, main_vocals_path, backup_vocals_path, main_vocals_dereverb_path = preprocess_song(yt_link, mdx_model_params, song_id)
+        song_dir = os.path.join(output_dir, song_id)
 
-    else:
-        vocals_path, main_vocals_path = None, None
-        paths = get_audio_paths(song_dir)
+        if not os.path.exists(song_dir):
+            os.makedirs(song_dir)
+            orig_song_path, vocals_path, instrumentals_path, main_vocals_path, backup_vocals_path, main_vocals_dereverb_path = preprocess_song(yt_link, mdx_model_params, song_id, is_webui, progress)
 
-        # if any of the audio files aren't available, rerun preprocess
-        if any(path is None for path in paths):
-            orig_song_path, vocals_path, instrumentals_path, main_vocals_path, backup_vocals_path, main_vocals_dereverb_path = preprocess_song(yt_link, mdx_model_params, song_id)
         else:
-            orig_song_path, instrumentals_path, main_vocals_dereverb_path, backup_vocals_path = paths
+            vocals_path, main_vocals_path = None, None
+            paths = get_audio_paths(song_dir)
 
-    ai_vocals_path, ai_vocals_mixed_path = None, None
-    ai_cover_path = os.path.join(song_dir, f'{os.path.splitext(orig_song_path)[0]} ({voice_model} Ver {pitch_change}).mp3')
+            # if any of the audio files aren't available, rerun preprocess
+            if any(path is None for path in paths):
+                orig_song_path, vocals_path, instrumentals_path, main_vocals_path, backup_vocals_path, main_vocals_dereverb_path = preprocess_song(yt_link, mdx_model_params, song_id, progress)
+            else:
+                orig_song_path, instrumentals_path, main_vocals_dereverb_path, backup_vocals_path = paths
 
-    if not os.path.exists(ai_cover_path):
-        print('[~] Converting voice using RVC...')
-        ai_vocals_path = voice_change(voice_model, main_vocals_dereverb_path, pitch_change)
+        ai_vocals_path, ai_vocals_mixed_path = None, None
+        ai_cover_path = os.path.join(song_dir, f'{os.path.splitext(orig_song_path)[0]} ({voice_model} Ver {pitch_change}).mp3')
 
-        print('[~] Applying audio effects to vocals...')
-        ai_vocals_mixed_path = add_audio_effects(ai_vocals_path)
+        if not os.path.exists(ai_cover_path):
+            display_progress('[~] Converting voice using RVC...', 0.5, is_webui, progress)
+            ai_vocals_path = voice_change(voice_model, main_vocals_dereverb_path, pitch_change, is_webui)
 
-        print('[~] Combining AI Vocals and Instrumentals...')
-        combine_audio([ai_vocals_mixed_path, backup_vocals_path, instrumentals_path], ai_cover_path)
+            display_progress('[~] Applying audio effects to vocals...', 0.8, is_webui, progress)
+            ai_vocals_mixed_path = add_audio_effects(ai_vocals_path)
 
-    print('[~] Removing intermediate audio files...')
-    intermediate_files = [vocals_path, main_vocals_path, ai_vocals_path, ai_vocals_mixed_path]
-    for file in intermediate_files:
-        if file and os.path.exists(file):
-            os.remove(file)
+            display_progress('[~] Combining AI Vocals and Instrumentals...', 0.9, is_webui, progress)
+            combine_audio([ai_vocals_mixed_path, backup_vocals_path, instrumentals_path], ai_cover_path)
 
-    return ai_cover_path
+        display_progress('[~] Removing intermediate audio files...', 0.95, is_webui, progress)
+        intermediate_files = [vocals_path, main_vocals_path, ai_vocals_path, ai_vocals_mixed_path]
+        for file in intermediate_files:
+            if file and os.path.exists(file):
+                os.remove(file)
+
+        return ai_cover_path
+
+    except Exception as e:
+        if is_webui:
+            raise gr.Error(str(e))
+        else:
+            raise Exception(str(e))
 
 
 if __name__ == '__main__':

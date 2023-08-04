@@ -4,6 +4,7 @@ mdxnet_models/*.onnx
 # RVC Models
 rvc_models/*/*.pth
 rvc_models/*/*.index
+rvc_models/*/*.npy
 rvc_models/hubert_base.pt
 
 # Output

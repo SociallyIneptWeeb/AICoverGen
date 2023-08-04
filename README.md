@@ -1,5 +1,5 @@
 # AICoverGen
-An autonomous pipeline to create covers with any RVC v2 trained AI voice from YouTube videos. For developers who may want to add a singing functionality into their AI assistant/chatbot/vtuber, or for people who want to hear their favourite characters sing their favourite song.
+An autonomous pipeline to create covers with any RVC v2 trained AI voice from YouTube videos or a local audio file. For developers who may want to add a singing functionality into their AI assistant/chatbot/vtuber, or for people who want to hear their favourite characters sing their favourite song.
 
 Showcase: https://www.youtube.com/watch?v=2qZuE4WM7CM
 
@@ -11,7 +11,7 @@ WebUI is under constant development and testing, but you can try it out right no
 
 ## Colab notebook
 
-For those without a powerful enough NVIDIA GPU, you may try AICoverGen out using Google Colab.
+For those without a powerful enough GPU, you may try AICoverGen out using Google Colab.
 
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/SociallyIneptWeeb/AICoverGen/blob/main/AICoverGen_colab.ipynb)
 
@@ -72,7 +72,7 @@ Once the 2 input fields are filled in, simply click `Download`! Once the output 
 ![](images/webui_generate.png?raw=true)
 
 - From the Voice Models dropdown menu, select the voice model to use. Click `Update` if you added the files manually to the [rvc_models](rvc_models) directory to refresh the list.
-- In the YouTube link field, copy and paste the link to any song on YouTube.
+- In the song input field, copy and paste the link to any song on YouTube or the full path to a local audio file.
 - Pitch should be set to either -12, 0, or 12 depending on the original vocals and the RVC AI modal. This ensures the voice is not *out of tune*.
 
 Once all fields are filled in, click `Generate` and the AI generated cover should appear in a less than a few minutes depending on your GPU.
@@ -104,10 +104,10 @@ The directory structure should look something like this:
 To run the AI cover generation pipeline using the command line, run the following command.
 
 ```
-python src/main.py -yt YOUTUBE_LINK -dir MODEL_DIR_NAME -p PITCH_CHANGE
+python src/main.py -i SONG_INPUT -dir MODEL_DIR_NAME -p PITCH_CHANGE
 ```
 
-- Replace YOUTUBE_LINK with any link to a song on YouTube. Link should be enclosed in double quotes for Windows and single quotes for Unix-like systems
+- Replace SONG_INPUT with any link to a song on YouTube or path to a local audio file. This should be enclosed in double quotes for Windows and single quotes for Unix-like systems.
 - Replace MODEL_DIR_NAME with the name of the folder in the [rvc_models](rvc_models) directory containing your `.pth` and `.index` files.
 - Replace PITCH_CHANGE with 0 for no change in pitch to the AI vocals. Generally use 12 for male to female conversions or -12 for vice-versa.
 

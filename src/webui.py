@@ -1,10 +1,8 @@
-import json
 import os
+import shutil
 import urllib.request
 import zipfile
-import shutil
 from argparse import ArgumentParser
-
 
 import gradio as gr
 
@@ -94,17 +92,17 @@ if __name__ == '__main__':
                         ref_btn = gr.Button('Refresh 🔁', variant='primary', scale=9)
 
                     with gr.Row():
-                        video_link = gr.Text(label='YouTube link')
-                        pitch = gr.Slider(-12, 12, value=0, step=1, label='Pitch', info='Pitch should be set to either -12, 0, or 12 to ensure the vocals are not out of tune.')
+                        song_input = gr.Text(label='Song Input', info='Link to a YouTube video or the full path to a local audio file.')
+                        pitch = gr.Slider(-12, 12, value=0, step=1, label='Pitch Change', info='Pitch Change should be set to either -12, 0, or 12 to ensure the vocals are not out of tune.')
 
                     with gr.Row():
-                        clear_btn = gr.ClearButton(value='Clear', components=[video_link, rvc_model, pitch])
+                        clear_btn = gr.ClearButton(value='Clear', components=[song_input, rvc_model, pitch])
                         generate_btn = gr.Button("Generate", variant='primary')
 
-                song_cover = gr.Audio(label='Song Cover', show_share_button=False)
+                ai_cover = gr.Audio(label='AI Cover', show_share_button=False)
                 ref_btn.click(update_models_list, None, outputs=rvc_model)
                 is_webui = gr.Number(value=1, visible=False)
-                generate_btn.click(song_cover_pipeline, inputs=[video_link, rvc_model, pitch, is_webui], outputs=[song_cover])
+                generate_btn.click(song_cover_pipeline, inputs=[song_input, rvc_model, pitch, is_webui], outputs=[ai_cover])
         
         # Download tab
         with gr.Tab("Download model"):

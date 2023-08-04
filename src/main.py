@@ -1,16 +1,16 @@
 import gc
+import hashlib
 import json
 import os
-import re
 from argparse import ArgumentParser
+from contextlib import suppress
+from urllib.parse import urlparse, parse_qs
 
+import gradio as gr
 import yt_dlp
 from pedalboard import Pedalboard, Reverb, Compressor, HighpassFilter
 from pedalboard.io import AudioFile
-from urllib.parse import urlparse, parse_qs
-from contextlib import suppress
 from pydub import AudioSegment
-import gradio as gr
 
 from mdx import run_mdx
 from rvc import Config, load_hubert, get_vc, rvc_infer
@@ -71,6 +71,13 @@ def yt_download(link):
     return download_path
 
 
+def raise_exception(error_msg, is_webui):
+    if is_webui:
+        raise gr.Error(error_msg)
+    else:
+        raise Exception(error_msg)
+
+
 def get_rvc_model(voice_model, is_webui):
     rvc_model_filename, rvc_index_filename = None, None
     model_dir = os.path.join(rvc_models_dir, voice_model)
@@ -83,10 +90,7 @@ def get_rvc_model(voice_model, is_webui):
 
     if rvc_model_filename is None:
         error_msg = f'No model file exists in {model_dir}.'
-        if is_webui:
-            raise gr.Error(error_msg)
-        else:
-            raise Exception(error_msg)
+        raise_exception(error_msg, is_webui)
 
     return os.path.join(model_dir, rvc_model_filename), os.path.join(model_dir, rvc_index_filename) if rvc_index_filename else ''
 
@@ -111,6 +115,15 @@ def get_audio_paths(song_dir):
     return orig_song_path, instrumentals_path, main_vocals_dereverb_path, backup_vocals_path
 
 
+def get_hash(filepath):
+    with open(filepath, 'rb') as f:
+        file_hash = hashlib.blake2b()
+        while chunk := f.read(8192):
+            file_hash.update(chunk)
+
+    return file_hash.hexdigest()[:11]
+
+
 def display_progress(message, percent, is_webui, progress=None):
     if is_webui:
         progress(percent, desc=message)
@@ -118,14 +131,21 @@ def display_progress(message, percent, is_webui, progress=None):
         print(message)
 
 
-def preprocess_song(yt_link, mdx_model_params, song_id, is_webui, progress=None):
-    display_progress('[~] Downloading song...', 0, is_webui, progress)
-    orig_song_path = yt_download(yt_link)
+def preprocess_song(song_input, mdx_model_params, song_id, is_webui, input_type, progress=None):
+    keep_orig = False
+    if input_type == 'yt':
+        display_progress('[~] Downloading song...', 0, is_webui, progress)
+        orig_song_path = yt_download(song_input)
+    elif input_type == 'local':
+        orig_song_path = song_input
+        keep_orig = True
+    else:
+        orig_song_path = None
 
     song_output_dir = os.path.join(output_dir, song_id)
 
     display_progress('[~] Separating Vocals from Instrumental...', 0.1, is_webui, progress)
-    vocals_path, instrumentals_path = run_mdx(mdx_model_params, song_output_dir, os.path.join(mdxnet_models_dir, 'UVR-MDX-NET-Voc_FT.onnx'), orig_song_path, denoise=True, keep_orig=False)
+    vocals_path, instrumentals_path = run_mdx(mdx_model_params, song_output_dir, os.path.join(mdxnet_models_dir, 'UVR-MDX-NET-Voc_FT.onnx'), orig_song_path, denoise=True, keep_orig=keep_orig)
 
     display_progress('[~] Separating Main Vocals from Backup Vocals...', 0.2, is_webui, progress)
     backup_vocals_path, main_vocals_path = run_mdx(mdx_model_params, song_output_dir, os.path.join(mdxnet_models_dir, 'UVR_MDXNET_KARA_2.onnx'), vocals_path, suffix='Backup', invert_suffix='Main', denoise=True)
@@ -175,26 +195,40 @@ def combine_audio(audio_paths, output_path):
     main_vocal_audio.overlay(backup_vocal_audio).overlay(instrumental_audio).export(output_path, format='mp3')
 
 
-def song_cover_pipeline(yt_link, voice_model, pitch_change, is_webui=0, progress=gr.Progress()):
+def song_cover_pipeline(song_input, voice_model, pitch_change, is_webui=0, progress=gr.Progress()):
     try:
+        if not song_input or not voice_model:
+            raise_exception('Ensure that the song input field and voice model field is filled.', is_webui)
+            
         display_progress('[~] Starting AI Cover Generation Pipeline...', 0, is_webui, progress)
 
         with open(os.path.join(mdxnet_models_dir, 'model_data.json')) as infile:
             mdx_model_params = json.load(infile)
 
-        song_id = get_youtube_video_id(yt_link)
-        if song_id is None:
-            error_msg = 'Invalid YouTube url.'
-            if is_webui:
-                raise gr.Error(error_msg)
+        # if youtube url
+        if urlparse(song_input).scheme == 'https':
+            input_type = 'yt'
+            song_id = get_youtube_video_id(song_input)
+            if song_id is None:
+                error_msg = 'Invalid YouTube url.'
+                raise_exception(error_msg, is_webui)
+
+        # local audio file
+        else:
+            input_type = 'local'
+            song_input = song_input.strip('\"')
+            if os.path.exists(song_input):
+                song_id = get_hash(song_input)
             else:
-                raise Exception(error_msg)
+                error_msg = f'{song_input} does not exist.'
+                song_id = None
+                raise_exception(error_msg, is_webui)
 
         song_dir = os.path.join(output_dir, song_id)
 
         if not os.path.exists(song_dir):
             os.makedirs(song_dir)
-            orig_song_path, vocals_path, instrumentals_path, main_vocals_path, backup_vocals_path, main_vocals_dereverb_path = preprocess_song(yt_link, mdx_model_params, song_id, is_webui, progress)
+            orig_song_path, vocals_path, instrumentals_path, main_vocals_path, backup_vocals_path, main_vocals_dereverb_path = preprocess_song(song_input, mdx_model_params, song_id, is_webui, input_type, progress)
 
         else:
             vocals_path, main_vocals_path = None, None
@@ -202,12 +236,12 @@ def song_cover_pipeline(yt_link, voice_model, pitch_change, is_webui=0, progress
 
             # if any of the audio files aren't available, rerun preprocess
             if any(path is None for path in paths):
-                orig_song_path, vocals_path, instrumentals_path, main_vocals_path, backup_vocals_path, main_vocals_dereverb_path = preprocess_song(yt_link, mdx_model_params, song_id, progress)
+                orig_song_path, vocals_path, instrumentals_path, main_vocals_path, backup_vocals_path, main_vocals_dereverb_path = preprocess_song(song_input, mdx_model_params, song_id, is_webui, input_type, progress)
             else:
                 orig_song_path, instrumentals_path, main_vocals_dereverb_path, backup_vocals_path = paths
 
         ai_vocals_path, ai_vocals_mixed_path = None, None
-        ai_cover_path = os.path.join(song_dir, f'{os.path.splitext(orig_song_path)[0]} ({voice_model} Ver {pitch_change}).mp3')
+        ai_cover_path = os.path.join(song_dir, f'{os.path.splitext(os.path.basename(orig_song_path))[0]} ({voice_model} Ver {pitch_change}).mp3')
 
         if not os.path.exists(ai_cover_path):
             display_progress('[~] Converting voice using RVC...', 0.5, is_webui, progress)
@@ -228,15 +262,12 @@ def song_cover_pipeline(yt_link, voice_model, pitch_change, is_webui=0, progress
         return ai_cover_path
 
     except Exception as e:
-        if is_webui:
-            raise gr.Error(str(e))
-        else:
-            raise Exception(str(e))
+        raise_exception(str(e), is_webui)
 
 
 if __name__ == '__main__':
     parser = ArgumentParser(description='Generate a AI cover song in the song_output/id directory.', add_help=True)
-    parser.add_argument('-yt', '--youtube-link', type=str, required=True, help='Link to a youtube video to create an AI cover of')
+    parser.add_argument('-i', '--song-input', type=str, required=True, help='Link to a YouTube video or the filepath to a local mp3/wav file to create an AI cover of')
     parser.add_argument('-dir', '--rvc-dirname', type=str, required=True, help='Name of the folder in the rvc_models directory containing the RVC model file and optional index file to use')
     parser.add_argument('-p', '--pitch-change', type=int, required=True, help='Change the pitch of the AI voice. Generally use 12 for male to female conversions and -12 for vice-versa. Use 0 for no change')
     args = parser.parse_args()
@@ -245,5 +276,5 @@ if __name__ == '__main__':
     if not os.path.exists(os.path.join(rvc_models_dir, rvc_dirname)):
         raise Exception(f'The folder {os.path.join(rvc_models_dir, rvc_dirname)} does not exist.')
 
-    cover_path = song_cover_pipeline(args.youtube_link, rvc_dirname, args.pitch_change)
+    cover_path = song_cover_pipeline(args.song_input, rvc_dirname, args.pitch_change)
     print(f'[+] Cover generated at {cover_path}')

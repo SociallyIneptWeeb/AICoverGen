@@ -19,7 +19,7 @@ WebUI is under constant development and testing, but you can try it out right no
 
 ## Colab notebook
 
-For those without a powerful enough GPU, you may try AICoverGen out using Google Colab.
+For those without a powerful enough NVIDIA GPU, you may try AICoverGen out using Google Colab.
 
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/SociallyIneptWeeb/AICoverGen/blob/main/AICoverGen_colab.ipynb)
 

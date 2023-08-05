@@ -9,6 +9,14 @@ Setup Guide: https://www.youtube.com/watch?v=pdlhk4vVHQk
 
 WebUI is under constant development and testing, but you can try it out right now on both local and colab!
 
+## Changelog
+
+- WebUI for easier conversions and downloading of voice models
+- Support for cover generations from a local audio file
+- Option to keep intermediate files generated. e.g. Isolated vocals/instrumentals
+- Download suggested public voice models from table with search/tag filters
+- Support for Pixeldrain download links for voice models
+
 ## Colab notebook
 
 For those without a powerful enough GPU, you may try AICoverGen out using Google Colab.

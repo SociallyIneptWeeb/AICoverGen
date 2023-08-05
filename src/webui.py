@@ -45,6 +45,10 @@ def download_and_extract_zip(url, dir_name, progress=gr.Progress()):
         extraction_folder = os.path.join(rvc_models_dir, dir_name)
         if os.path.exists(extraction_folder):
             raise gr.Error(f'Voice model directory {dir_name} already exists! Choose a different name for your voice model.')
+
+        if 'pixeldrain.com' in url:
+            url = f'https://pixeldrain.com/api/file/{zip_name}'
+
         urllib.request.urlretrieve(url, zip_name)
 
         progress(0.5, desc='[~] Extracting zip...')
@@ -159,7 +163,7 @@ if __name__ == '__main__':
         # Download tab
         with gr.Tab("Download model"):
 
-            with gr.Tab('From HuggingFace URL'):
+            with gr.Tab('From HuggingFace/Pixeldrain URL'):
                 with gr.Row():
                     model_zip_link = gr.Text(label='Download link to model', info='Should be a zip file containing a .pth model file and an optional .index file.')
                     model_name = gr.Text(label='Name your model', info='Give your new model a unique name from your other voice models.')
@@ -174,6 +178,7 @@ if __name__ == '__main__':
                 gr.Examples(
                     [
                         ['https://huggingface.co/phant0m4r/LiSA/resolve/main/LiSA.zip', 'Lisa'],
+                        ['https://pixeldrain.com/u/3tJmABXA', 'Gura'],
                         ['https://huggingface.co/Kit-Lemonfoot/kitlemonfoot_rvc_models/resolve/main/AZKi%20(Hybrid).zip', 'Azki']
                     ],
                     [model_zip_link, model_name],

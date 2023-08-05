@@ -502,6 +502,82 @@
                 "Real person",
                 "English"
             ]
-        }       
+        },
+        {
+            "name": "Gawr Gura",
+            "url": "https://pixeldrain.com/u/3tJmABXA",
+            "description": "Gawr Gura from Hololive EN",
+            "added": "2023-08-05",
+            "credit": "dacoolkid44 & hijack",
+            "tags": [
+                "Vtuber"
+            ]
+        },
+        {
+            "name": "Houshou Marine",
+            "url": "https://pixeldrain.com/u/L1YLfZyU",
+            "description": "Houshou Marine from Hololive JP",
+            "added": "2023-08-05",
+            "credit": "dacoolkid44 & hijack",
+            "tags": [
+                "Vtuber",
+                "Japanese"
+            ]
+        },
+        {
+            "name": "Hoshimachi Suisei",
+            "url": "https://pixeldrain.com/u/YP89C21u",
+            "description": "Hoshimachi Suisei from Hololive JP",
+            "added": "2023-08-05",
+            "credit": "dacoolkid44 & hijack & Maki Ligon",
+            "tags": [
+                "Vtuber",
+                "Japanese"
+            ]
+        },
+        {
+            "name": "Laplus Darkness",
+            "url": "https://pixeldrain.com/u/zmuxv5Bf",
+            "description": "Laplus Darkness from Hololive JP",
+            "added": "2023-08-05",
+            "credit": "dacoolkid44 & hijack",
+            "tags": [
+                "Vtuber",
+                "Japanese"
+            ]
+        },
+        {
+            "name": "AZKi",
+            "url": "https://huggingface.co/Kit-Lemonfoot/kitlemonfoot_rvc_models/resolve/main/AZKi%20(Hybrid).zip",
+            "description": "AZKi from Hololive JP",
+            "added": "2023-08-05",
+            "credit": "Kit Lemonfoot / NSHFB",
+            "tags": [
+                "Vtuber",
+                "Japanese"
+            ]
+        },
+        {
+            "name": "Ado",
+            "url": "https://huggingface.co/pjesek/AdoRVCv2/resolve/main/AdoRVCv2.zip",
+            "description": "Talented JP artist (500 epochs using every song from her first album)",
+            "added": "2023-08-05",
+            "credit": "pjesek",
+            "tags": [
+                "Real person",
+                "Japanese"
+            ]
+        },
+        {
+            "name": "LiSA",
+            "url": "https://huggingface.co/phant0m4r/LiSA/resolve/main/LiSA.zip",
+            "description": "Talented JP artist (400 epochs)",
+            "added": "2023-08-05",
+            "credit": "Phant0m",
+            "tags": [
+                "Real person",
+                "Japanese"
+            ]
+        }
     ]       
 }

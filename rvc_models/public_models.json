@@ -1,0 +1,507 @@
+{
+    "tags": {
+        "English": "Character speaks English",
+        "Japanese": "Character speaks Japanese",
+        "Other Language": "The character speaks Other Language",
+        "Anime": "Character from anime",
+        "Vtuber": "Character is a vtuber",
+        "Real person": "A person who exists in the real world",
+        "Game character": "A character from the game"
+    },
+    "voice_models": [
+        {
+            "name": "Emilia",
+            "url": "https://huggingface.co/RinkaEmina/RVC_Sharing/resolve/main/Emilia%20V2%2048000.zip",
+            "description": "Emilia from Re:Zero",
+            "added": "2023-07-31",
+            "credit": "rinka4759",
+            "tags": [
+                "Anime"
+            ]
+        },
+        {
+            "name": "Klee",
+            "url": "https://huggingface.co/qweshkka/Klee/resolve/main/Klee.zip",
+            "description": "Klee from Genshin Impact",
+            "added": "2023-07-31",
+            "credit": "qweshsmashjuicefruity",
+            "tags": [
+                "Game character",
+                "Japanese"
+            ]
+        },
+        {
+            "name": "Yelan",
+            "url": "https://huggingface.co/iroaK/RVC2_Yelan_GenshinImpact/resolve/main/YelanJP.zip",
+            "description": "Yelan from Genshin Impact",
+            "added": "2023-07-31",
+            "credit": "iroak",
+            "tags": [
+                "Game character",
+                "Japanese"
+            ]
+        },
+        {
+            "name": "Yae Miko",
+            "url": "https://huggingface.co/iroaK/RVC2_YaeMiko_GenshinImpact/resolve/main/Yae_MikoJP.zip",
+            "description": "Yae Miko from Genshin Impact",
+            "added": "2023-07-31",
+            "credit": "iroak",
+            "tags": [
+                "Game character",
+                "Japanese"
+            ]
+        },
+        {
+            "name": "Lisa",
+            "url": "https://huggingface.co/qweshkka/Lisa2ver/resolve/main/Lisa.zip",
+            "description": "Lisa from Genshin Impact",
+            "added": "2023-07-31",
+            "credit": "qweshsmashjuicefruity",
+            "tags": [
+                "Game character",
+                "English"
+            ]
+        },
+        {
+            "name": "Kazuha",
+            "url": "https://huggingface.co/iroaK/RVC2_Kazuha_GenshinImpact/resolve/main/Kazuha.zip",
+            "description": "Kaedehara Kazuha from Genshin Impact",
+            "added": "2023-07-31",
+            "credit": "iroak",
+            "tags": [
+                "Game character",
+                "Japanese"
+            ]
+        },
+        {
+            "name": "Barbara",
+            "url": "https://huggingface.co/iroaK/RVC2_Barbara_GenshinImpact/resolve/main/BarbaraJP.zip",
+            "description": "Barbara from Genshin Impact",
+            "added": "2023-07-31",
+            "credit": "iroak",
+            "tags": [
+                "Game character",
+                "Japanese"
+            ]
+        },
+        {
+            "name": "Tom Holland",
+            "url": "https://huggingface.co/TJKAI/TomHolland/resolve/main/TomHolland.zip",
+            "description": "Tom Holland (Spider-Man)",
+            "added": "2023-08-03",
+            "credit": "tjkcreative",
+            "tags": [
+                "Real person",
+                "English"
+            ]
+        },
+        {
+            "name": "Kamisato Ayaka",
+            "url": "https://huggingface.co/benitheworld/ayaka-cn/resolve/main/ayaka-cn.zip",
+            "description": "Kamisato Ayaka from Genshin Impact - CN voice actor",
+            "added": "2023-08-03",
+            "credit": "kannysoap",
+            "tags": [
+                "Game character",
+                "Other Language"
+            ]
+        },
+        {
+            "name": "Amai Odayaka",
+            "url": "https://huggingface.co/NoIdea4Username/NoIdeaRVCCollection/resolve/main/Amai-Odayaka.zip",
+            "description": "Amai Odayaka from Yandere Simulator",
+            "added": "2023-08-03",
+            "credit": "minecraftian47",
+            "tags": [
+                "Anime",
+                "English"
+            ]
+        },
+        {
+            "name": "Compa - Hyperdimension Neptunia",
+            "url": "https://huggingface.co/zeerowiibu/WiibuRVCCollection/resolve/main/Compa%20(Choujigen%20Game%20Neptunia)%20(JPN)%20(RVC%20v2)%20(150%20Epochs).zip",
+            "description": "Compa from Choujigen Game Neptune (aka Hyperdimension Neptunia)",
+            "added": "2023-08-03",
+            "credit": "zeerowiibu",
+            "tags": [
+                "Anime",
+                "Japanese"
+            ]
+        },
+        {
+            "name": "Fu Xuan",
+            "url": "https://huggingface.co/Juneuarie/FuXuan/resolve/main/FuXuan.zip",
+            "description": "Fu Xuan from Honkai Star Rail (HSR)",
+            "added": "2023-08-03",
+            "credit": "__june",
+            "tags": [
+                "Game character",
+                "English"
+            ]
+        }, 
+        {
+            "name": "Xinyan",
+            "url": "https://huggingface.co/AnimeSessions/rvc_voice_models/resolve/main/XinyanRVC.zip",
+            "description": "Xinyan from Genshin Impact",
+            "added": "2023-08-03",
+            "credit": "shyelijah",
+            "tags": [
+                "Game character",
+                "English"
+            ]
+        }, 
+        {
+            "name": "Enterprise",
+            "url": "https://huggingface.co/NoIdea4Username/NoIdeaRVCCollection/resolve/main/Enterprise-JP.zip",
+            "description": "Enterprise from Azur Lane",
+            "added": "2023-08-03",
+            "credit": "minecraftian47",
+            "tags": [
+                "Anime",
+                "Japanese"
+            ]
+        }, 
+        {
+            "name": "Kurt Cobain",
+            "url": "https://huggingface.co/Florstie/Kurt_Cobain_byFlorst/resolve/main/Kurt_Florst.zip",
+            "description": "singer Kurt Cobain",
+            "added": "2023-08-03",
+            "credit": "florst",
+            "tags": [
+                "Real person",
+                "English"
+            ]
+        }, 
+        {
+            "name": "Ironmouse",
+            "url": "https://huggingface.co/Tempo-Hawk/IronmouseV2/resolve/main/IronmouseV2.zip",
+            "description": "Ironmouse",
+            "added": "2023-08-03",
+            "credit": "ladyimpa",
+            "tags": [
+                "Vtuber",
+                "English"
+            ]
+        }, 
+        {
+            "name": "Bratishkinoff",
+            "url": "https://huggingface.co/JHmashups/Bratishkinoff/resolve/main/bratishkin.zip",
+            "description": "Bratishkinoff (Bratishkin | Братишкин) - russian steamer ",
+            "added": "2023-08-03",
+            "credit": ".caddii",
+            "tags": [
+                "Real person",
+                "Other Language"
+            ]
+        }, 
+        {
+            "name": "Yagami Light",
+            "url": "https://huggingface.co/geekdom-tr/Yagami-Light/resolve/main/Yagami-Light.zip",
+            "description": "Yagami Light (Miyano Mamoru) from death note",
+            "added": "2023-08-03",
+            "credit": "takka / takka#7700",
+            "tags": [
+                "Anime",
+                "Japanese"
+            ]
+        },
+        {
+            "name": "Itashi",
+            "url": "https://huggingface.co/4uGGun/4uGGunRVC/resolve/main/itashi.zip",
+            "description": "Itashi (Russian fandubber AniLibria) ",
+            "added": "2023-08-03",
+            "credit": "BelochkaOff",
+            "tags": [
+                "Anime",
+                "Other Language",
+                "Real person"
+            ]
+        },
+        {
+            "name": "Michiru Kagemori",
+            "url": "https://huggingface.co/WolfMK/MichiruKagemori/resolve/main/MichiruKagemori_RVC_V2.zip",
+            "description": "Michiru Kagemori from Brand New Animal (300 Epochs)",
+            "added": "2023-08-03",
+            "credit": "wolfmk",
+            "tags": [
+                "Anime",
+                "English"
+            ]
+        }
+        ,
+        {
+            "name": "Kaeya",
+            "url": "https://huggingface.co/nlordqting4444/nlordqtingRVC/resolve/main/Kaeya.zip",
+            "description": "Kaeya (VA: Kohsuke Toriumi) from Genshin Impact (300 Epochs)",
+            "added": "2023-08-03",
+            "credit": "nlordqting4444",
+            "tags": [
+                "Game character",
+                "Japanese"
+            ]
+        },
+        {
+            "name": "Mona Megistus",
+            "url": "https://huggingface.co/AnimeSessions/rvc_voice_models/resolve/main/MonaRVC.zip",
+            "description": "Mona Megistus (VA: Felecia Angelle) from Genshin Impact (250 Epochs)",
+            "added": "2023-08-03",
+            "credit": "shyelijah",
+            "tags": [
+                "Game character",
+                "English"
+            ]
+        },
+        {
+            "name": "Klee",
+            "url": "https://huggingface.co/hardbop/AI_MODEL_THINGY/resolve/main/kleeeng_rvc.zip",
+            "description": "Klee from Genshin Impact (400 Epochs)",
+            "added": "2023-08-03",
+            "credit": "hardbop",
+            "tags": [
+                "Game character",
+                "English"
+            ]
+        },
+        {
+            "name": "Sakurakoji Kinako",
+            "url": "https://huggingface.co/Gorodogi/RVC2MangioCrepe/resolve/main/kinakobetatwo700.zip",
+            "description": "Sakurakoji Kinako (Suzuhara Nozomi) from Love Live! Superstar!! (700 Epoch)",
+            "added": "2023-08-03",
+            "credit": "ck1089",
+            "tags": [
+                "Anime",
+                "Japanese"
+            ]
+        },
+        {
+            "name": "Minamo Kurosawa",
+            "url": "https://huggingface.co/timothy10583/RVC/resolve/main/minamo-kurosawa.zip",
+            "description": "Minamo (Nyamo) Kurosawa (Azumanga Daioh US DUB) (300 Epochs)",
+            "added": "2023-08-03",
+            "credit": "timothy10583",
+            "tags": [
+                "Anime"
+            ]
+        },
+        {
+            "name": "Neco Arc",
+            "url": "https://huggingface.co/Ozzy-Helix/Neko_Arc_Neko_Aruku.RVCv2/resolve/main/Neko_Arc-V3-E600.zip",
+            "description": "Neco Arc (Neco-Aruku) (Epochs 600)",
+            "added": "2023-08-03",
+            "credit": "ozzy_helix_",
+            "tags": [
+                "Anime"
+            ]
+        },
+        {
+            "name": "Makima",
+            "url": "https://huggingface.co/andolei/makimaen/resolve/main/makima-en-dub.zip",
+            "description": "Makima from Chainsaw Man (300 Epochs)",
+            "added": "2023-08-03",
+            "credit": "andpproximately",
+            "tags": [
+                "Anime",
+                "English"
+            ]
+        },
+        {
+            "name": "PomPom",
+            "url": "https://huggingface.co/benitheworld/pom-pom/resolve/main/pom-pom.zip",
+            "description": "PomPom from Honkai Star Rail (HSR) (200 Epochs)",
+            "added": "2023-08-03",
+            "credit": "kannysoap",
+            "tags": [
+                "Game character",
+                "English"
+            ]
+        },
+        {
+            "name": "Asuka Langley Soryu",
+            "url": "https://huggingface.co/Piegirl/asukaadv/resolve/main/asuka.zip",
+            "description": "Asuka Langley Soryu/Tiffany Grant from Neon Genesis Evangelion (400 Epochs)",
+            "added": "2023-08-03",
+            "credit": "piegirl",
+            "tags": [
+                "Anime",
+                "English"
+            ]
+        },
+        {
+            "name": "Ochaco Uraraka",
+            "url": "https://huggingface.co/legitdark/JP-Uraraka-By-Dan/resolve/main/JP-Uraraka-By-Dan.zip",
+            "description": "Ochaco Uraraka from Boku no Hero Academia (320 Epochs)",
+            "added": "2023-08-03",
+            "credit": "danthevegetable",
+            "tags": [
+                "Anime",
+                "Japanese"
+            ]
+        },
+        {
+            "name": "Sunaokami Shiroko",
+            "url": "https://huggingface.co/LordDavis778/BlueArchivevoicemodels/resolve/main/SunaokamiShiroko.zip",
+            "description": "Sunaokami Shiroko from Blue Archive (500 Epochs)",
+            "added": "2023-08-03",
+            "credit": "lorddavis778",
+            "tags": [
+                "Anime"
+            ]
+        },
+        {
+            "name": "Dainsleif",
+            "url": "https://huggingface.co/Nasleyy/NasleyRVC/resolve/main/Voices/Dainsleif/Dainsleif.zip",
+            "description": "Dainsleif from Genshin Impact (335 Epochs)",
+            "added": "2023-08-03",
+            "credit": "nasley",
+            "tags": [
+                "Game character",
+                "English"
+            ]
+        },
+        {
+            "name": "Mae Asmr",
+            "url": "https://huggingface.co/ctian/VRC/resolve/main/MaeASMR.zip",
+            "description": "Mae Asmr - harvest mommy voice (YOUTUBE) (300 Epochs)",
+            "added": "2023-08-03",
+            "credit": "ctian_04",
+            "tags": [
+                "English",
+                "Real person",
+                "Vtuber"
+            ]
+        },
+        {
+            "name": "Hana Shirosaki ",
+            "url": "https://huggingface.co/Pawlik17/HanaWataten/resolve/main/HanaWATATEN.zip",
+            "description": "Hana Shirosaki / 白 咲 花 From Watashi ni Tenshi ga Maiorita! (570 Epochs)",
+            "added": "2023-08-03",
+            "credit": "tamalik",
+            "tags": [
+                "Anime",
+                "Japanese"
+            ]
+        },
+        {
+            "name": "Kaguya Shinomiya ",
+            "url": "https://huggingface.co/1ski/1skiRVCModels/resolve/main/kaguyav5.zip",
+            "description": "Kaguya Shinomiya from Kaguya-Sama Love is war (200 Epochs)",
+            "added": "2023-08-03",
+            "credit": "1ski",
+            "tags": [
+                "Anime",
+                "Japanese"
+            ]
+        },
+        {
+            "name": "Nai Shiro",
+            "url": "https://huggingface.co/kuushiro/Shiro-RVC-No-Game-No-Life/resolve/main/shiro-jp-360-epochs.zip",
+            "description": "Nai Shiro (Ai Kayano) from No Game No Life (360 Epochs)",
+            "added": "2023-08-03",
+            "credit": "kxouyou",
+            "tags": [
+                "Anime",
+                "Japanese"
+            ]
+        },
+        {
+            "name": "Yuigahama Yui",
+            "url": "https://huggingface.co/Zerokano/Yuigahama_Yui-RVCv2/resolve/main/Yuigahama_Yui.zip",
+            "description": "Yuigahama Yui from Yahari Ore no Seishun Love Comedy wa Machigatteiru (250 Epochs)",
+            "added": "2023-08-03",
+            "credit": "zerokano",
+            "tags": [
+                "Anime",
+                "Japanese"
+            ]
+        },
+        {
+            "name": "Fuwawa Abyssgard",
+            "url": "https://huggingface.co/megaaziib/my-rvc-models-collection/resolve/main/fuwawa.zip",
+            "description": "Fuwawa Abyssgard (FUWAMOCO) from Hololive gen 3 (250 Epochs)",
+            "added": "2023-08-03",
+            "credit": "megaaziib",
+            "tags": [
+                "Vtuber",
+                "English"
+            ]
+        },
+        {
+            "name": "Kana Arima",
+            "url": "https://huggingface.co/ddoumakunn/arimakanna/resolve/main/arimakanna.zip",
+            "description": "Kana Arima from Oshi no Ko (250 Epochs)",
+            "added": "2023-08-03",
+            "credit": "ddoumakunn",
+            "tags": [
+                "Anime",
+                "Japanese"
+            ]
+        },
+        {
+            "name": "Raiden Shogun",
+            "url": "https://huggingface.co/Nasleyy/NasleyRVC/resolve/main/Voices/RaidenShogun/RaidenShogun.zip",
+            "description": "Raiden Shogun from Genshin Impact (310 Epochs)",
+            "added": "2023-08-03",
+            "credit": "nasley",
+            "tags": [
+                "Game character",
+                "English"
+            ]
+        },
+        {
+            "name": "Alhaitham",
+            "url": "https://huggingface.co/Nasleyy/NasleyRVC/resolve/main/Voices/Alhaitham/Alhaitham.zip",
+            "description": "Alhaitham from Genshin Impact (320 Epochs)",
+            "added": "2023-08-03",
+            "credit": "nasley",
+            "tags": [
+                "Game character",
+                "English"
+            ]
+        },
+        {
+            "name": "Izuku Midoriya",
+            "url": "https://huggingface.co/BigGuy635/MHA/resolve/main/DekuJP.zip",
+            "description": "Izuku Midoriya from Boku no Hero Academia (100 Epochs)",
+            "added": "2023-08-03",
+            "credit": "khjjnoffical",
+            "tags": [
+                "Anime",
+                "Japanese"
+            ]
+        },
+        {
+            "name": "Kurumi Shiratori",
+            "url": "https://huggingface.co/HarunaKasuga/YoshikoTsushima/resolve/main/KurumiShiratori.zip",
+            "description": "Kurumi Shiratori (VA: Ruka Fukagawa) from D4DJ (500 Epochs)",
+            "added": "2023-08-03",
+            "credit": "seakrait",
+            "tags": [
+                "Anime",
+                "Japanese"
+            ]
+        },
+        {
+            "name": "Veibae",
+            "url": "https://huggingface.co/datasets/Papaquans/Veibae/resolve/main/veibae_e165_s125565.zip",
+            "description": "Veibae (165 Epochs)",
+            "added": "2023-08-03",
+            "credit": "recairo",
+            "tags": [
+                "Vtuber",
+                "English"
+            ]
+        },
+        {
+            "name": "Black Panther",
+            "url": "https://huggingface.co/TJKAI/BlackPannther/resolve/main/BlackPanther.zip",
+            "description": "Black Panther (Chadwick Boseman) (300 Epochs)",
+            "added": "2023-08-03",
+            "credit": "tjkcreative",
+            "tags": [
+                "Real person",
+                "English"
+            ]
+        }       
+    ]       
+}

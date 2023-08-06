@@ -16,6 +16,7 @@ WebUI is under constant development and testing, but you can try it out right no
 - Option to keep intermediate files generated. e.g. Isolated vocals/instrumentals
 - Download suggested public voice models from table with search/tag filters
 - Support for Pixeldrain download links for voice models
+- Implement new rmvpe pitch extraction technique for faster and higher quality vocal conversions
 
 ## Colab notebook
 

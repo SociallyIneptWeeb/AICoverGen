@@ -188,14 +188,14 @@ def add_audio_effects(audio_path):
     return output_path
 
 
-def combine_audio(audio_paths, output_path):
-    main_vocal_audio = AudioSegment.from_wav(audio_paths[0]) - 4
-    backup_vocal_audio = AudioSegment.from_wav(audio_paths[1]) - 6
-    instrumental_audio = AudioSegment.from_wav(audio_paths[2]) - 7
+def combine_audio(audio_paths, output_path, main_gain, backup_gain, inst_gain):
+    main_vocal_audio = AudioSegment.from_wav(audio_paths[0]) - 4 + main_gain
+    backup_vocal_audio = AudioSegment.from_wav(audio_paths[1]) - 6 + backup_gain
+    instrumental_audio = AudioSegment.from_wav(audio_paths[2]) - 7 + inst_gain
     main_vocal_audio.overlay(backup_vocal_audio).overlay(instrumental_audio).export(output_path, format='mp3')
 
 
-def song_cover_pipeline(song_input, voice_model, pitch_change, keep_files, is_webui=0, progress=gr.Progress()):
+def song_cover_pipeline(song_input, voice_model, pitch_change, keep_files, is_webui=0, main_gain=0, backup_gain=0, inst_gain=0, progress=gr.Progress()):
     try:
         if not song_input or not voice_model:
             raise_exception('Ensure that the song input field and voice model field is filled.', is_webui)
@@ -241,7 +241,7 @@ def song_cover_pipeline(song_input, voice_model, pitch_change, keep_files, is_we
                 orig_song_path, instrumentals_path, main_vocals_dereverb_path, backup_vocals_path = paths
 
         ai_vocals_path, ai_vocals_mixed_path = None, None
-        ai_cover_path = os.path.join(song_dir, f'{os.path.splitext(os.path.basename(orig_song_path))[0]} ({voice_model} Ver {pitch_change}).mp3')
+        ai_cover_path = os.path.join(song_dir, f'{os.path.splitext(os.path.basename(orig_song_path))[0]} ({voice_model} Ver {pitch_change} {main_gain}{backup_gain}{inst_gain}).mp3')
 
         if not os.path.exists(ai_cover_path):
             display_progress('[~] Converting voice using RVC...', 0.5, is_webui, progress)
@@ -251,7 +251,7 @@ def song_cover_pipeline(song_input, voice_model, pitch_change, keep_files, is_we
             ai_vocals_mixed_path = add_audio_effects(ai_vocals_path)
 
             display_progress('[~] Combining AI Vocals and Instrumentals...', 0.9, is_webui, progress)
-            combine_audio([ai_vocals_mixed_path, backup_vocals_path, instrumentals_path], ai_cover_path)
+            combine_audio([ai_vocals_mixed_path, backup_vocals_path, instrumentals_path], ai_cover_path, main_gain, backup_gain, inst_gain)
 
         if not keep_files:
             display_progress('[~] Removing intermediate audio files...', 0.95, is_webui, progress)
@@ -272,11 +272,14 @@ if __name__ == '__main__':
     parser.add_argument('-dir', '--rvc-dirname', type=str, required=True, help='Name of the folder in the rvc_models directory containing the RVC model file and optional index file to use')
     parser.add_argument('-p', '--pitch-change', type=int, required=True, help='Change the pitch of the AI voice. Generally use 12 for male to female conversions and -12 for vice-versa. Use 0 for no change')
     parser.add_argument('-k', '--keep-files', action=argparse.BooleanOptionalAction, help='Whether to keep all intermediate audio files generated in the song_output/id directory, e.g. Isolated Vocals/Instrumentals')
+    parser.add_argument('-mv', '--main-vol', type=int, default=0, help='Volume change for AI main vocals in decibels. Use -3 to decrease by 3 decibels and 3 to increase by 3 decibels.')
+    parser.add_argument('-bv', '--backup-vol', type=int, default=0, help='Volume change for backup vocals in decibels.')
+    parser.add_argument('-iv', '--inst-vol', type=int, default=0, help='Volume change for instrumentals in decibels.')
     args = parser.parse_args()
 
     rvc_dirname = args.rvc_dirname
     if not os.path.exists(os.path.join(rvc_models_dir, rvc_dirname)):
         raise Exception(f'The folder {os.path.join(rvc_models_dir, rvc_dirname)} does not exist.')
 
-    cover_path = song_cover_pipeline(args.song_input, rvc_dirname, args.pitch_change, args.keep_files)
+    cover_path = song_cover_pipeline(args.song_input, rvc_dirname, args.pitch_change, args.keep_files, main_gain=args.main_vol, backup_gain=args.backup_vol, inst_gain=args.inst_vol)
     print(f'[+] Cover generated at {cover_path}')

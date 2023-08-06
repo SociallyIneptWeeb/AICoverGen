@@ -17,6 +17,7 @@ WebUI is under constant development and testing, but you can try it out right no
 - Download suggested public voice models from table with search/tag filters
 - Support for Pixeldrain download links for voice models
 - Implement new rmvpe pitch extraction technique for faster and higher quality vocal conversions
+- Volume control for AI main vocals, backup vocals and instrumentals
 
 ## Colab notebook
 
@@ -83,6 +84,7 @@ Once the 2 input fields are filled in, simply click `Download`! Once the output 
 - From the Voice Models dropdown menu, select the voice model to use. Click `Update` if you added the files manually to the [rvc_models](rvc_models) directory to refresh the list.
 - In the song input field, copy and paste the link to any song on YouTube or the full path to a local audio file.
 - Pitch should be set to either -12, 0, or 12 depending on the original vocals and the RVC AI modal. This ensures the voice is not *out of tune*.
+- Volume change controls how loud the vocals or instrumentals should be.
 - Keep intermediate files can be checked to keep all intermediate audio files generated. e.g. Isolated AI vocals/instrumentals.
 
 Once all fields are filled in, click `Generate` and the AI generated cover should appear in a less than a few minutes depending on your GPU.
@@ -114,13 +116,14 @@ The directory structure should look something like this:
 To run the AI cover generation pipeline using the command line, run the following command.
 
 ```
-python src/main.py -i SONG_INPUT -dir MODEL_DIR_NAME -p PITCH_CHANGE [-k]
+python src/main.py [-h] -i SONG_INPUT -dir RVC_DIRNAME -p PITCH_CHANGE [-k | --keep-files | --no-keep-files] [-mv MAIN_VOL] [-bv BACKUP_VOL] [-iv INST_VOL]
 ```
 
 - Replace SONG_INPUT with any link to a song on YouTube or path to a local audio file. This should be enclosed in double quotes for Windows and single quotes for Unix-like systems.
 - Replace MODEL_DIR_NAME with the name of the folder in the [rvc_models](rvc_models) directory containing your `.pth` and `.index` files.
 - Replace PITCH_CHANGE with 0 for no change in pitch to the AI vocals. Generally use 12 for male to female conversions or -12 for vice-versa.
 - The -k flag is optional, and can be added to keep all intermediate audio files generated. e.g. Isolated AI vocals/instrumentals. Leave out to save space.
+- The -mv, -bv and -iv flags are also optional, and control the volume of the main, backup vocals and instrumentals. Use -3 to decrease the volume by 3 decibels, or 3 to increase the volume by 3 decibels.
 
 ## Terms of Use
 

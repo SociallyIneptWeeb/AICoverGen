@@ -140,9 +140,9 @@ def get_vc(device, is_half, config, model_path):
     return cpt, version, net_g, tgt_sr, vc
 
 
-def rvc_infer(index_path, input_path, output_path, pitch_change, cpt, version, net_g, tgt_sr, vc, hubert_model):
+def rvc_infer(index_path, index_rate, input_path, output_path, pitch_change, cpt, version, net_g, tgt_sr, vc, hubert_model):
     audio = load_audio(input_path, 16000)
     times = [0, 0, 0]
     if_f0 = cpt.get('f0', 1)
-    audio_opt = vc.pipeline(hubert_model, net_g, 0, audio, input_path, times, pitch_change, 'rmvpe', index_path, 0.7, if_f0, 3, tgt_sr, 0, 0.25, version, 0.33, None)
+    audio_opt = vc.pipeline(hubert_model, net_g, 0, audio, input_path, times, pitch_change, 'rmvpe', index_path, index_rate, if_f0, 3, tgt_sr, 0, 0.25, version, 0.33, None)
     wavfile.write(output_path, tgt_sr, audio_opt)

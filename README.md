@@ -18,6 +18,7 @@ WebUI is under constant development and testing, but you can try it out right no
 - Support for Pixeldrain download links for voice models
 - Implement new rmvpe pitch extraction technique for faster and higher quality vocal conversions
 - Volume control for AI main vocals, backup vocals and instrumentals
+- Index Rate for Voice conversion
 
 ## Colab notebook
 
@@ -84,10 +85,9 @@ Once the 2 input fields are filled in, simply click `Download`! Once the output 
 - From the Voice Models dropdown menu, select the voice model to use. Click `Update` if you added the files manually to the [rvc_models](rvc_models) directory to refresh the list.
 - In the song input field, copy and paste the link to any song on YouTube or the full path to a local audio file.
 - Pitch should be set to either -12, 0, or 12 depending on the original vocals and the RVC AI modal. This ensures the voice is not *out of tune*.
-- Volume change controls how loud the vocals or instrumentals should be.
-- Keep intermediate files can be checked to keep all intermediate audio files generated. e.g. Isolated AI vocals/instrumentals.
+- Other advanced options for Voice conversion and audio mixing can be viewed by clicking the accordion arrow to expand.
 
-Once all fields are filled in, click `Generate` and the AI generated cover should appear in a less than a few minutes depending on your GPU.
+Once all Main Options are filled in, click `Generate` and the AI generated cover should appear in a less than a few minutes depending on your GPU.
 
 ## Usage with CLI
 
@@ -116,14 +116,21 @@ The directory structure should look something like this:
 To run the AI cover generation pipeline using the command line, run the following command.
 
 ```
-python src/main.py [-h] -i SONG_INPUT -dir RVC_DIRNAME -p PITCH_CHANGE [-k | --keep-files | --no-keep-files] [-mv MAIN_VOL] [-bv BACKUP_VOL] [-iv INST_VOL]
+python src/main.py [-h] -i SONG_INPUT -dir RVC_DIRNAME -p PITCH_CHANGE [-k | --keep-files | --no-keep-files] [-ir INDEX_RATE] [-mv MAIN_VOL] [-bv BACKUP_VOL] [-iv INST_VOL]
 ```
 
-- Replace SONG_INPUT with any link to a song on YouTube or path to a local audio file. This should be enclosed in double quotes for Windows and single quotes for Unix-like systems.
-- Replace MODEL_DIR_NAME with the name of the folder in the [rvc_models](rvc_models) directory containing your `.pth` and `.index` files.
-- Replace PITCH_CHANGE with 0 for no change in pitch to the AI vocals. Generally use 12 for male to female conversions or -12 for vice-versa.
-- The -k flag is optional, and can be added to keep all intermediate audio files generated. e.g. Isolated AI vocals/instrumentals. Leave out to save space.
-- The -mv, -bv and -iv flags are also optional, and control the volume of the main, backup vocals and instrumentals. Use -3 to decrease the volume by 3 decibels, or 3 to increase the volume by 3 decibels.
+| Flag                                       | Description |
+|--------------------------------------------|-------------|
+| `-h`, `--help`                             | Show this help message and exit. |
+| `-i SONG_INPUT`                            | Link to a song on YouTube or path to a local audio file. Should be enclosed in double quotes for Windows and single quotes for Unix-like systems. |
+| `-dir MODEL_DIR_NAME`                      | Name of folder in [rvc_models](rvc_models) directory containing your `.pth` and `.index` files for a specific voice. |
+| `-p PITCH_CHANGE`                          | Generally use 12 for male to female conversions or -12 for vice-versa. Set to 0 for no change in pitch for the AI vocals. |
+| `-k`                                       | Optional. Can be added to keep all intermediate audio files generated. e.g. Isolated AI vocals/instrumentals. Leave out to save space. |
+| `-ir INDEX_RATE`                           | Optional. Default 0.5. Control how much of the AI's accent to leave in the vocals. 0 <= INDEX_RATE <= 1. |
+| `-mv MAIN_VOCALS_VOLUME_CHANGE`            | Optional. Default 0. Control volume of main AI vocals. Use -3 to decrease the volume by 3 decibels, or 3 to increase the volume by 3 decibels. |
+| `-bv BACKUP_VOCALS_VOLUME_CHANGE`          | Optional. Default 0. Control volume of backup AI vocals. |
+| `-iv INSTRUMENTAL_VOLUME_CHANGE`           | Optional. Default 0. Control volume of the background music/instrumentals. |
+
 
 ## Terms of Use
 

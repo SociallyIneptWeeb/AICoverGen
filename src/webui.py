@@ -138,34 +138,35 @@ if __name__ == '__main__':
 
         # main tab
         with gr.Tab("Generate"):
+
+            with gr.Accordion('Main Options'):
+                with gr.Row():
+                    rvc_model = gr.Dropdown(voice_models, label='Voice Models', info='Models folder "AICoverGen --> rvc_models". After new models are added into this folder, click the refresh button')
+                    ref_btn = gr.Button('Refresh Models 🔁', variant='primary')
+                    song_input = gr.Text(label='Song Input', info='Link to a YouTube video or the full path to a local audio file')
+                    pitch = gr.Slider(-24, 24, value=0, step=1, label='Pitch Change', info='Pitch Change should be set to either -12, 0, or 12 (multiples of 12) to ensure the vocals are not out of tune')
+
+            with gr.Accordion('Voice conversion options', open=False):
+                with gr.Row():
+                    keep_files = gr.Checkbox(label='Keep intermediate files', info='Keep all audio files generated in the song_output/id directory, e.g. Isolated Vocals/Instrumentals. Leave unchecked to save space')
+                    index_rate = gr.Slider(0, 1, value=0.5, label='Index Rate', info="Controls how much of the AI voice's accent to keep in the vocals")
+
+            with gr.Accordion('Audio mixing options', open=False):
+                gr.Markdown('### Volume Change (decibels)')
+                with gr.Row():
+                    main_gain = gr.Slider(-20, 20, value=0, step=1, label='Main Vocals')
+                    backup_gain = gr.Slider(-20, 20, value=0, step=1, label='Backup Vocals')
+                    inst_gain = gr.Slider(-20, 20, value=0, step=1, label='Music')
+
             with gr.Row():
-                with gr.Column():
-
-                    with gr.Row():
-                        rvc_model = gr.Dropdown(voice_models, label='Voice Models', scale=10, info='Models folder "AICoverGen --> rvc_models". After new models are added into this folder, click the refresh button')
-                        ref_btn = gr.Button('Refresh 🔁', variant='primary', scale=9)
-
-                    with gr.Row():
-                        song_input = gr.Text(label='Song Input', info='Link to a YouTube video or the full path to a local audio file.')
-                        pitch = gr.Slider(-24, 24, value=0, step=1, label='Pitch Change', info='Pitch Change should be set to either -12, 0, or 12 (multiples of 12) to ensure the vocals are not out of tune.')
-
-                    gr.Markdown('### Volume Change (decibels)')
-                    with gr.Row():
-                        main_gain = gr.Slider(-20, 20, value=0, step=1, label='Main Vocals')
-                        backup_gain = gr.Slider(-20, 20, value=0, step=1, label='Backup Vocals')
-                        inst_gain = gr.Slider(-20, 20, value=0, step=1, label='Music')
-
-                    keep_files = gr.Checkbox(label='Keep intermediate files', info='Keep all audio files generated in the song_output/id directory, e.g. Isolated Vocals/Instrumentals. Leave unchecked to save space.')
-
-                    with gr.Row():
-                        clear_btn = gr.ClearButton(value='Clear', components=[song_input, rvc_model, keep_files])
-                        generate_btn = gr.Button("Generate", variant='primary')
-
+                clear_btn = gr.ClearButton(value='Clear', components=[song_input, rvc_model, keep_files])
+                generate_btn = gr.Button("Generate", variant='primary')
                 ai_cover = gr.Audio(label='AI Cover', show_share_button=False)
-                ref_btn.click(update_models_list, None, outputs=rvc_model)
-                is_webui = gr.Number(value=1, visible=False)
-                generate_btn.click(song_cover_pipeline, inputs=[song_input, rvc_model, pitch, keep_files, is_webui, main_gain, backup_gain, inst_gain], outputs=[ai_cover])
-                clear_btn.click(lambda: [0] * 4, outputs=[pitch, main_gain, backup_gain, inst_gain])
+
+            ref_btn.click(update_models_list, None, outputs=rvc_model)
+            is_webui = gr.Number(value=1, visible=False)
+            generate_btn.click(song_cover_pipeline, inputs=[song_input, rvc_model, pitch, keep_files, is_webui, main_gain, backup_gain, inst_gain, index_rate], outputs=[ai_cover])
+            clear_btn.click(lambda: [0, 0, 0, 0, 0.5, None], outputs=[pitch, main_gain, backup_gain, inst_gain, index_rate, ai_cover])
 
         # Download tab
         with gr.Tab("Download model"):

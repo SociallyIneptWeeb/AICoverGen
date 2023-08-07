@@ -158,6 +158,13 @@ if __name__ == '__main__':
                     backup_gain = gr.Slider(-20, 20, value=0, step=1, label='Backup Vocals')
                     inst_gain = gr.Slider(-20, 20, value=0, step=1, label='Music')
 
+                gr.Markdown('### Reverb Control on AI Vocals')
+                with gr.Row():
+                    reverb_rm_size = gr.Slider(0, 1, value=0.15, label='Room size', info='The larger the room, the longer the reverb time')
+                    reverb_wet = gr.Slider(0, 1, value=0.2, label='Wetness level', info='Level of AI vocals with reverb')
+                    reverb_dry = gr.Slider(0, 1, value=0.8, label='Dryness level', info='Level of AI vocals without reverb')
+                    reverb_damping = gr.Slider(0, 1, value=0.7, label='Damping level', info='Absorption of high frequencies in the reverb')
+
             with gr.Row():
                 clear_btn = gr.ClearButton(value='Clear', components=[song_input, rvc_model, keep_files])
                 generate_btn = gr.Button("Generate", variant='primary')
@@ -165,8 +172,13 @@ if __name__ == '__main__':
 
             ref_btn.click(update_models_list, None, outputs=rvc_model)
             is_webui = gr.Number(value=1, visible=False)
-            generate_btn.click(song_cover_pipeline, inputs=[song_input, rvc_model, pitch, keep_files, is_webui, main_gain, backup_gain, inst_gain, index_rate], outputs=[ai_cover])
-            clear_btn.click(lambda: [0, 0, 0, 0, 0.5, None], outputs=[pitch, main_gain, backup_gain, inst_gain, index_rate, ai_cover])
+            generate_btn.click(song_cover_pipeline,
+                               inputs=[song_input, rvc_model, pitch, keep_files, is_webui, main_gain, backup_gain,
+                                       inst_gain, index_rate, reverb_rm_size, reverb_wet, reverb_dry, reverb_damping],
+                               outputs=[ai_cover])
+            clear_btn.click(lambda: [0, 0, 0, 0, 0.5, 0.15, 0.2, 0.8, 0.7, None],
+                            outputs=[pitch, main_gain, backup_gain, inst_gain, index_rate, reverb_rm_size, reverb_wet,
+                                     reverb_dry, reverb_damping, ai_cover])
 
         # Download tab
         with gr.Tab("Download model"):

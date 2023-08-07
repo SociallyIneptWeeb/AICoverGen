@@ -169,11 +169,17 @@ def voice_change(voice_model, vocals_path, output_path, pitch_change, index_rate
     gc.collect()
 
 
-def add_audio_effects(audio_path):
+def add_audio_effects(audio_path, reverb_rm_size, reverb_wet, reverb_dry, reverb_damping):
     output_path = f'{os.path.splitext(audio_path)[0]}_mixed.wav'
 
     # Initialize audio effects plugins
-    board = Pedalboard([HighpassFilter(), Compressor(ratio=4, threshold_db=-15), Reverb(room_size=0.15, dry_level=0.8, wet_level=0.2, damping=0.7)])
+    board = Pedalboard(
+        [
+            HighpassFilter(),
+            Compressor(ratio=4, threshold_db=-15),
+            Reverb(room_size=reverb_rm_size, dry_level=reverb_dry, wet_level=reverb_wet, damping=reverb_damping)
+         ]
+    )
 
     with AudioFile(audio_path) as f:
         with AudioFile(output_path, 'w', f.samplerate, f.num_channels) as o:
@@ -193,7 +199,9 @@ def combine_audio(audio_paths, output_path, main_gain, backup_gain, inst_gain):
     main_vocal_audio.overlay(backup_vocal_audio).overlay(instrumental_audio).export(output_path, format='mp3')
 
 
-def song_cover_pipeline(song_input, voice_model, pitch_change, keep_files, is_webui=0, main_gain=0, backup_gain=0, inst_gain=0, index_rate=0.5, progress=gr.Progress()):
+def song_cover_pipeline(song_input, voice_model, pitch_change, keep_files,
+                        is_webui=0, main_gain=0, backup_gain=0, inst_gain=0, index_rate=0.5, reverb_rm_size=0.15,
+                        reverb_wet=0.2, reverb_dry=0.8, reverb_damping=0.7, progress=gr.Progress()):
     try:
         if not song_input or not voice_model:
             raise_exception('Ensure that the song input field and voice model field is filled.', is_webui)
@@ -246,7 +254,7 @@ def song_cover_pipeline(song_input, voice_model, pitch_change, keep_files, is_we
             voice_change(voice_model, main_vocals_dereverb_path, ai_vocals_path, pitch_change, index_rate, is_webui)
 
         display_progress('[~] Applying audio effects to vocals...', 0.8, is_webui, progress)
-        ai_vocals_mixed_path = add_audio_effects(ai_vocals_path)
+        ai_vocals_mixed_path = add_audio_effects(ai_vocals_path, reverb_rm_size, reverb_wet, reverb_dry, reverb_damping)
 
         display_progress('[~] Combining AI Vocals and Instrumentals...', 0.9, is_webui, progress)
         combine_audio([ai_vocals_mixed_path, backup_vocals_path, instrumentals_path], ai_cover_path, main_gain, backup_gain, inst_gain)
@@ -274,11 +282,19 @@ if __name__ == '__main__':
     parser.add_argument('-mv', '--main-vol', type=int, default=0, help='Volume change for AI main vocals in decibels. Use -3 to decrease by 3 decibels and 3 to increase by 3 decibels')
     parser.add_argument('-bv', '--backup-vol', type=int, default=0, help='Volume change for backup vocals in decibels')
     parser.add_argument('-iv', '--inst-vol', type=int, default=0, help='Volume change for instrumentals in decibels')
+    parser.add_argument('-rsize', '--reverb-size', type=float, default=0.15, help='Reverb room size between 0 and 1')
+    parser.add_argument('-rwet', '--reverb-wetness', type=float, default=0.2, help='Reverb wet level between 0 and 1')
+    parser.add_argument('-rdry', '--reverb-dryness', type=float, default=0.8, help='Reverb dry level between 0 and 1')
+    parser.add_argument('-rdamp', '--reverb-damping', type=float, default=0.7, help='Reverb damping between 0 and 1')
     args = parser.parse_args()
 
     rvc_dirname = args.rvc_dirname
     if not os.path.exists(os.path.join(rvc_models_dir, rvc_dirname)):
         raise Exception(f'The folder {os.path.join(rvc_models_dir, rvc_dirname)} does not exist.')
 
-    cover_path = song_cover_pipeline(args.song_input, rvc_dirname, args.pitch_change, args.keep_files, main_gain=args.main_vol, backup_gain=args.backup_vol, inst_gain=args.inst_vol, index_rate=args.index_rate)
+    cover_path = song_cover_pipeline(args.song_input, rvc_dirname, args.pitch_change, args.keep_files,
+                                     main_gain=args.main_vol, backup_gain=args.backup_vol, inst_gain=args.inst_vol,
+                                     index_rate=args.index_rate, reverb_rm_size=args.reverb_size,
+                                     reverb_wet=args.reverb_wetness, reverb_dry=args.reverb_dryness,
+                                     reverb_damping=args.reverb_damping)
     print(f'[+] Cover generated at {cover_path}')

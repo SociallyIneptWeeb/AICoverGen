@@ -20,6 +20,7 @@ WebUI is under constant development and testing, but you can try it out right no
 - Volume control for AI main vocals, backup vocals and instrumentals
 - Index Rate for Voice conversion
 - Reverb Control for AI main vocals
+- Local network sharing option for webui
 
 ## Colab notebook
 
@@ -65,6 +66,14 @@ To run the AICoverGen WebUI, run the following command.
 ```
 python src/webui.py
 ```
+
+| Flag                                       | Description |
+|--------------------------------------------|-------------|
+| `-h`, `--help`                             | Show this help message and exit. |
+| `--share`                                  | Create a public URL. This is useful for running the web UI on Google Colab. |
+| `--listen`                                 | Make the web UI reachable from your local network. |
+| `--listen-host LISTEN_HOST`                | The hostname that the server will use. |
+| `--listen-port LISTEN_PORT`                | The listening port that the server will use. |
 
 Once the following output message `Running on local URL:  http://127.0.0.1:7860` appears, you can click on the link to open a tab with the WebUI.
 

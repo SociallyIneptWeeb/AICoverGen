@@ -125,8 +125,10 @@ def pub_dl_autofill(pub_models, event: gr.SelectData):
 if __name__ == '__main__':
     parser = ArgumentParser(description='Generate a AI cover song in the song_output/id directory.', add_help=True)
     parser.add_argument("--share", action="store_true", dest="share_enabled", default=False, help="Enable sharing")
+    parser.add_argument("--listen", action="store_true", default=False, help="Make the WebUI reachable from your local network.")
+    parser.add_argument('--listen-host', type=str, help='The hostname that the server will use.')
+    parser.add_argument('--listen-port', type=int, help='The listening port that the server will use.')
     args = parser.parse_args()
-    share_enabled = args.share_enabled
 
     voice_models = get_current_models(rvc_models_dir)
     with open(os.path.join(rvc_models_dir, 'public_models.json')) as infile:
@@ -233,4 +235,9 @@ if __name__ == '__main__':
                 filter_tags.change(filter_models, inputs=[filter_tags, search_query], outputs=public_models_table)
                 download_pub_btn.click(download_and_extract_zip, inputs=[pub_zip_link, pub_model_name], outputs=pub_dl_output_message)
 
-    app.launch(share=share_enabled, enable_queue=True)
+    app.launch(
+        share=args.share_enabled,
+        enable_queue=True,
+        server_name=None if not args.listen else (args.listen_host or '0.0.0.0'),
+        server_port=args.listen_port,
+    )

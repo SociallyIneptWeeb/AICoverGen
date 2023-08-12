@@ -150,8 +150,12 @@ if __name__ == '__main__':
 
             with gr.Accordion('Voice conversion options', open=False):
                 with gr.Row():
-                    keep_files = gr.Checkbox(label='Keep intermediate files', info='Keep all audio files generated in the song_output/id directory, e.g. Isolated Vocals/Instrumentals. Leave unchecked to save space')
                     index_rate = gr.Slider(0, 1, value=0.5, label='Index Rate', info="Controls how much of the AI voice's accent to keep in the vocals")
+                    filter_radius = gr.Slider(0, 7, value=3, step=1, label='Filter radius', info='If >=3: apply median filtering median filtering to the harvested pitch results. Can reduce breathiness')
+                    rms_mix_rate = gr.Slider(0, 1, value=0.25, label='RMS mix rate', info="Control how much to use the original vocal's loudness (0) or a fixed loudness (1)")
+                    protect = gr.Slider(0, 0.5, value=0.33, label='Protect rate', info='Protect voiceless consonants and breath sounds. Set to 0.5 to disable.')
+                keep_files = gr.Checkbox(label='Keep intermediate files',
+                                         info='Keep all audio files generated in the song_output/id directory, e.g. Isolated Vocals/Instrumentals. Leave unchecked to save space')
 
             with gr.Accordion('Audio mixing options', open=False):
                 gr.Markdown('### Volume Change (decibels)')
@@ -176,7 +180,8 @@ if __name__ == '__main__':
             is_webui = gr.Number(value=1, visible=False)
             generate_btn.click(song_cover_pipeline,
                                inputs=[song_input, rvc_model, pitch, keep_files, is_webui, main_gain, backup_gain,
-                                       inst_gain, index_rate, reverb_rm_size, reverb_wet, reverb_dry, reverb_damping],
+                                       inst_gain, index_rate, filter_radius, rms_mix_rate, protect, reverb_rm_size,
+                                       reverb_wet, reverb_dry, reverb_damping],
                                outputs=[ai_cover])
             clear_btn.click(lambda: [0, 0, 0, 0, 0.5, 0.15, 0.2, 0.8, 0.7, None],
                             outputs=[pitch, main_gain, backup_gain, inst_gain, index_rate, reverb_rm_size, reverb_wet,

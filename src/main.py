@@ -156,7 +156,7 @@ def preprocess_song(song_input, mdx_model_params, song_id, is_webui, input_type,
     return orig_song_path, vocals_path, instrumentals_path, main_vocals_path, backup_vocals_path, main_vocals_dereverb_path
 
 
-def voice_change(voice_model, vocals_path, output_path, pitch_change, index_rate, is_webui):
+def voice_change(voice_model, vocals_path, output_path, pitch_change, index_rate, filter_radius, rms_mix_rate, protect, is_webui):
     rvc_model_path, rvc_index_path = get_rvc_model(voice_model, is_webui)
     device = 'cuda:0'
     config = Config(device, True)
@@ -164,7 +164,7 @@ def voice_change(voice_model, vocals_path, output_path, pitch_change, index_rate
     cpt, version, net_g, tgt_sr, vc = get_vc(device, config.is_half, config, rvc_model_path)
 
     # convert main vocals
-    rvc_infer(rvc_index_path, index_rate, vocals_path, output_path, pitch_change, cpt, version, net_g, tgt_sr, vc, hubert_model)
+    rvc_infer(rvc_index_path, index_rate, vocals_path, output_path, pitch_change, cpt, version, net_g, filter_radius, tgt_sr, rms_mix_rate, protect, vc, hubert_model)
     del hubert_model, cpt
     gc.collect()
 
@@ -200,8 +200,9 @@ def combine_audio(audio_paths, output_path, main_gain, backup_gain, inst_gain):
 
 
 def song_cover_pipeline(song_input, voice_model, pitch_change, keep_files,
-                        is_webui=0, main_gain=0, backup_gain=0, inst_gain=0, index_rate=0.5, reverb_rm_size=0.15,
-                        reverb_wet=0.2, reverb_dry=0.8, reverb_damping=0.7, progress=gr.Progress()):
+                        is_webui=0, main_gain=0, backup_gain=0, inst_gain=0, index_rate=0.5, filter_radius=3,
+                        rms_mix_rate=0.25, protect=0.33, reverb_rm_size=0.15, reverb_wet=0.2, reverb_dry=0.8,
+                        reverb_damping=0.7, progress=gr.Progress()):
     try:
         if not song_input or not voice_model:
             raise_exception('Ensure that the song input field and voice model field is filled.', is_webui)
@@ -246,12 +247,12 @@ def song_cover_pipeline(song_input, voice_model, pitch_change, keep_files,
             else:
                 orig_song_path, instrumentals_path, main_vocals_dereverb_path, backup_vocals_path = paths
 
-        ai_vocals_path = os.path.join(song_dir, f'{os.path.splitext(os.path.basename(orig_song_path))[0]}_{voice_model}_p{pitch_change}_i{index_rate}.wav')
+        ai_vocals_path = os.path.join(song_dir, f'{os.path.splitext(os.path.basename(orig_song_path))[0]}_{voice_model}_p{pitch_change}_i{index_rate}_fr{filter_radius}_rms{rms_mix_rate}_pro{protect}.wav')
         ai_cover_path = os.path.join(song_dir, f'{os.path.splitext(os.path.basename(orig_song_path))[0]} ({voice_model} Ver).mp3')
 
         if not os.path.exists(ai_vocals_path):
             display_progress('[~] Converting voice using RVC...', 0.5, is_webui, progress)
-            voice_change(voice_model, main_vocals_dereverb_path, ai_vocals_path, pitch_change, index_rate, is_webui)
+            voice_change(voice_model, main_vocals_dereverb_path, ai_vocals_path, pitch_change, index_rate, filter_radius, rms_mix_rate, protect, is_webui)
 
         display_progress('[~] Applying audio effects to vocals...', 0.8, is_webui, progress)
         ai_vocals_mixed_path = add_audio_effects(ai_vocals_path, reverb_rm_size, reverb_wet, reverb_dry, reverb_damping)
@@ -279,6 +280,9 @@ if __name__ == '__main__':
     parser.add_argument('-p', '--pitch-change', type=int, required=True, help='Change the pitch of the AI voice. Generally use 12 for male to female conversions and -12 for vice-versa. Use 0 for no change')
     parser.add_argument('-k', '--keep-files', action=argparse.BooleanOptionalAction, help='Whether to keep all intermediate audio files generated in the song_output/id directory, e.g. Isolated Vocals/Instrumentals')
     parser.add_argument('-ir', '--index-rate', type=float, default=0.5, help='A decimal number e.g. 0.5, used to reduce/resolve the timbre leakage problem. If set to 1, more biased towards the timbre quality of the training dataset')
+    parser.add_argument('-fr', '--filter-radius', type=int, default=3, help='A number between 0 and 7. If >=3: apply median filtering to the harvested pitch results. The value represents the filter radius and can reduce breathiness.')
+    parser.add_argument('-rms', '--rms-mix-rate', type=float, default=0.25, help="A decimal number e.g. 0.25. Control how much to use the original vocal's loudness (0) or a fixed loudness (1).")
+    parser.add_argument('-pro', '--protect', type=float, default=0.33, help='A decimal number e.g. 0.33. Protect voiceless consonants and breath sounds to prevent artifacts such as tearing in electronic music. Set to 0.5 to disable. Decrease the value to increase protection, but it may reduce indexing accuracy.')
     parser.add_argument('-mv', '--main-vol', type=int, default=0, help='Volume change for AI main vocals in decibels. Use -3 to decrease by 3 decibels and 3 to increase by 3 decibels')
     parser.add_argument('-bv', '--backup-vol', type=int, default=0, help='Volume change for backup vocals in decibels')
     parser.add_argument('-iv', '--inst-vol', type=int, default=0, help='Volume change for instrumentals in decibels')
@@ -294,7 +298,8 @@ if __name__ == '__main__':
 
     cover_path = song_cover_pipeline(args.song_input, rvc_dirname, args.pitch_change, args.keep_files,
                                      main_gain=args.main_vol, backup_gain=args.backup_vol, inst_gain=args.inst_vol,
-                                     index_rate=args.index_rate, reverb_rm_size=args.reverb_size,
-                                     reverb_wet=args.reverb_wetness, reverb_dry=args.reverb_dryness,
-                                     reverb_damping=args.reverb_damping)
+                                     index_rate=args.index_rate, filter_radius=args.filter_radius,
+                                     rms_mix_rate=args.rms_mix_rate, protect=args.protect,
+                                     reverb_rm_size=args.reverb_size, reverb_wet=args.reverb_wetness,
+                                     reverb_dry=args.reverb_dryness, reverb_damping=args.reverb_damping)
     print(f'[+] Cover generated at {cover_path}')

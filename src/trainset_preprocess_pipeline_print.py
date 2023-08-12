@@ -3,18 +3,23 @@ from scipy import signal
 
 now_dir = os.getcwd()
 sys.path.append(now_dir)
-print(sys.argv)
+
 inp_root = sys.argv[1]
 sr = int(sys.argv[2])
 n_p = int(sys.argv[3])
 exp_dir = sys.argv[4]
 noparallel = sys.argv[5] == "True"
 import numpy as np, os, traceback
-from lib.slicer2 import Slicer
+from slicer2 import Slicer
 import librosa, traceback
 from scipy.io import wavfile
 import multiprocessing
-from lib.audio import load_audio
+from my_utils import load_audio
+import tqdm
+
+DoFormant = False
+Quefrency = 1.0
+Timbre = 1.0
 
 mutex = multiprocessing.Lock()
 f = open("%s/preprocess.log" % exp_dir, "a+")
@@ -76,7 +81,7 @@ class PreProcess:
 
     def pipeline(self, path, idx0):
         try:
-            audio = load_audio(path, self.sr)
+            audio = load_audio(path, self.sr, DoFormant, Quefrency, Timbre)
             # zero phased digital filter cause pre-ringing noise...
             # audio = signal.filtfilt(self.bh, self.ah, audio)
             audio = signal.lfilter(self.bh, self.ah, audio)
@@ -96,12 +101,14 @@ class PreProcess:
                         idx1 += 1
                         break
                 self.norm_write(tmp_audio, idx0, idx1)
-            println("%s->Suc." % path)
+            # println("%s->Suc." % path)
         except:
             println("%s->%s" % (path, traceback.format_exc()))
 
-    def pipeline_mp(self, infos):
-        for path, idx0 in infos:
+    def pipeline_mp(self, infos, thread_n):
+        for path, idx0 in tqdm.tqdm(
+            infos, position=thread_n, leave=True, desc="thread:%s" % thread_n
+        ):
             self.pipeline(path, idx0)
 
     def pipeline_mp_inp_dir(self, inp_root, n_p):
@@ -117,7 +124,7 @@ class PreProcess:
                 ps = []
                 for i in range(n_p):
                     p = multiprocessing.Process(
-                        target=self.pipeline_mp, args=(infos[i::n_p],)
+                        target=self.pipeline_mp, args=(infos[i::n_p], i)
                     )
                     ps.append(p)
                     p.start()

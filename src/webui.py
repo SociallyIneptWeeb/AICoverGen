@@ -122,6 +122,14 @@ def pub_dl_autofill(pub_models, event: gr.SelectData):
     return gr.Text.update(value=pub_models.loc[event.index[0], 'URL']), gr.Text.update(value=pub_models.loc[event.index[0], 'Model Name'])
 
 
+def swap_visibility():
+    return gr.update(visible=True), gr.update(visible=False), gr.update(value=''), gr.update(value=None)
+
+
+def process_file_upload(file):
+    return file.name, gr.update(value=file.name)
+
+
 if __name__ == '__main__':
     parser = ArgumentParser(description='Generate a AI cover song in the song_output/id directory.', add_help=True)
     parser.add_argument("--share", action="store_true", dest="share_enabled", default=False, help="Enable sharing")
@@ -143,10 +151,23 @@ if __name__ == '__main__':
 
             with gr.Accordion('Main Options'):
                 with gr.Row():
-                    rvc_model = gr.Dropdown(voice_models, label='Voice Models', info='Models folder "AICoverGen --> rvc_models". After new models are added into this folder, click the refresh button')
-                    ref_btn = gr.Button('Refresh Models 🔁', variant='primary')
-                    song_input = gr.Text(label='Song Input', info='Link to a YouTube video or the full path to a local audio file')
+                    with gr.Column():
+                        rvc_model = gr.Dropdown(voice_models, label='Voice Models', info='Models folder "AICoverGen --> rvc_models". After new models are added into this folder, click the refresh button')
+                        ref_btn = gr.Button('Refresh Models 🔁', variant='primary')
+
+                    with gr.Column() as yt_link_col:
+                        song_input = gr.Text(label='Song input', info='Link to a song on YouTube or full path to a local file. For file upload, click the button below.')
+                        show_file_upload_button = gr.Button('Upload file instead')
+
+                    with gr.Column(visible=False) as file_upload_col:
+                        local_file = gr.File(label='Audio file')
+                        song_input_file = gr.UploadButton('Upload 📂', file_types=['audio'], variant='primary')
+                        show_yt_link_button = gr.Button('Paste YouTube link/Path to local file instead')
+                        song_input_file.upload(process_file_upload, inputs=[song_input_file], outputs=[local_file, song_input])
+
                     pitch = gr.Slider(-24, 24, value=0, step=1, label='Pitch Change', info='Pitch Change should be set to either -12, 0, or 12 (multiples of 12) to ensure the vocals are not out of tune')
+                    show_file_upload_button.click(swap_visibility, outputs=[file_upload_col, yt_link_col, song_input, local_file])
+                    show_yt_link_button.click(swap_visibility, outputs=[yt_link_col, file_upload_col, song_input, local_file])
 
             with gr.Accordion('Voice conversion options', open=False):
                 with gr.Row():
@@ -172,7 +193,7 @@ if __name__ == '__main__':
                     reverb_damping = gr.Slider(0, 1, value=0.7, label='Damping level', info='Absorption of high frequencies in the reverb')
 
             with gr.Row():
-                clear_btn = gr.ClearButton(value='Clear', components=[song_input, rvc_model, keep_files])
+                clear_btn = gr.ClearButton(value='Clear', components=[song_input, rvc_model, keep_files, local_file])
                 generate_btn = gr.Button("Generate", variant='primary')
                 ai_cover = gr.Audio(label='AI Cover', show_share_button=False)
 

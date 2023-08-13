@@ -21,7 +21,8 @@ WebUI is under constant development and testing, but you can try it out right no
 - Index Rate for Voice conversion
 - Reverb Control for AI main vocals
 - Local network sharing option for webui
-- Extra RVC options - filter_radius, rms_mix_rate, protect 
+- Extra RVC options - filter_radius, rms_mix_rate, protect
+- Local file upload via file browser option
 
 ## Colab notebook
 

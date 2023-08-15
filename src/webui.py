@@ -156,7 +156,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     voice_models = get_current_models(rvc_models_dir)
-    with open(os.path.join(rvc_models_dir, 'public_models.json')) as infile:
+    with open(os.path.join(rvc_models_dir, 'public_models.json'), encoding='utf8') as infile:
         public_models = json.load(infile)
 
     with gr.Blocks(title='AICoverGenWebUI') as app:

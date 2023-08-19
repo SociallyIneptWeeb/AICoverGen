@@ -1,12 +1,16 @@
+import argparse
 import gc
 import hashlib
 import json
 import os
-import argparse
+import shlex
+import subprocess
 from contextlib import suppress
 from urllib.parse import urlparse, parse_qs
 
 import gradio as gr
+import librosa
+import numpy as np
 import yt_dlp
 from pedalboard import Pedalboard, Reverb, Compressor, HighpassFilter
 from pedalboard.io import AudioFile
@@ -115,6 +119,19 @@ def get_audio_paths(song_dir):
     return orig_song_path, instrumentals_path, main_vocals_dereverb_path, backup_vocals_path
 
 
+def convert_to_stereo(audio_path):
+    wave, sr = librosa.load(audio_path, mono=False, sr=44100)
+
+    # check if mono
+    if type(wave[0]) != np.ndarray:
+        stereo_path = f'{os.path.splitext(audio_path)[0]}_stereo.wav'
+        command = shlex.split(f'ffmpeg -y -loglevel error -i "{audio_path}" -ac 2 -f wav "{stereo_path}"')
+        subprocess.run(command)
+        return stereo_path
+    else:
+        return audio_path
+
+
 def get_hash(filepath):
     with open(filepath, 'rb') as f:
         file_hash = hashlib.blake2b()
@@ -144,6 +161,7 @@ def preprocess_song(song_input, mdx_model_params, song_id, is_webui, input_type,
         orig_song_path = None
 
     song_output_dir = os.path.join(output_dir, song_id)
+    orig_song_path = convert_to_stereo(orig_song_path)
 
     display_progress('[~] Separating Vocals from Instrumental...', 0.1, is_webui, progress)
     vocals_path, instrumentals_path = run_mdx(mdx_model_params, song_output_dir, os.path.join(mdxnet_models_dir, 'UVR-MDX-NET-Voc_FT.onnx'), orig_song_path, denoise=True, keep_orig=keep_orig)

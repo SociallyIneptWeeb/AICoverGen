@@ -5,6 +5,7 @@ import json
 import os
 import shlex
 import subprocess
+import ffmpeg
 from contextlib import suppress
 from urllib.parse import urlparse, parse_qs
 
@@ -57,6 +58,10 @@ def get_youtube_video_id(url, ignore_playlist=True):
     # returns None for invalid YouTube url
     return None
 
+def convert_webm_to_mp3(audio_path):
+    ffmpeg.input(audio_path).output(os.path.splitext(audio_path)[0] + '.mp3', acodec='libmp3lame', ab='128k', ar='44100').overwrite_output().run()
+    os.remove(audio_path)
+    return os.path.splitext(audio_path)[0] + '.mp3'
 
 def yt_download(link):
     ydl_opts = {
@@ -71,6 +76,11 @@ def yt_download(link):
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
         result = ydl.extract_info(link, download=True)
         download_path = ydl.prepare_filename(result)
+        ##test if the format is webm
+        if download_path.endswith('.webm'):
+            print('webm format detected, converting to mp3...')
+            download_path = convert_webm_to_mp3(download_path)
+            print('conversion complete to mp3 at ' + download_path)
 
     return download_path
 

@@ -111,6 +111,9 @@ def load_hubert(device, is_half, model_path):
 
 def get_vc(device, is_half, config, model_path):
     cpt = torch.load(model_path, map_location='cpu')
+    if "config" not in cpt or "weight" not in cpt:
+        ## return an error
+        raise ValueError("The model at path : " + model_path + " does not have the correct format.")
     tgt_sr = cpt["config"][-1]
     cpt["config"][-3] = cpt["weight"]["emb_g.weight"].shape[0]
     if_f0 = cpt.get("f0", 1)

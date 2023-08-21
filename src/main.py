@@ -6,6 +6,7 @@ import os
 import shlex
 import subprocess
 import ffmpeg
+import torch
 from contextlib import suppress
 from urllib.parse import urlparse, parse_qs
 

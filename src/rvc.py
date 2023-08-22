@@ -111,6 +111,9 @@ def load_hubert(device, is_half, model_path):
 
 def get_vc(device, is_half, config, model_path):
     cpt = torch.load(model_path, map_location='cpu')
+    if "config" not in cpt or "weight" not in cpt:
+        raise ValueError(f'Incorrect format for {model_path}. Use a voice model trained using RVC v2 instead.')
+
     tgt_sr = cpt["config"][-1]
     cpt["config"][-3] = cpt["weight"]["emb_g.weight"].shape[0]
     if_f0 = cpt.get("f0", 1)

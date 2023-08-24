@@ -47,10 +47,10 @@ def extract_zip(extraction_folder, zip_name):
     index_filepath, model_filepath = None, None
     for root, dirs, files in os.walk(extraction_folder):
         for name in files:
-            if name.endswith('.index'):
+            if name.endswith('.index') and os.stat(os.path.join(root, name)).st_size > 1024 * 100:
                 index_filepath = os.path.join(root, name)
 
-            if name.endswith('.pth'):
+            if name.endswith('.pth') and os.stat(os.path.join(root, name)).st_size > 1024 * 1024 * 40:
                 model_filepath = os.path.join(root, name)
 
     if not model_filepath:

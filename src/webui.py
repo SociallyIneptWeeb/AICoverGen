@@ -147,6 +147,13 @@ def process_file_upload(file):
     return file.name, gr.update(value=file.name)
 
 
+def show_hop_slider(pitch_detection_algo):
+    if pitch_detection_algo == 'mangio-crepe':
+        return gr.update(visible=True)
+    else:
+        return gr.update(visible=False)
+
+
 if __name__ == '__main__':
     parser = ArgumentParser(description='Generate a AI cover song in the song_output/id directory.', add_help=True)
     parser.add_argument("--share", action="store_true", dest="share_enabled", default=False, help="Enable sharing")
@@ -190,10 +197,13 @@ if __name__ == '__main__':
                 with gr.Row():
                     index_rate = gr.Slider(0, 1, value=0.5, label='Index Rate', info="Controls how much of the AI voice's accent to keep in the vocals")
                     filter_radius = gr.Slider(0, 7, value=3, step=1, label='Filter radius', info='If >=3: apply median filtering median filtering to the harvested pitch results. Can reduce breathiness')
-                    rms_mix_rate = gr.Slider(0, 1, value=0.25, label='RMS mix rate', info="Control how much to use the original vocal's loudness (0) or a fixed loudness (1)")
+                    rms_mix_rate = gr.Slider(0, 1, value=0.25, label='RMS mix rate', info="Control how much to mimic the original vocal's loudness (0) or a fixed loudness (1)")
                     protect = gr.Slider(0, 0.5, value=0.33, label='Protect rate', info='Protect voiceless consonants and breath sounds. Set to 0.5 to disable.')
-                keep_files = gr.Checkbox(label='Keep intermediate files',
-                                         info='Keep all audio files generated in the song_output/id directory, e.g. Isolated Vocals/Instrumentals. Leave unchecked to save space')
+                    with gr.Column():
+                        f0_method = gr.Dropdown(['rmvpe', 'mangio-crepe'], value='rmvpe', label='Pitch detection algorithm', info='Best option is rmvpe (clarity in vocals), then mangio-crepe (smoother vocals)')
+                        crepe_hop_length = gr.Slider(32, 320, value=128, step=1, visible=False, label='Crepe hop length', info='Lower values leads to longer conversions and higher risk of voice cracks, but better pitch accuracy.')
+                        f0_method.change(show_hop_slider, inputs=f0_method, outputs=crepe_hop_length)
+                keep_files = gr.Checkbox(label='Keep intermediate files', info='Keep all audio files generated in the song_output/id directory, e.g. Isolated Vocals/Instrumentals. Leave unchecked to save space')
 
             with gr.Accordion('Audio mixing options', open=False):
                 gr.Markdown('### Volume Change (decibels)')
@@ -218,12 +228,12 @@ if __name__ == '__main__':
             is_webui = gr.Number(value=1, visible=False)
             generate_btn.click(song_cover_pipeline,
                                inputs=[song_input, rvc_model, pitch, keep_files, is_webui, main_gain, backup_gain,
-                                       inst_gain, index_rate, filter_radius, rms_mix_rate, protect, reverb_rm_size,
-                                       reverb_wet, reverb_dry, reverb_damping],
+                                       inst_gain, index_rate, filter_radius, rms_mix_rate, f0_method, crepe_hop_length,
+                                       protect, reverb_rm_size, reverb_wet, reverb_dry, reverb_damping],
                                outputs=[ai_cover])
-            clear_btn.click(lambda: [0, 0, 0, 0, 0.5, 3, 0.25, 0.33, 0.15, 0.2, 0.8, 0.7, None],
+            clear_btn.click(lambda: [0, 0, 0, 0, 0.5, 3, 0.25, 0.33, 'rmvpe', 128, 0.15, 0.2, 0.8, 0.7, None],
                             outputs=[pitch, main_gain, backup_gain, inst_gain, index_rate, filter_radius, rms_mix_rate,
-                                     protect, reverb_rm_size, reverb_wet, reverb_dry, reverb_damping, ai_cover])
+                                     protect, f0_method, crepe_hop_length, reverb_rm_size, reverb_wet, reverb_dry, reverb_damping, ai_cover])
 
         # Download tab
         with gr.Tab('Download model'):

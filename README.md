@@ -27,6 +27,15 @@ WebUI is under constant development and testing, but you can try it out right no
 - Pitch detection method control, e.g. rmvpe/mangio-crepe
 - Pitch change for vocals and instrumentals together. Same effect as changing key of song in Karaoke.
 
+## Update AICoverGen to latest version
+
+Install and pull any new requirements and changes by opening a command line window in the `AICoverGen` directory and running the following commands.
+
+```
+pip install -r requirements.txt
+git pull
+```
+
 ## Colab notebook
 
 For those without a powerful enough NVIDIA GPU, you may try AICoverGen out using Google Colab.

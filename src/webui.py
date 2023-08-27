@@ -189,7 +189,9 @@ if __name__ == '__main__':
                         show_yt_link_button = gr.Button('Paste YouTube link/Path to local file instead')
                         song_input_file.upload(process_file_upload, inputs=[song_input_file], outputs=[local_file, song_input])
 
-                    pitch = gr.Slider(-24, 24, value=0, step=1, label='Pitch Change', info='Pitch Change should be set to either -12, 0, or 12 (multiples of 12) to ensure the vocals are not out of tune')
+                    with gr.Column():
+                        pitch = gr.Slider(-3, 3, value=0, step=1, label='Pitch Change (Vocals ONLY)', info='Generally, use 1 for male to female conversions and -1 for vice-versa. (Octaves)')
+                        pitch_all = gr.Slider(-12, 12, value=0, step=1, label='Overall Pitch Change', info='Changes pitch/key of vocals and instrumentals together. Altering this slightly reduces sound quality. (Semitones)')
                     show_file_upload_button.click(swap_visibility, outputs=[file_upload_col, yt_link_col, song_input, local_file])
                     show_yt_link_button.click(swap_visibility, outputs=[yt_link_col, file_upload_col, song_input, local_file])
 
@@ -229,11 +231,12 @@ if __name__ == '__main__':
             generate_btn.click(song_cover_pipeline,
                                inputs=[song_input, rvc_model, pitch, keep_files, is_webui, main_gain, backup_gain,
                                        inst_gain, index_rate, filter_radius, rms_mix_rate, f0_method, crepe_hop_length,
-                                       protect, reverb_rm_size, reverb_wet, reverb_dry, reverb_damping],
+                                       protect, pitch_all, reverb_rm_size, reverb_wet, reverb_dry, reverb_damping],
                                outputs=[ai_cover])
-            clear_btn.click(lambda: [0, 0, 0, 0, 0.5, 3, 0.25, 0.33, 'rmvpe', 128, 0.15, 0.2, 0.8, 0.7, None],
+            clear_btn.click(lambda: [0, 0, 0, 0, 0.5, 3, 0.25, 0.33, 'rmvpe', 128, 0, 0.15, 0.2, 0.8, 0.7, None],
                             outputs=[pitch, main_gain, backup_gain, inst_gain, index_rate, filter_radius, rms_mix_rate,
-                                     protect, f0_method, crepe_hop_length, reverb_rm_size, reverb_wet, reverb_dry, reverb_damping, ai_cover])
+                                     protect, f0_method, crepe_hop_length, pitch_all, reverb_rm_size, reverb_wet,
+                                     reverb_dry, reverb_damping, ai_cover])
 
         # Download tab
         with gr.Tab('Download model'):

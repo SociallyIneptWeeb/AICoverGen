@@ -226,17 +226,18 @@ def add_audio_effects(audio_path, reverb_rm_size, reverb_wet, reverb_dry, reverb
     return output_path
 
 
-def combine_audio(audio_paths, output_path, main_gain, backup_gain, inst_gain):
+def combine_audio(audio_paths, output_path, main_gain, backup_gain, inst_gain, output_format):
     main_vocal_audio = AudioSegment.from_wav(audio_paths[0]) - 4 + main_gain
     backup_vocal_audio = AudioSegment.from_wav(audio_paths[1]) - 6 + backup_gain
     instrumental_audio = AudioSegment.from_wav(audio_paths[2]) - 7 + inst_gain
-    main_vocal_audio.overlay(backup_vocal_audio).overlay(instrumental_audio).export(output_path, format='mp3')
+    main_vocal_audio.overlay(backup_vocal_audio).overlay(instrumental_audio).export(output_path, format=output_format)
 
 
 def song_cover_pipeline(song_input, voice_model, pitch_change, keep_files,
                         is_webui=0, main_gain=0, backup_gain=0, inst_gain=0, index_rate=0.5, filter_radius=3,
                         rms_mix_rate=0.25, f0_method='rmvpe', crepe_hop_length=128, protect=0.33, pitch_change_all=0,
-                        reverb_rm_size=0.15, reverb_wet=0.2, reverb_dry=0.8, reverb_damping=0.7, progress=gr.Progress()):
+                        reverb_rm_size=0.15, reverb_wet=0.2, reverb_dry=0.8, reverb_damping=0.7, output_format='mp3',
+                        progress=gr.Progress()):
     try:
         if not song_input or not voice_model:
             raise_exception('Ensure that the song input field and voice model field is filled.', is_webui)
@@ -283,7 +284,7 @@ def song_cover_pipeline(song_input, voice_model, pitch_change, keep_files,
 
         pitch_change = pitch_change * 12 + pitch_change_all
         ai_vocals_path = os.path.join(song_dir, f'{os.path.splitext(os.path.basename(orig_song_path))[0]}_{voice_model}_p{pitch_change}_i{index_rate}_fr{filter_radius}_rms{rms_mix_rate}_pro{protect}_{f0_method}{"" if f0_method != "mangio-crepe" else f"_{crepe_hop_length}"}.wav')
-        ai_cover_path = os.path.join(song_dir, f'{os.path.splitext(os.path.basename(orig_song_path))[0]} ({voice_model} Ver).mp3')
+        ai_cover_path = os.path.join(song_dir, f'{os.path.splitext(os.path.basename(orig_song_path))[0]} ({voice_model} Ver).{output_format}')
 
         if not os.path.exists(ai_vocals_path):
             display_progress('[~] Converting voice using RVC...', 0.5, is_webui, progress)
@@ -298,7 +299,7 @@ def song_cover_pipeline(song_input, voice_model, pitch_change, keep_files,
             backup_vocals_path = pitch_shift(backup_vocals_path, pitch_change_all)
 
         display_progress('[~] Combining AI Vocals and Instrumentals...', 0.9, is_webui, progress)
-        combine_audio([ai_vocals_mixed_path, backup_vocals_path, instrumentals_path], ai_cover_path, main_gain, backup_gain, inst_gain)
+        combine_audio([ai_vocals_mixed_path, backup_vocals_path, instrumentals_path], ai_cover_path, main_gain, backup_gain, inst_gain, output_format)
 
         if not keep_files:
             display_progress('[~] Removing intermediate audio files...', 0.95, is_webui, progress)
@@ -335,6 +336,7 @@ if __name__ == '__main__':
     parser.add_argument('-rwet', '--reverb-wetness', type=float, default=0.2, help='Reverb wet level between 0 and 1')
     parser.add_argument('-rdry', '--reverb-dryness', type=float, default=0.8, help='Reverb dry level between 0 and 1')
     parser.add_argument('-rdamp', '--reverb-damping', type=float, default=0.7, help='Reverb damping between 0 and 1')
+    parser.add_argument('-oformat', '--output-format', type=str, default='mp3', help='Output format of audio file. mp3 for smaller file size, wav for best quality')
     args = parser.parse_args()
 
     rvc_dirname = args.rvc_dirname
@@ -348,5 +350,6 @@ if __name__ == '__main__':
                                      crepe_hop_length=args.crepe_hop_length, protect=args.protect,
                                      pitch_change_all=args.pitch_change_all,
                                      reverb_rm_size=args.reverb_size, reverb_wet=args.reverb_wetness,
-                                     reverb_dry=args.reverb_dryness, reverb_damping=args.reverb_damping)
+                                     reverb_dry=args.reverb_dryness, reverb_damping=args.reverb_damping,
+                                     output_format=args.output_format)
     print(f'[+] Cover generated at {cover_path}')

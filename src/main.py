@@ -13,7 +13,7 @@ import librosa
 import numpy as np
 import soundfile as sf
 import sox
-
+import yt_dlp
 from pedalboard import Pedalboard, Reverb, Compressor, HighpassFilter
 from pedalboard.io import AudioFile
 from pydub import AudioSegment
@@ -63,6 +63,25 @@ def get_youtube_video_id(url, ignore_playlist=True):
 
     # returns None for invalid YouTube url
     return None
+
+
+def yt_download(link):
+    ydl_opts = {
+        'format': 'bestaudio',
+        'outtmpl': '%(title)s',
+        'nocheckcertificate': True,
+        'ignoreerrors': True,
+        'no_warnings': True,
+        'quiet': True,
+        'extractaudio': True,
+        'postprocessors': [{'key': 'FFmpegExtractAudio', 'preferredcodec': 'mp3'}],
+    }
+    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+        result = ydl.extract_info(link, download=True)
+        download_path = ydl.prepare_filename(result, outtmpl='%(title)s.mp3')
+
+    return download_path
+
 
 def raise_exception(error_msg, is_webui):
     if is_webui:
@@ -304,7 +323,7 @@ def song_cover_pipeline(song_input, voice_model, pitch_change, keep_files,
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Generate a AI cover song in the song_output/id directory.', add_help=True)
-    parser.add_argument('-i', '--song-input', type=str, required=True, help='Path to a local mp3/wav file to create an AI cover of')
+    parser.add_argument('-i', '--song-input', type=str, required=True, help='Link to a YouTube video or the filepath to a local mp3/wav file to create an AI cover of')
     parser.add_argument('-dir', '--rvc-dirname', type=str, required=True, help='Name of the folder in the rvc_models directory containing the RVC model file and optional index file to use')
     parser.add_argument('-p', '--pitch-change', type=int, required=True, help='Change the pitch of AI Vocals only. Generally, use 1 for male to female and -1 for vice-versa. (Octaves)')
     parser.add_argument('-k', '--keep-files', action=argparse.BooleanOptionalAction, help='Whether to keep all intermediate audio files generated in the song_output/id directory, e.g. Isolated Vocals/Instrumentals')
@@ -340,5 +359,5 @@ if __name__ == '__main__':
                                      output_format=args.output_format)
     print(f'[+] Cover generated at {cover_path}')
 def get_cover_path():
-	return cover_path
-
+    # Your logic to calculate the cover_path
+    return cover_path

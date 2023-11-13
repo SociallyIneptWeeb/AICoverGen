@@ -15,7 +15,7 @@ Requests==2.31.0
 scipy==1.11.1
 soundfile==0.12.1
 --find-links https://download.pytorch.org/whl/torch_stable.html
-torch==2.1.0+rcom5.6
+torch==2.1.0+rocm5.6
 torchcrepe==0.0.20
 tqdm==4.65.0
 yt_dlp==2023.7.6

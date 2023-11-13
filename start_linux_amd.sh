@@ -15,8 +15,8 @@ find_latest_python_version() {
 
 # Check if the venv directory exists
 if [ -d "$venv_dir" ]; then
-  # If it exists, do nothing silently
-  :
+  # Source the virtual environment if it exists
+  source "$venv_dir/bin/activate"
 else
   # Find the latest Python version below 3.11
   python_version=$(find_latest_python_version)

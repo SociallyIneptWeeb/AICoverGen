@@ -61,3 +61,6 @@ if [ ! -f .models_present ] || [ "$(cat .models_present)" != "1" ]; then
         echo "Model download failed."
     fi
 fi
+
+# Run the WebUI
+python src/webui.py

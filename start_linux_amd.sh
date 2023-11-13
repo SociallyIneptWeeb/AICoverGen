@@ -38,3 +38,10 @@ else
   pip install -r requirements_amd.txt
 
 fi
+
+# Load environment variables from rocm_vars.txt
+if [ -f "rocm_vars.txt" ]; then
+  source "rocm_vars.txt"
+  echo "ROCM environment variables loaded from rocm_vars.txt."
+fi
+

@@ -45,3 +45,19 @@ if [ -f "rocm_vars.txt" ]; then
   echo "ROCM environment variables loaded from rocm_vars.txt."
 fi
 
+# Check if .models_present is not set to 1
+if [ ! -f .models_present ] || [ "$(cat .models_present)" != "1" ]; then
+    echo "Downloading Models..."
+
+    # Run the download_models.py script
+    python src/download_models.py
+
+    # Check if the download was successful (you may need to modify this condition based on the behavior of download_models.py)
+    if [ $? -eq 0 ]; then
+        # Set .models_present to 1 to indicate that the models are present
+        echo "1" > .models_present
+    else
+        # Handle the case where the download failed
+        echo "Model download failed."
+    fi
+fi

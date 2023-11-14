@@ -1,0 +1,50 @@
+# Configuration for Cog ⚙️
+# Reference: https://github.com/replicate/cog/blob/main/docs/yaml.md
+
+build:
+  # set to true if your model requires a GPU
+  gpu: true
+
+  # a list of ubuntu apt packages to install
+  system_packages:
+    - "libgl1-mesa-glx"
+    - "ffmpeg"
+    - "sox"
+
+  # python version in the form '3.11' or '3.11.4'
+  python_version: "3.9"
+
+  # a list of packages in the format <package-name>==<version>
+  python_packages:
+    - "deemix"
+    - "fairseq==0.12.2"
+    - "faiss-cpu==1.7.3"
+    - "ffmpeg-python>=0.2.0"
+    - "gradio==3.39.0"
+    - "lib==4.0.0"
+    - "librosa==0.9.1"
+    - "numpy==1.23.5"
+    - "onnxruntime_gpu"
+    - "praat-parselmouth>=0.4.2"
+    - "pedalboard==0.7.7"
+    - "pydub==0.25.1"
+    - "pyworld==0.3.4"
+    - "Requests==2.31.0"
+    - "scipy==1.11.1"
+    - "soundfile==0.12.1"
+    - "--find-links https://download.pytorch.org/whl/torch_stable.html"
+    - "torch==2.0.1+cu118"
+    - "torchcrepe==0.0.20"
+    - "tqdm==4.65.0"
+    - "yt_dlp==2023.7.6"
+    - "sox==1.4.1"
+    - "gradio"
+
+  # commands run after the environment is setup
+  run:
+    - pip install --upgrade pip
+    - apt-get update && apt-get install -y ffmpeg
+    - pip install imageio[ffmpeg]
+
+# predict.py defines how predictions are run on your model
+predict: "predict.py:Predictor"

@@ -50,6 +50,11 @@ For those who face issues with Google Colab notebook disconnecting after a few m
 
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/ardha27/AICoverGen-NoUI-Colab/blob/main/CoverGen_No_UI.ipynb)
 
+
+This is for Google Drive users for auto backup and others
+
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/laynz28/AICoverGen/blob/main/Laynz_28_AICoverGen_colab.ipynb)
+
 For those who want to run this locally, follow the setup guide below.
 
 ## Setup

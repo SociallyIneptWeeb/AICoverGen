@@ -1,0 +1,3 @@
+# Might be requierd if multiple AMD GPUs are present
+#export PYTORCH_ROCM_ARCH="gfx1100"
+#export ROCR_VISIBLE_DEVICES=0

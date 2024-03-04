@@ -1,0 +1,22 @@
+version: "3.8"
+services:
+  aicovergen:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: aicovergen
+    volumes:
+      - ./mdxnet_models:/app/mdxnet_models
+      - ./rvc_models:/app/rvc_models
+      - ./song_output:/app/song_output
+    ports:
+      - "8000:8000"
+    environment:
+      - TZ=America/Los_Angeles
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]

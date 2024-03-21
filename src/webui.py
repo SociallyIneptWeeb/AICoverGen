@@ -412,10 +412,16 @@ if __name__ == "__main__":
 
                 gr.Markdown("### Audio Output Format")
                 output_format = gr.Dropdown(
-                    ["mp3", "wav"],
+                    [
+                        "mp3",
+                        "wav",
+                        "flac",
+                        "aac",
+                        "m4a",
+                        "ogg",
+                    ],
                     value="mp3",
                     label="Output file type",
-                    info="mp3: small file size, decent quality. wav: Large file size, best quality",
                 )
 
             with gr.Row():

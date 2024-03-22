@@ -13,11 +13,19 @@ import torch
 from tqdm import tqdm
 
 warnings.filterwarnings("ignore")
-stem_naming = {'Vocals': 'Instrumental', 'Other': 'Instruments', 'Instrumental': 'Vocals', 'Drums': 'Drumless', 'Bass': 'Bassless'}
+stem_naming = {
+    "Vocals": "Instrumental",
+    "Other": "Instruments",
+    "Instrumental": "Vocals",
+    "Drums": "Drumless",
+    "Bass": "Bassless",
+}
 
 
 class MDXModel:
-    def __init__(self, device, dim_f, dim_t, n_fft, hop=1024, stem_name=None, compensation=1.000):
+    def __init__(
+        self, device, dim_f, dim_t, n_fft, hop=1024, stem_name=None, compensation=1.000
+    ):
         self.dim_f = dim_f
         self.dim_t = dim_t
         self.dim_c = 4
@@ -28,29 +36,50 @@ class MDXModel:
 
         self.n_bins = self.n_fft // 2 + 1
         self.chunk_size = hop * (self.dim_t - 1)
-        self.window = torch.hann_window(window_length=self.n_fft, periodic=True).to(device)
+        self.window = torch.hann_window(window_length=self.n_fft, periodic=True).to(
+            device
+        )
 
         out_c = self.dim_c
 
-        self.freq_pad = torch.zeros([1, out_c, self.n_bins - self.dim_f, self.dim_t]).to(device)
+        self.freq_pad = torch.zeros(
+            [1, out_c, self.n_bins - self.dim_f, self.dim_t]
+        ).to(device)
 
     def stft(self, x):
         x = x.reshape([-1, self.chunk_size])
-        x = torch.stft(x, n_fft=self.n_fft, hop_length=self.hop, window=self.window, center=True, return_complex=True)
+        x = torch.stft(
+            x,
+            n_fft=self.n_fft,
+            hop_length=self.hop,
+            window=self.window,
+            center=True,
+            return_complex=True,
+        )
         x = torch.view_as_real(x)
         x = x.permute([0, 3, 1, 2])
-        x = x.reshape([-1, 2, 2, self.n_bins, self.dim_t]).reshape([-1, 4, self.n_bins, self.dim_t])
-        return x[:, :, :self.dim_f]
+        x = x.reshape([-1, 2, 2, self.n_bins, self.dim_t]).reshape(
+            [-1, 4, self.n_bins, self.dim_t]
+        )
+        return x[:, :, : self.dim_f]
 
     def istft(self, x, freq_pad=None):
-        freq_pad = self.freq_pad.repeat([x.shape[0], 1, 1, 1]) if freq_pad is None else freq_pad
+        freq_pad = (
+            self.freq_pad.repeat([x.shape[0], 1, 1, 1])
+            if freq_pad is None
+            else freq_pad
+        )
         x = torch.cat([x, freq_pad], -2)
         # c = 4*2 if self.target_name=='*' else 2
-        x = x.reshape([-1, 2, 2, self.n_bins, self.dim_t]).reshape([-1, 2, self.n_bins, self.dim_t])
+        x = x.reshape([-1, 2, 2, self.n_bins, self.dim_t]).reshape(
+            [-1, 2, self.n_bins, self.dim_t]
+        )
         x = x.permute([0, 2, 3, 1])
         x = x.contiguous()
         x = torch.view_as_complex(x)
-        x = torch.istft(x, n_fft=self.n_fft, hop_length=self.hop, window=self.window, center=True)
+        x = torch.istft(
+            x, n_fft=self.n_fft, hop_length=self.hop, window=self.window, center=True
+        )
         return x.reshape([-1, 2, self.chunk_size])
 
 
@@ -65,32 +94,43 @@ class MDX:
     def __init__(self, model_path: str, params: MDXModel, processor=DEFAULT_PROCESSOR):
 
         # Set the device and the provider (CPU or CUDA)
-        self.device = torch.device(f'cuda:{processor}') if processor >= 0 else torch.device('cpu')
-        self.provider = ['CUDAExecutionProvider'] if processor >= 0 else ['CPUExecutionProvider']
+        self.device = (
+            torch.device(f"cuda:{processor}") if processor >= 0 else torch.device("cpu")
+        )
+        self.provider = (
+            ["CUDAExecutionProvider"] if processor >= 0 else ["CPUExecutionProvider"]
+        )
 
         self.model = params
 
         # Load the ONNX model using ONNX Runtime
         self.ort = ort.InferenceSession(model_path, providers=self.provider)
         # Preload the model for faster performance
-        self.ort.run(None, {'input': torch.rand(1, 4, params.dim_f, params.dim_t).numpy()})
-        self.process = lambda spec: self.ort.run(None, {'input': spec.cpu().numpy()})[0]
+        self.ort.run(
+            None, {"input": torch.rand(1, 4, params.dim_f, params.dim_t).numpy()}
+        )
+        self.process = lambda spec: self.ort.run(None, {"input": spec.cpu().numpy()})[0]
 
         self.prog = None
 
     @staticmethod
     def get_hash(model_path):
         try:
-            with open(model_path, 'rb') as f:
-                f.seek(- 10000 * 1024, 2)
+            with open(model_path, "rb") as f:
+                f.seek(-10000 * 1024, 2)
                 model_hash = hashlib.md5(f.read()).hexdigest()
         except:
-            model_hash = hashlib.md5(open(model_path, 'rb').read()).hexdigest()
+            model_hash = hashlib.md5(open(model_path, "rb").read()).hexdigest()
 
         return model_hash
 
     @staticmethod
-    def segment(wave, combine=True, chunk_size=DEFAULT_CHUNK_SIZE, margin_size=DEFAULT_MARGIN_SIZE):
+    def segment(
+        wave,
+        combine=True,
+        chunk_size=DEFAULT_CHUNK_SIZE,
+        margin_size=DEFAULT_MARGIN_SIZE,
+    ):
         """
         Segment or join segmented wave array
 
@@ -114,7 +154,9 @@ class MDX:
                 if processed_wave is None:  # Create array for first segment
                     processed_wave = segment[:, start:end]
                 else:  # Concatenate to existing array for subsequent segments
-                    processed_wave = np.concatenate((processed_wave, segment[:, start:end]), axis=-1)
+                    processed_wave = np.concatenate(
+                        (processed_wave, segment[:, start:end]), axis=-1
+                    )
 
         else:
             processed_wave = []
@@ -159,11 +201,13 @@ class MDX:
         pad = gen_size - n_sample % gen_size
 
         # Padded wave
-        wave_p = np.concatenate((np.zeros((2, trim)), wave, np.zeros((2, pad)), np.zeros((2, trim))), 1)
+        wave_p = np.concatenate(
+            (np.zeros((2, trim)), wave, np.zeros((2, pad)), np.zeros((2, trim))), 1
+        )
 
         mix_waves = []
         for i in range(0, n_sample + pad, gen_size):
-            waves = np.array(wave_p[:, i:i + self.model.chunk_size])
+            waves = np.array(wave_p[:, i : i + self.model.chunk_size])
             mix_waves.append(waves)
 
         mix_waves = torch.tensor(mix_waves, dtype=torch.float32).to(self.device)
@@ -192,7 +236,13 @@ class MDX:
                 spec = self.model.stft(mix_wave)
                 processed_spec = torch.tensor(self.process(spec))
                 processed_wav = self.model.istft(processed_spec.to(self.device))
-                processed_wav = processed_wav[:, :, trim:-trim].transpose(0, 1).reshape(2, -1).cpu().numpy()
+                processed_wav = (
+                    processed_wav[:, :, trim:-trim]
+                    .transpose(0, 1)
+                    .reshape(2, -1)
+                    .cpu()
+                    .numpy()
+                )
                 pw.append(processed_wav)
         processed_signal = np.concatenate(pw, axis=-1)[:, :-pad]
         q.put({_id: processed_signal})
@@ -219,7 +269,9 @@ class MDX:
         for c, batch in enumerate(waves):
             mix_waves, pad, trim = self.pad_wave(batch)
             self.prog.total = len(mix_waves) * mt_threads
-            thread = threading.Thread(target=self._process_wave, args=(mix_waves, trim, pad, q, c))
+            thread = threading.Thread(
+                target=self._process_wave, args=(mix_waves, trim, pad, q, c)
+            )
             thread.start()
             threads.append(thread)
         for thread in threads:
@@ -229,14 +281,32 @@ class MDX:
         processed_batches = []
         while not q.empty():
             processed_batches.append(q.get())
-        processed_batches = [list(wave.values())[0] for wave in
-                             sorted(processed_batches, key=lambda d: list(d.keys())[0])]
-        assert len(processed_batches) == len(waves), 'Incomplete processed batches, please reduce batch size!'
+        processed_batches = [
+            list(wave.values())[0]
+            for wave in sorted(processed_batches, key=lambda d: list(d.keys())[0])
+        ]
+        assert len(processed_batches) == len(
+            waves
+        ), "Incomplete processed batches, please reduce batch size!"
         return self.segment(processed_batches, True, chunk)
 
 
-def run_mdx(model_params, output_dir, model_path, filename, exclude_main=False, exclude_inversion=False, suffix=None, invert_suffix=None, denoise=False, keep_orig=True, m_threads=2):
-    device = torch.device('cuda:0') if torch.cuda.is_available() else torch.device('cpu')
+def run_mdx(
+    model_params,
+    output_dir,
+    model_path,
+    filename,
+    exclude_main=False,
+    exclude_inversion=False,
+    suffix=None,
+    invert_suffix=None,
+    denoise=False,
+    keep_orig=True,
+    m_threads=2,
+):
+    device = (
+        torch.device("cuda:0") if torch.cuda.is_available() else torch.device("cpu")
+    )
 
     device_properties = torch.cuda.get_device_properties(device)
     vram_gb = device_properties.total_memory / 1024**3
@@ -250,7 +320,7 @@ def run_mdx(model_params, output_dir, model_path, filename, exclude_main=False, 
         dim_t=2 ** mp["mdx_dim_t_set"],
         n_fft=mp["mdx_n_fft_scale_set"],
         stem_name=mp["primary_stem"],
-        compensation=mp["compensate"]
+        compensation=mp["compensate"],
     )
 
     mdx_sess = MDX(model_path, model)
@@ -259,7 +329,9 @@ def run_mdx(model_params, output_dir, model_path, filename, exclude_main=False, 
     peak = max(np.max(wave), abs(np.min(wave)))
     wave /= peak
     if denoise:
-        wave_processed = -(mdx_sess.process_wave(-wave, m_threads)) + (mdx_sess.process_wave(wave, m_threads))
+        wave_processed = -(mdx_sess.process_wave(-wave, m_threads)) + (
+            mdx_sess.process_wave(wave, m_threads)
+        )
         wave_processed *= 0.5
     else:
         wave_processed = mdx_sess.process_wave(wave, m_threads)
@@ -269,14 +341,22 @@ def run_mdx(model_params, output_dir, model_path, filename, exclude_main=False, 
 
     main_filepath = None
     if not exclude_main:
-        main_filepath = os.path.join(output_dir, f"{os.path.basename(os.path.splitext(filename)[0])}_{stem_name}.wav")
+        main_filepath = os.path.join(
+            output_dir,
+            f"{os.path.basename(os.path.splitext(filename)[0])}_{stem_name}.wav",
+        )
         sf.write(main_filepath, wave_processed.T, sr)
 
     invert_filepath = None
     if not exclude_inversion:
-        diff_stem_name = stem_naming.get(stem_name) if invert_suffix is None else invert_suffix
+        diff_stem_name = (
+            stem_naming.get(stem_name) if invert_suffix is None else invert_suffix
+        )
         stem_name = f"{stem_name}_diff" if diff_stem_name is None else diff_stem_name
-        invert_filepath = os.path.join(output_dir, f"{os.path.basename(os.path.splitext(filename)[0])}_{stem_name}.wav")
+        invert_filepath = os.path.join(
+            output_dir,
+            f"{os.path.basename(os.path.splitext(filename)[0])}_{stem_name}.wav",
+        )
         sf.write(invert_filepath, (-wave_processed.T * model.compensation) + wave.T, sr)
 
     if not keep_orig:

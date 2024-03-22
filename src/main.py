@@ -314,6 +314,10 @@ def add_audio_effects(
 def combine_audio(
     audio_paths, output_path, main_gain, backup_gain, inst_gain, output_format
 ):
+    if output_format == "m4a":
+        output_format = "ipod"
+    elif output_format == "aac":
+        output_format = "adts"
     main_vocal_audio = AudioSegment.from_wav(audio_paths[0]) - 4 + main_gain
     backup_vocal_audio = AudioSegment.from_wav(audio_paths[1]) - 6 + backup_gain
     instrumental_audio = AudioSegment.from_wav(audio_paths[2]) - 7 + inst_gain

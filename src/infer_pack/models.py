@@ -11,7 +11,7 @@ from torch.nn import Conv1d, ConvTranspose1d, AvgPool1d, Conv2d
 from torch.nn.utils import weight_norm, remove_weight_norm, spectral_norm
 from infer_pack.commons import init_weights
 import numpy as np
-from infer_pack import commons
+from infer_pack import commons 
 
 
 class TextEncoder256(nn.Module):
@@ -333,13 +333,17 @@ class SineGen(torch.nn.Module):
                 f0_buf[:, :, idx + 1] = f0_buf[:, :, 0] * (
                     idx + 2
                 )  # idx + 2: the (idx+1)-th overtone, (idx+2)-th harmonic
-            rad_values = (f0_buf / self.sampling_rate) % 1  ###%1意味着n_har的乘积无法后处理优化
+            rad_values = (
+                f0_buf / self.sampling_rate
+            ) % 1  ###%1意味着n_har的乘积无法后处理优化
             rand_ini = torch.rand(
                 f0_buf.shape[0], f0_buf.shape[2], device=f0_buf.device
             )
             rand_ini[:, 0] = 0
             rad_values[:, 0, :] = rad_values[:, 0, :] + rand_ini
-            tmp_over_one = torch.cumsum(rad_values, 1)  # % 1  #####%1意味着后面的cumsum无法再优化
+            tmp_over_one = torch.cumsum(
+                rad_values, 1
+            )  # % 1  #####%1意味着后面的cumsum无法再优化
             tmp_over_one *= upp
             tmp_over_one = F.interpolate(
                 tmp_over_one.transpose(2, 1),

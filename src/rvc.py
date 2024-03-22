@@ -31,11 +31,11 @@ class Config:
             i_device = int(self.device.split(":")[-1])
             self.gpu_name = torch.cuda.get_device_name(i_device)
             if (
-                    ("16" in self.gpu_name and "V100" not in self.gpu_name.upper())
-                    or "P40" in self.gpu_name.upper()
-                    or "1060" in self.gpu_name
-                    or "1070" in self.gpu_name
-                    or "1080" in self.gpu_name
+                ("16" in self.gpu_name and "V100" not in self.gpu_name.upper())
+                or "P40" in self.gpu_name.upper()
+                or "1060" in self.gpu_name
+                or "1070" in self.gpu_name
+                or "1080" in self.gpu_name
             ):
                 print("16 series/10 series P40 forced single precision")
                 self.is_half = False
@@ -44,9 +44,13 @@ class Config:
                         strr = f.read().replace("true", "false")
                     with open(BASE_DIR / "src" / "configs" / config_file, "w") as f:
                         f.write(strr)
-                with open(BASE_DIR / "src" / "trainset_preprocess_pipeline_print.py", "r") as f:
+                with open(
+                    BASE_DIR / "src" / "trainset_preprocess_pipeline_print.py", "r"
+                ) as f:
                     strr = f.read().replace("3.7", "3.0")
-                with open(BASE_DIR / "src" / "trainset_preprocess_pipeline_print.py", "w") as f:
+                with open(
+                    BASE_DIR / "src" / "trainset_preprocess_pipeline_print.py", "w"
+                ) as f:
                     f.write(strr)
             else:
                 self.gpu_name = None
@@ -58,9 +62,13 @@ class Config:
                 + 0.4
             )
             if self.gpu_mem <= 4:
-                with open(BASE_DIR / "src" / "trainset_preprocess_pipeline_print.py", "r") as f:
+                with open(
+                    BASE_DIR / "src" / "trainset_preprocess_pipeline_print.py", "r"
+                ) as f:
                     strr = f.read().replace("3.7", "3.0")
-                with open(BASE_DIR / "src" / "trainset_preprocess_pipeline_print.py", "w") as f:
+                with open(
+                    BASE_DIR / "src" / "trainset_preprocess_pipeline_print.py", "w"
+                ) as f:
                     f.write(strr)
         elif torch.backends.mps.is_available():
             print("No supported N-card found, use MPS for inference")
@@ -96,7 +104,10 @@ class Config:
 
 
 def load_hubert(device, is_half, model_path):
-    models, saved_cfg, task = checkpoint_utils.load_model_ensemble_and_task([model_path], suffix='', )
+    models, saved_cfg, task = checkpoint_utils.load_model_ensemble_and_task(
+        [model_path],
+        suffix="",
+    )
     hubert = models[0]
     hubert = hubert.to(device)
 
@@ -110,9 +121,11 @@ def load_hubert(device, is_half, model_path):
 
 
 def get_vc(device, is_half, config, model_path):
-    cpt = torch.load(model_path, map_location='cpu')
+    cpt = torch.load(model_path, map_location="cpu")
     if "config" not in cpt or "weight" not in cpt:
-        raise ValueError(f'Incorrect format for {model_path}. Use a voice model trained using RVC v2 instead.')
+        raise ValueError(
+            f"Incorrect format for {model_path}. Use a voice model trained using RVC v2 instead."
+        )
 
     tgt_sr = cpt["config"][-1]
     cpt["config"][-3] = cpt["weight"]["emb_g.weight"].shape[0]
@@ -143,9 +156,45 @@ def get_vc(device, is_half, config, model_path):
     return cpt, version, net_g, tgt_sr, vc
 
 
-def rvc_infer(index_path, index_rate, input_path, output_path, pitch_change, f0_method, cpt, version, net_g, filter_radius, tgt_sr, rms_mix_rate, protect, crepe_hop_length, vc, hubert_model):
+def rvc_infer(
+    index_path,
+    index_rate,
+    input_path,
+    output_path,
+    pitch_change,
+    f0_method,
+    cpt,
+    version,
+    net_g,
+    filter_radius,
+    tgt_sr,
+    rms_mix_rate,
+    protect,
+    crepe_hop_length,
+    vc,
+    hubert_model,
+):
     audio = load_audio(input_path, 16000)
     times = [0, 0, 0]
-    if_f0 = cpt.get('f0', 1)
-    audio_opt = vc.pipeline(hubert_model, net_g, 0, audio, input_path, times, pitch_change, f0_method, index_path, index_rate, if_f0, filter_radius, tgt_sr, 0, rms_mix_rate, version, protect, crepe_hop_length)
+    if_f0 = cpt.get("f0", 1)
+    audio_opt = vc.pipeline(
+        hubert_model,
+        net_g,
+        0,
+        audio,
+        input_path,
+        times,
+        pitch_change,
+        f0_method,
+        index_path,
+        index_rate,
+        if_f0,
+        filter_radius,
+        tgt_sr,
+        0,
+        rms_mix_rate,
+        version,
+        protect,
+        crepe_hop_length,
+    )
     wavfile.write(output_path, tgt_sr, audio_opt)

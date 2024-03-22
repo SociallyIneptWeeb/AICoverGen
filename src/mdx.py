@@ -303,6 +303,7 @@ def run_mdx(
     denoise=False,
     keep_orig=True,
     m_threads=2,
+    sr=44100,
 ):
     device = (
         torch.device("cuda:0") if torch.cuda.is_available() else torch.device("cpu")
@@ -324,7 +325,7 @@ def run_mdx(
     )
 
     mdx_sess = MDX(model_path, model)
-    wave, sr = librosa.load(filename, mono=False, sr=44100)
+    wave, sr = librosa.load(filename, mono=False, sr=sr)
     # normalizing input wave gives better output
     peak = max(np.max(wave), abs(np.min(wave)))
     wave /= peak
@@ -340,11 +341,9 @@ def run_mdx(
     stem_name = model.stem_name if suffix is None else suffix
 
     main_filepath = None
+    base_name = os.path.basename(os.path.splitext(filename)[0]).removesuffix(f"_{sr}")
     if not exclude_main:
-        main_filepath = os.path.join(
-            output_dir,
-            f"{os.path.basename(os.path.splitext(filename)[0])}_{stem_name}.wav",
-        )
+        main_filepath = os.path.join(output_dir, f"{base_name}_{stem_name}_{sr}.wav")
         sf.write(main_filepath, wave_processed.T, sr)
 
     invert_filepath = None
@@ -353,10 +352,7 @@ def run_mdx(
             stem_naming.get(stem_name) if invert_suffix is None else invert_suffix
         )
         stem_name = f"{stem_name}_diff" if diff_stem_name is None else diff_stem_name
-        invert_filepath = os.path.join(
-            output_dir,
-            f"{os.path.basename(os.path.splitext(filename)[0])}_{stem_name}.wav",
-        )
+        invert_filepath = os.path.join(output_dir, f"{base_name}_{stem_name}_{sr}.wav")
         sf.write(invert_filepath, (-wave_processed.T * model.compensation) + wave.T, sr)
 
     if not keep_orig:

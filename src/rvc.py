@@ -173,11 +173,12 @@ def rvc_infer(
     crepe_hop_length,
     vc,
     hubert_model,
+    resample_sr,
 ):
     audio = load_audio(input_path, 16000)
     times = [0, 0, 0]
     if_f0 = cpt.get("f0", 1)
-    audio_opt = vc.pipeline(
+    audio_opt, output_sr = vc.pipeline(
         hubert_model,
         net_g,
         0,
@@ -191,10 +192,10 @@ def rvc_infer(
         if_f0,
         filter_radius,
         tgt_sr,
-        0,
+        resample_sr,
         rms_mix_rate,
         version,
         protect,
         crepe_hop_length,
     )
-    wavfile.write(output_path, tgt_sr, audio_opt)
+    wavfile.write(output_path, output_sr, audio_opt)

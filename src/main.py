@@ -104,21 +104,21 @@ def get_rvc_model(voice_model, is_webui):
     )
 
 
-def get_audio_paths(song_dir):
+def get_audio_paths(song_dir, sr):
     orig_song_path = None
     instrumentals_path = None
     main_vocals_dereverb_path = None
     backup_vocals_path = None
 
     for file in os.listdir(song_dir):
-        if file.endswith("_Instrumental.wav"):
+        if file.endswith(f"_Instrumental_{sr}.wav"):
             instrumentals_path = os.path.join(song_dir, file)
             orig_song_path = instrumentals_path.replace("_Instrumental", "")
 
-        elif file.endswith("_Vocals_Main_DeReverb.wav"):
+        elif file.endswith(f"_Vocals_Main_DeReverb_{sr}.wav"):
             main_vocals_dereverb_path = os.path.join(song_dir, file)
 
-        elif file.endswith("_Vocals_Backup.wav"):
+        elif file.endswith(f"_Vocals_Backup_{sr}.wav"):
             backup_vocals_path = os.path.join(song_dir, file)
 
     return (
@@ -173,7 +173,13 @@ def display_progress(message, percent, is_webui, progress=None):
 
 
 def preprocess_song(
-    song_input, mdx_model_params, song_id, is_webui, input_type, progress=None
+    song_input,
+    mdx_model_params,
+    song_id,
+    is_webui,
+    input_type,
+    progress=None,
+    output_sr=44100,
 ):
     keep_orig = False
     if input_type == "yt":
@@ -199,6 +205,7 @@ def preprocess_song(
         orig_song_path,
         denoise=True,
         keep_orig=keep_orig,
+        sr=output_sr,
     )
 
     display_progress(
@@ -212,6 +219,7 @@ def preprocess_song(
         suffix="Backup",
         invert_suffix="Main",
         denoise=True,
+        sr=output_sr,
     )
 
     display_progress("[~] Applying DeReverb to Vocals...", 0.3, is_webui, progress)
@@ -223,6 +231,7 @@ def preprocess_song(
         invert_suffix="DeReverb",
         exclude_main=True,
         denoise=True,
+        sr=output_sr,
     )
 
     return (
@@ -247,6 +256,7 @@ def voice_change(
     protect,
     crepe_hop_length,
     is_webui,
+    output_sr,
 ):
     rvc_model_path, rvc_index_path = get_rvc_model(voice_model, is_webui)
     device = "cuda:0"
@@ -276,6 +286,7 @@ def voice_change(
         crepe_hop_length,
         vc,
         hubert_model,
+        output_sr,
     )
     del hubert_model, cpt
     gc.collect()
@@ -347,6 +358,7 @@ def song_cover_pipeline(
     reverb_dry=0.8,
     reverb_damping=0.7,
     output_format="mp3",
+    output_sr=44100,
     progress=gr.Progress(),
 ):
     try:
@@ -394,12 +406,18 @@ def song_cover_pipeline(
                 backup_vocals_path,
                 main_vocals_dereverb_path,
             ) = preprocess_song(
-                song_input, mdx_model_params, song_id, is_webui, input_type, progress
+                song_input,
+                mdx_model_params,
+                song_id,
+                is_webui,
+                input_type,
+                progress,
+                output_sr,
             )
 
         else:
             vocals_path, main_vocals_path = None, None
-            paths = get_audio_paths(song_dir)
+            paths = get_audio_paths(song_dir, output_sr)
 
             # if any of the audio files aren't available or keep intermediate files, rerun preprocess
             if any(path is None for path in paths) or keep_files:
@@ -417,6 +435,7 @@ def song_cover_pipeline(
                     is_webui,
                     input_type,
                     progress,
+                    output_sr,
                 )
             else:
                 (
@@ -452,6 +471,7 @@ def song_cover_pipeline(
                 protect,
                 crepe_hop_length,
                 is_webui,
+                output_sr,
             )
 
         display_progress(
@@ -634,6 +654,13 @@ if __name__ == "__main__":
         default="mp3",
         help="Output format of audio file. mp3 for smaller file size, wav for best quality",
     )
+    parser.add_argument(
+        "-osr",
+        "--output-sr",
+        type=int,
+        default=44100,
+        help="Sample rate of generated audio files (also including intermediate audio files)",
+    )
     args = parser.parse_args()
 
     rvc_dirname = args.rvc_dirname
@@ -662,5 +689,6 @@ if __name__ == "__main__":
         reverb_dry=args.reverb_dryness,
         reverb_damping=args.reverb_damping,
         output_format=args.output_format,
+        output_sr=args.output_sr,
     )
     print(f"[+] Cover generated at {cover_path}")

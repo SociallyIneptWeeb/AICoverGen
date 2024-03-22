@@ -424,7 +424,7 @@ if __name__ == "__main__":
                     components=[song_input, rvc_model, keep_files, local_file],
                 )
                 generate_btn = gr.Button("Generate", variant="primary")
-                ai_cover = gr.Audio(label="AI Cover", show_share_button=False)
+                ai_cover = gr.Audio(label="AI Cover", show_download_button=False)
 
             ref_btn.click(update_models_list, None, outputs=rvc_model)
             is_webui = gr.Number(value=1, visible=False)

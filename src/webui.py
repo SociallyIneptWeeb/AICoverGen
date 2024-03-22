@@ -423,6 +423,12 @@ if __name__ == "__main__":
                     value="mp3",
                     label="Output file type",
                 )
+                output_sr = gr.Radio(
+                    choices=[16000, 44100, 48000, 96000, 192000],
+                    value=44100,
+                    label="Output sample rate",
+                    info="Sample rate of generated audio files (including intermediate files)",
+                )
 
             with gr.Row():
                 clear_btn = gr.ClearButton(
@@ -457,6 +463,7 @@ if __name__ == "__main__":
                     reverb_dry,
                     reverb_damping,
                     output_format,
+                    output_sr,
                 ],
                 outputs=[ai_cover],
             )

@@ -409,8 +409,7 @@ if __name__ == "__main__":
                         label="Damping level",
                         info="Absorption of high frequencies in the reverb",
                     )
-
-                gr.Markdown("### Audio Output Format")
+            with gr.Accordion("Audio output options", open=False):
                 output_format = gr.Dropdown(
                     [
                         "mp3",

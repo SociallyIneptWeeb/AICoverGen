@@ -7,7 +7,12 @@ from argparse import ArgumentParser
 
 import gradio as gr
 
+import asyncio
+
 from main import song_cover_pipeline
+
+if os.name == "nt":
+    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 

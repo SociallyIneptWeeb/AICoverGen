@@ -7,12 +7,7 @@ from argparse import ArgumentParser
 
 import gradio as gr
 
-import asyncio
-
 from main import song_cover_pipeline
-
-if os.name == "nt":
-    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -29,7 +24,7 @@ def get_current_models(models_dir):
 
 def update_models_list():
     models_l = get_current_models(rvc_models_dir)
-    return gr.Dropdown.update(choices=models_l)
+    return gr.Dropdown(choices=models_l)
 
 
 def load_public_models():
@@ -46,9 +41,7 @@ def load_public_models():
             models_table.append(model)
 
     tags = list(public_models["tags"].keys())
-    return gr.DataFrame.update(value=models_table), gr.CheckboxGroup.update(
-        choices=tags
-    )
+    return gr.DataFrame(value=models_table), gr.CheckboxGroup(choices=tags)
 
 
 def extract_zip(extraction_folder, zip_name):
@@ -195,11 +188,11 @@ def filter_models(tags, query):
                     ]
                 )
 
-    return gr.DataFrame.update(value=models_table)
+    return gr.DataFrame(value=models_table)
 
 
 def pub_dl_autofill(pub_models, event: gr.SelectData):
-    return gr.Text.update(value=pub_models.loc[event.index[0], "URL"]), gr.Text.update(
+    return gr.Text(value=pub_models.loc[event.index[0], "URL"]), gr.Text(
         value=pub_models.loc[event.index[0], "Model Name"]
     )
 
@@ -440,7 +433,7 @@ if __name__ == "__main__":
                     components=[song_input, rvc_model, keep_files, local_file],
                 )
                 generate_btn = gr.Button("Generate", variant="primary")
-                ai_cover = gr.Audio(label="AI Cover", show_download_button=False)
+                ai_cover = gr.Audio(label="AI Cover")
 
             ref_btn.click(update_models_list, None, outputs=rvc_model)
             is_webui = gr.Number(value=1, visible=False)
@@ -605,7 +598,7 @@ if __name__ == "__main__":
                     inputs=[filter_tags, search_query],
                     outputs=public_models_table,
                 )
-                filter_tags.change(
+                filter_tags.select(
                     filter_models,
                     inputs=[filter_tags, search_query],
                     outputs=public_models_table,
@@ -644,10 +637,9 @@ if __name__ == "__main__":
                     inputs=[zip_file, local_model_name],
                     outputs=local_upload_output_message,
                 )
-
+    app.queue()
     app.launch(
         share=args.share_enabled,
-        enable_queue=True,
         server_name=None if not args.listen else (args.listen_host or "0.0.0.0"),
         server_port=args.listen_port,
     )

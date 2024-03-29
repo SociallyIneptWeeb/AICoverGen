@@ -6,7 +6,7 @@ gradio==4.21.0
 lib==4.0.0
 librosa==0.9.1
 numpy==1.23.5
-onnxruntime_gpu
+onnxruntime-gpu
 praat-parselmouth>=0.4.2
 pedalboard==0.7.7
 pydub==0.25.1
@@ -20,4 +20,4 @@ torchcrepe==0.0.20
 tqdm==4.65.0
 yt_dlp==2023.7.6
 sox==1.4.1
-tensorboardX==2.6.2.2
+tensorboardX

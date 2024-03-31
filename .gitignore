@@ -1,4 +1,6 @@
 # MDX Models
+
+song_output
 mdxnet_models/*.onnx
 
 # RVC Models

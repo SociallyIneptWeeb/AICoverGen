@@ -63,7 +63,7 @@ def get_youtube_video_id(url, ignore_playlist=True):
 
 
 def yt_download(link, song_output_dir):
-    outtmpl = os.path.join(song_output_dir, "%(title)s")
+    outtmpl = os.path.join(song_output_dir, "%(title)s_Original")
     ydl_opts = {
         "format": "bestaudio",
         "outtmpl": outtmpl,
@@ -107,21 +107,6 @@ def get_rvc_model(voice_model, is_webui):
     )
 
 
-def convert_to_stereo(audio_path):
-    wave, sr = librosa.load(audio_path, mono=False, sr=44100)
-
-    # check if mono
-    if type(wave[0]) != np.ndarray:
-        stereo_path = f"{os.path.splitext(audio_path)[0]}_stereo.wav"
-        command = shlex.split(
-            f'ffmpeg -y -loglevel error -i "{audio_path}" -ac 2 -f wav "{stereo_path}"'
-        )
-        subprocess.run(command)
-        return stereo_path
-    else:
-        return audio_path
-
-
 def pitch_shift(audio_path, output_path, pitch_change):
     y, sr = sf.read(audio_path)
     tfm = sox.Transformer()
@@ -159,21 +144,27 @@ def preprocess_song(
         audio_type: os.path.join(song_output_dir, file)
         for file in os.listdir(song_output_dir)
         for audio_type in [
+            "Original",
+            "Stereo",
             "Vocals",
             "Instrumental",
             "Vocals_Main",
             "Vocals_Backup",
             "Vocals_Main_DeReverb",
         ]
-        if file.endswith(f"_{audio_type}_sr_{output_sr}.wav")
+        if os.path.splitext(file)[0]
+        .removesuffix(f"_sr_{output_sr}")
+        .endswith(audio_type)
     }
+    orig_song_path = audio_paths.get("Original")
+    stereo_path = audio_paths.get("Stereo")
     vocals_path = audio_paths.get("Vocals")
     instrumentals_path = audio_paths.get("Instrumental")
     main_vocals_path = audio_paths.get("Vocals_Main")
     backup_vocals_path = audio_paths.get("Vocals_Backup")
     main_vocals_dereverb_path = audio_paths.get("Vocals_Main_DeReverb")
 
-    if not (vocals_path and instrumentals_path):
+    if not orig_song_path:
         if input_type == "yt":
             display_progress(
                 "[~] Downloading song...",
@@ -184,9 +175,31 @@ def preprocess_song(
             song_link = song_input.split("&")[0]
             orig_song_path = yt_download(song_link, song_output_dir)
         else:
-            orig_song_path = song_input
+            song_input_base = os.path.basename(song_input)
+            song_input_name, song_input_ext = os.path.splitext(song_input_base)
+            orig_song_name = f"{song_input_name}_Original"
+            orig_song_path = os.path.join(
+                song_output_dir, orig_song_name + song_input_ext
+            )
+            shutil.copyfile(song_input, orig_song_path)
 
-        orig_song_path = convert_to_stereo(orig_song_path)
+    if not stereo_path:
+        wave, _ = librosa.load(orig_song_path, mono=False, sr=44100)
+        # check if mono
+        if type(wave[0]) != np.ndarray:
+            display_progress(
+                "[~] Converting Song to stereo...",
+                0.05,
+                is_webui,
+                progress,
+            )
+            stereo_path = f"{os.path.splitext(orig_song_path)[0]}_Stereo.wav"
+            command = shlex.split(
+                f'ffmpeg -y -loglevel error -i "{orig_song_path}" -ac 2 -f wav "{stereo_path}"'
+            )
+            subprocess.run(command)
+
+    if not (vocals_path and instrumentals_path):
 
         display_progress(
             "[~] Separating Vocals from Instrumental...",
@@ -198,7 +211,7 @@ def preprocess_song(
             mdx_model_params,
             song_output_dir,
             os.path.join(mdxnet_models_dir, "UVR-MDX-NET-Voc_FT.onnx"),
-            orig_song_path,
+            stereo_path or orig_song_path,
             denoise=True,
             sr=output_sr,
         )
@@ -239,7 +252,10 @@ def preprocess_song(
         )
 
     return (
+        orig_song_path,
+        vocals_path,
         instrumentals_path,
+        main_vocals_path,
         backup_vocals_path,
         main_vocals_dereverb_path,
     )
@@ -401,7 +417,10 @@ def song_cover_pipeline(
 
         Path(song_dir).mkdir(parents=True, exist_ok=True)
         (
+            orig_song_path,
+            vocals_path,
             instrumentals_path,
+            main_vocals_path,
             backup_vocals_path,
             main_vocals_dereverb_path,
         ) = preprocess_song(
@@ -465,7 +484,8 @@ def song_cover_pipeline(
                 reverb_dry,
                 reverb_damping,
             )
-
+        instrumentals_shifted_path = None
+        backup_vocals_shifted_path = None
         if pitch_change_all != 0:
             instrumentals_shifted_path = (
                 f"{os.path.splitext(instrumentals_path)[0]}_p_{pitch_change_all}.wav"
@@ -497,8 +517,6 @@ def song_cover_pipeline(
                     backup_vocals_shifted_path,
                     pitch_change_all,
                 )
-            instrumentals_path = instrumentals_shifted_path
-            backup_vocals_path = backup_vocals_shifted_path
 
         combined_audio_path = (
             f"{os.path.splitext(ai_vocals_mixed_path)[0]}_combined_mg_{main_gain}"
@@ -515,8 +533,8 @@ def song_cover_pipeline(
             combine_audio(
                 [
                     ai_vocals_mixed_path,
-                    backup_vocals_path,
-                    instrumentals_path,
+                    backup_vocals_shifted_path or backup_vocals_path,
+                    instrumentals_shifted_path or instrumentals_path,
                 ],
                 combined_audio_path,
                 main_gain,
@@ -524,16 +542,13 @@ def song_cover_pipeline(
                 inst_gain,
                 output_format,
             )
-        orig_song_path = main_vocals_dereverb_path_base.removesuffix(
-            f"_Vocals_Main_DeReverb_sr_{output_sr}"
-        )
+        orig_song_path_base = orig_song_path.removesuffix(f"_Original")
         ai_cover_path = os.path.join(
             output_dir,
-            f"{orig_song_path}({voice_model} Ver).{output_format}",
+            f"{orig_song_path_base}({voice_model} Ver).{output_format}",
         )
 
         shutil.copyfile(combined_audio_path, ai_cover_path)
-
         if not keep_files:
             display_progress(
                 "[~] Removing intermediate audio files...",
@@ -542,9 +557,28 @@ def song_cover_pipeline(
                 progress,
             )
             shutil.rmtree(song_dir)
+            orig_song_path = None
+            vocals_path = None
+            instrumentals_path = None
+            main_vocals_path = None
+            backup_vocals_path = None
+            main_vocals_dereverb_path = None
+            ai_vocals_path = None
+            ai_vocals_mixed_path = None
 
-        return ai_cover_path
-
+        return (
+            orig_song_path,
+            vocals_path,
+            instrumentals_path,
+            main_vocals_path,
+            backup_vocals_path,
+            main_vocals_dereverb_path,
+            ai_vocals_path,
+            ai_vocals_mixed_path,
+            instrumentals_shifted_path,
+            backup_vocals_shifted_path,
+            ai_cover_path,
+        )
     except Exception as e:
         raise_exception(str(e), is_webui)
 

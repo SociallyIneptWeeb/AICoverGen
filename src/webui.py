@@ -399,6 +399,52 @@ with gr.Blocks(title="AICoverGenWebUI") as app:
                 label="Output sample rate",
                 info="Sample rate of generated audio files (including intermediate files)",
             )
+        with gr.Accordion("Access intermediate files", open=False):
+            with gr.Accordion(
+                "Step 0: Input",
+                open=False,
+            ):
+                input_song = gr.Audio(label="Original song")
+            with gr.Accordion(
+                "Step 1: Instruments/vocals separation",
+                open=False,
+            ):
+                with gr.Row():
+                    instrumentals_track = gr.Audio(label="Instruments")
+                    vocals_track = gr.Audio(label="Vocals")
+            with gr.Accordion(
+                "Step 2: Main vocals/ background vocals separation",
+                open=False,
+            ):
+                with gr.Row():
+                    main_vocals_track = gr.Audio(label="Main vocals")
+                    background_vocals_track = gr.Audio(label="Background vocals")
+            with gr.Accordion(
+                "Step 3: Main vocals cleanup",
+                open=False,
+            ):
+                main_vocals_dereverbed_track = gr.Audio(label="Vocals dereverbed")
+            with gr.Accordion(
+                "Step 4: Voice conversion",
+                open=False,
+            ):
+                ai_vocals_track = gr.Audio(label="AI vocals")
+            with gr.Accordion(
+                "Step 5: Voice post-processing",
+                open=False,
+            ):
+                mixed_ai_vocals_track = gr.Audio(label="Post-processed AI vocals")
+            with gr.Accordion(
+                "Step 6: Pitch shift of instrumentals and background vocals",
+                open=False,
+            ):
+                with gr.Row():
+                    instrumentals_shifted_track = gr.Audio(
+                        label="Pitch-shifted instrumentals"
+                    )
+                    background_vocals_shifted_track = gr.Audio(
+                        label="Pitch-shifted background vocals"
+                    )
 
         with gr.Row():
             clear_btn = gr.ClearButton(
@@ -435,7 +481,19 @@ with gr.Blocks(title="AICoverGenWebUI") as app:
                 output_format,
                 output_sr,
             ],
-            outputs=[ai_cover],
+            outputs=[
+                input_song,
+                vocals_track,
+                instrumentals_track,
+                main_vocals_track,
+                background_vocals_track,
+                main_vocals_dereverbed_track,
+                ai_vocals_track,
+                mixed_ai_vocals_track,
+                instrumentals_shifted_track,
+                background_vocals_shifted_track,
+                ai_cover,
+            ],
         )
         clear_btn.click(
             lambda: [
@@ -456,6 +514,16 @@ with gr.Blocks(title="AICoverGenWebUI") as app:
                 0.7,
                 "mp3",
                 None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
             ],
             outputs=[
                 pitch,
@@ -474,6 +542,16 @@ with gr.Blocks(title="AICoverGenWebUI") as app:
                 reverb_dry,
                 reverb_damping,
                 output_format,
+                input_song,
+                vocals_track,
+                instrumentals_track,
+                main_vocals_track,
+                background_vocals_track,
+                main_vocals_dereverbed_track,
+                ai_vocals_track,
+                mixed_ai_vocals_track,
+                instrumentals_shifted_track,
+                background_vocals_shifted_track,
                 ai_cover,
             ],
         )

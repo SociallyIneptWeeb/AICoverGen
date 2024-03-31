@@ -339,6 +339,7 @@ with gr.Blocks(title="AICoverGenWebUI") as app:
                     )
             keep_files = gr.Checkbox(
                 label="Keep intermediate files",
+                value=True,
                 info="Keep all audio files generated in the song_output/id directory, e.g. Isolated Vocals/Instrumentals. Leave unchecked to save space",
             )
 

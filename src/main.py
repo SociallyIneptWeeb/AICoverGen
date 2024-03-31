@@ -11,14 +11,12 @@ from contextlib import suppress
 from urllib.parse import urlparse, parse_qs
 
 import gradio as gr
-import librosa
-import numpy as np
 import soundfile as sf
 import sox
 import yt_dlp
 from pedalboard import Pedalboard, Reverb, Compressor, HighpassFilter
 from pedalboard.io import AudioFile
-from pydub import AudioSegment
+from pydub import AudioSegment, utils as pydub_utils
 
 from mdx import run_mdx
 from rvc import Config, load_hubert, get_vc, rvc_infer
@@ -184,9 +182,9 @@ def preprocess_song(
             shutil.copyfile(song_input, orig_song_path)
 
     if not stereo_path:
-        wave, _ = librosa.load(orig_song_path, mono=False, sr=44100)
+        orig_song_info = pydub_utils.mediainfo(orig_song_path)
         # check if mono
-        if type(wave[0]) != np.ndarray:
+        if orig_song_info["channels"] == "1":
             display_progress(
                 "[~] Converting Song to stereo...",
                 0.05,

@@ -6,8 +6,67 @@ import zipfile
 from argparse import ArgumentParser
 
 import gradio as gr
+import asyncio
 
-from main import song_cover_pipeline
+from functools import partial
+
+from main import (
+    make_song_dir,
+    retrieve_song,
+    separate_vocals,
+    separate_main_vocals,
+    dereverb_main_vocals,
+    convert_main_vocals,
+    postprocess_main_vocals,
+    pitch_shift_background,
+    combine_w_background,
+    song_cover_pipeline,
+)
+
+if os.name == "nt":
+    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+
+progress_bar = gr.Progress()
+
+
+def exception_harness(fun, *args):
+    new_args = args + (progress_bar,)
+    try:
+        return fun(*new_args)
+    except Exception as e:
+        raise gr.Error(str(e))
+
+
+def duplication_harness(fun, *args):
+
+    res = exception_harness(fun, *args)
+    if not isinstance(res, tuple):
+        return (res, res)
+    else:
+        return (res[0],) + res
+
+
+def update_audio_components(*args):
+    res = song_cover_pipeline(*args)
+    if isinstance(res, tuple):
+        return res
+    else:
+        return (None,) * 10 + (res,)
+
+
+def combine_w_background_harness(
+    instrumentals_path,
+    backup_vocals_path,
+    instrumentals_shifted_path,
+    backup_vocals_shifted_path,
+    *args,
+):
+    return combine_w_background(
+        instrumentals_shifted_path or instrumentals_path,
+        backup_vocals_shifted_path or backup_vocals_path,
+        *args,
+    )
+
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -217,6 +276,12 @@ def show_hop_slider(pitch_detection_algo):
         return gr.update(visible=False)
 
 
+def toggle_intermediate_files_accordion(visible):
+    audio_components = (None,) * 10
+    accordions = (gr.update(open=False),) * 7
+    return (gr.update(visible=visible, open=False),) + accordions + audio_components
+
+
 voice_models = get_current_models(rvc_models_dir)
 with open(
     os.path.join(rvc_models_dir, "public_models.json"), encoding="utf8"
@@ -337,12 +402,6 @@ with gr.Blocks(title="AICoverGenWebUI") as app:
                     f0_method.change(
                         show_hop_slider, inputs=f0_method, outputs=crepe_hop_length
                     )
-            keep_files = gr.Checkbox(
-                label="Keep intermediate files",
-                value=True,
-                info="Keep all audio files generated in the song_output/id directory, e.g. Isolated Vocals/Instrumentals. Leave unchecked to save space",
-            )
-
         with gr.Accordion("Audio mixing options", open=False):
             gr.Markdown("### Volume Change (decibels)")
             with gr.Row():
@@ -399,71 +458,147 @@ with gr.Blocks(title="AICoverGenWebUI") as app:
                 label="Output sample rate",
                 info="Sample rate of generated audio files (including intermediate files)",
             )
-        with gr.Accordion("Access intermediate files", open=False):
-            with gr.Accordion(
+        with gr.Accordion("Intermediate file options", open=False):
+            with gr.Row():
+                keep_files = gr.Checkbox(
+                    label="Keep intermediate files",
+                    value=True,
+                    info="Keep all intermediate audio files generated in the song_output/id directory. Leave unchecked to save space",
+                )
+                show_intermediate_files = gr.Checkbox(
+                    label="Show intermediate files",
+                    value=False,
+                    info="Show available intermediate audio files when audio generation completes. Leave unchecked to optimize performance.",
+                )
+        intermediate_files_accordion = gr.Accordion(
+            "Access intermediate files", open=False, visible=False
+        )
+        with intermediate_files_accordion:
+            original_accordion = gr.Accordion(
                 "Step 0: Input",
                 open=False,
-            ):
-                input_song = gr.Audio(label="Original song")
-            with gr.Accordion(
+            )
+            with original_accordion:
+                original_track = gr.Audio(
+                    label="Original song", type="filepath", interactive=False
+                )
+            vocals_separation_accordion = gr.Accordion(
                 "Step 1: Instruments/vocals separation",
                 open=False,
-            ):
+            )
+            with vocals_separation_accordion:
                 with gr.Row():
-                    instrumentals_track = gr.Audio(label="Instruments")
-                    vocals_track = gr.Audio(label="Vocals")
-            with gr.Accordion(
+                    instrumentals_track = gr.Audio(
+                        label="Instruments", type="filepath", interactive=False
+                    )
+                    vocals_track = gr.Audio(
+                        label="Vocals", type="filepath", interactive=False
+                    )
+            main_vocals_separation_accordion = gr.Accordion(
                 "Step 2: Main vocals/ background vocals separation",
                 open=False,
-            ):
+            )
+            with main_vocals_separation_accordion:
                 with gr.Row():
-                    main_vocals_track = gr.Audio(label="Main vocals")
-                    background_vocals_track = gr.Audio(label="Background vocals")
-            with gr.Accordion(
+                    main_vocals_track = gr.Audio(
+                        label="Main vocals", type="filepath", interactive=False
+                    )
+                    background_vocals_track = gr.Audio(
+                        label="Background vocals", type="filepath", interactive=False
+                    )
+            main_vocals_cleanup_accordion = gr.Accordion(
                 "Step 3: Main vocals cleanup",
                 open=False,
-            ):
-                main_vocals_dereverbed_track = gr.Audio(label="Vocals dereverbed")
-            with gr.Accordion(
+            )
+            with main_vocals_cleanup_accordion:
+                main_vocals_dereverbed_track = gr.Audio(
+                    label="Vocals dereverbed", type="filepath", interactive=False
+                )
+            voice_conversion_accordion = gr.Accordion(
                 "Step 4: Voice conversion",
                 open=False,
-            ):
-                ai_vocals_track = gr.Audio(label="AI vocals")
-            with gr.Accordion(
+            )
+            with voice_conversion_accordion:
+                ai_vocals_track = gr.Audio(
+                    label="AI vocals", type="filepath", interactive=False
+                )
+            voice_postprocessing_accordion = gr.Accordion(
                 "Step 5: Voice post-processing",
                 open=False,
-            ):
-                mixed_ai_vocals_track = gr.Audio(label="Post-processed AI vocals")
-            with gr.Accordion(
+            )
+            with voice_postprocessing_accordion:
+                mixed_ai_vocals_track = gr.Audio(
+                    label="Post-processed AI vocals", type="filepath", interactive=False
+                )
+            pitch_shift_accordion = gr.Accordion(
                 "Step 6: Pitch shift of instrumentals and background vocals",
                 open=False,
-            ):
+            )
+            with pitch_shift_accordion:
                 with gr.Row():
                     instrumentals_shifted_track = gr.Audio(
-                        label="Pitch-shifted instrumentals"
+                        label="Pitch-shifted instrumentals",
+                        type="filepath",
+                        interactive=False,
                     )
                     background_vocals_shifted_track = gr.Audio(
-                        label="Pitch-shifted background vocals"
+                        label="Pitch-shifted background vocals",
+                        type="filepath",
+                        interactive=False,
                     )
 
         with gr.Row():
             clear_btn = gr.ClearButton(
                 value="Clear",
-                components=[song_input, rvc_model, keep_files, local_file],
+                components=[song_input, rvc_model, local_file],
+                scale=2,
             )
-            generate_btn = gr.Button("Generate", variant="primary")
-            ai_cover = gr.Audio(label="AI Cover")
+            generate_btn2 = gr.Button(
+                "Generate step-by-step", variant="primary", scale=1, visible=False
+            )
+            generate_btn = gr.Button("Generate", variant="primary", scale=2)
+            ai_cover = gr.Audio(label="AI Cover", scale=3)
+        show_intermediate_files.change(
+            toggle_intermediate_files_accordion,
+            inputs=show_intermediate_files,
+            outputs=[
+                intermediate_files_accordion,
+                original_accordion,
+                vocals_separation_accordion,
+                main_vocals_separation_accordion,
+                main_vocals_cleanup_accordion,
+                voice_conversion_accordion,
+                voice_postprocessing_accordion,
+                pitch_shift_accordion,
+                original_track,
+                vocals_track,
+                instrumentals_track,
+                main_vocals_track,
+                background_vocals_track,
+                main_vocals_dereverbed_track,
+                ai_vocals_track,
+                mixed_ai_vocals_track,
+                instrumentals_shifted_track,
+                background_vocals_shifted_track,
+            ],
+        )
 
         ref_btn.click(update_models_list, None, outputs=rvc_model)
-        is_webui = gr.Number(value=1, visible=False)
+        song_dir = gr.Text(visible=False)
+        input_type = gr.Text(visible=False)
         generate_btn.click(
-            song_cover_pipeline,
+            lambda: (gr.update(interactive=False),) * 2,
+            inputs=[],
+            outputs=[show_intermediate_files, generate_btn2],
+            show_progress=False,
+        ).success(
+            partial(exception_harness, update_audio_components),
             inputs=[
                 song_input,
                 rvc_model,
                 pitch,
                 keep_files,
-                is_webui,
+                show_intermediate_files,
                 main_gain,
                 backup_gain,
                 inst_gain,
@@ -482,7 +617,7 @@ with gr.Blocks(title="AICoverGenWebUI") as app:
                 output_sr,
             ],
             outputs=[
-                input_song,
+                original_track,
                 vocals_track,
                 instrumentals_track,
                 main_vocals_track,
@@ -494,6 +629,106 @@ with gr.Blocks(title="AICoverGenWebUI") as app:
                 background_vocals_shifted_track,
                 ai_cover,
             ],
+        ).then(
+            lambda: (gr.update(interactive=True),) * 2,
+            inputs=[],
+            outputs=[show_intermediate_files, generate_btn2],
+            show_progress=False,
+        )
+
+        generate_btn2.click(
+            lambda: (gr.update(interactive=False),) * 4,
+            inputs=[],
+            outputs=[show_intermediate_files, generate_btn, generate_btn2, clear_btn],
+            show_progress=False,
+        ).success(
+            partial(exception_harness, make_song_dir),
+            inputs=[
+                song_input,
+                rvc_model,
+            ],
+            outputs=[song_dir, input_type],
+        ).success(
+            partial(duplication_harness, retrieve_song),
+            inputs=[song_input, input_type, song_dir, output_sr],
+            outputs=[ai_cover, original_track],
+        ).success(
+            partial(duplication_harness, separate_vocals),
+            inputs=[song_dir, output_sr],
+            outputs=[ai_cover, vocals_track, instrumentals_track],
+        ).success(
+            partial(duplication_harness, separate_main_vocals),
+            inputs=[song_dir, output_sr],
+            outputs=[ai_cover, background_vocals_track, main_vocals_track],
+        ).success(
+            partial(duplication_harness, dereverb_main_vocals),
+            inputs=[song_dir, output_sr],
+            outputs=[ai_cover, main_vocals_dereverbed_track],
+        ).success(
+            partial(duplication_harness, convert_main_vocals),
+            inputs=[
+                main_vocals_dereverbed_track,
+                song_dir,
+                rvc_model,
+                pitch,
+                pitch_all,
+                index_rate,
+                filter_radius,
+                rms_mix_rate,
+                protect,
+                f0_method,
+                crepe_hop_length,
+                output_sr,
+            ],
+            outputs=[ai_cover, ai_vocals_track],
+        ).success(
+            partial(duplication_harness, postprocess_main_vocals),
+            inputs=[
+                ai_vocals_track,
+                song_dir,
+                reverb_rm_size,
+                reverb_wet,
+                reverb_dry,
+                reverb_damping,
+            ],
+            outputs=[ai_cover, mixed_ai_vocals_track],
+        ).success(
+            partial(duplication_harness, pitch_shift_background),
+            inputs=[
+                instrumentals_track,
+                background_vocals_track,
+                song_dir,
+                pitch_all,
+            ],
+            outputs=[
+                ai_cover,
+                instrumentals_shifted_track,
+                background_vocals_shifted_track,
+            ],
+        ).success(
+            partial(exception_harness, combine_w_background_harness),
+            inputs=[
+                instrumentals_track,
+                background_vocals_track,
+                instrumentals_shifted_track,
+                background_vocals_shifted_track,
+                original_track,
+                mixed_ai_vocals_track,
+                rvc_model,
+                song_dir,
+                pitch_all,
+                main_gain,
+                backup_gain,
+                inst_gain,
+                output_format,
+                keep_files,
+            ],
+            outputs=[ai_cover],
+        ).then(
+            lambda: (gr.update(interactive=True),) * 4,
+            inputs=[],
+            outputs=[show_intermediate_files, generate_btn, generate_btn2, clear_btn],
+            show_progress=False,
         )
         clear_btn.click(
             lambda: [
@@ -513,17 +748,9 @@ with gr.Blocks(title="AICoverGenWebUI") as app:
                 0.8,
                 0.7,
                 "mp3",
-                None,
-                None,
-                None,
-                None,
-                None,
-                None,
-                None,
-                None,
-                None,
-                None,
-                None,
+                44100,
+                True,
+                False,
             ],
             outputs=[
                 pitch,
@@ -542,17 +769,9 @@ with gr.Blocks(title="AICoverGenWebUI") as app:
                 reverb_dry,
                 reverb_damping,
                 output_format,
-                input_song,
-                vocals_track,
-                instrumentals_track,
-                main_vocals_track,
-                background_vocals_track,
-                main_vocals_dereverbed_track,
-                ai_vocals_track,
-                mixed_ai_vocals_track,
-                instrumentals_shifted_track,
-                background_vocals_shifted_track,
-                ai_cover,
+                output_sr,
+                keep_files,
+                show_intermediate_files,
             ],
         )
 

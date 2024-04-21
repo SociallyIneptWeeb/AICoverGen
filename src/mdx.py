@@ -5,6 +5,7 @@ import queue
 import threading
 import warnings
 
+import json
 import librosa
 import numpy as np
 import onnxruntime as ort
@@ -292,9 +293,9 @@ class MDX:
 
 
 def run_mdx(
-    model_params,
+    models_dir,
     output_dir,
-    model_path,
+    model_name,
     filename,
     exclude_main=False,
     exclude_inversion=False,
@@ -305,6 +306,11 @@ def run_mdx(
     m_threads=2,
     sr=44100,
 ):
+    model_params_file = os.path.join(models_dir, "model_data.json")
+    with open(model_params_file) as infile:
+        model_params = json.load(infile)
+    model_path = os.path.join(models_dir, model_name)
+
     device = (
         torch.device("cuda:0") if torch.cuda.is_available() else torch.device("cpu")
     )

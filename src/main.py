@@ -1,6 +1,7 @@
 import argparse
 import gc
 import hashlib
+import json
 import os
 from pathlib import Path
 import shutil
@@ -59,7 +60,7 @@ def get_youtube_video_id(url, ignore_playlist=True):
 
 
 def yt_download(link, song_output_dir):
-    outtmpl = os.path.join(song_output_dir, "%(title)s_Original")
+    outtmpl = os.path.join(song_output_dir, "0_%(title)s_Original")
     ydl_opts = {
         "format": "bestaudio",
         "outtmpl": outtmpl,
@@ -104,13 +105,56 @@ def pitch_shift(audio_path, output_path, pitch_change):
     sf.write(output_path, y_shifted, sr)
 
 
-def get_hash(filepath):
+def json_dumps(thing):
+    return json.dumps(
+        thing,
+        ensure_ascii=False,
+        sort_keys=True,
+        indent=4,
+        separators=(",", ": "),
+    )
+
+
+def json_dump(thing, file):
+    return json.dump(
+        thing,
+        file,
+        ensure_ascii=False,
+        sort_keys=True,
+        indent=4,
+        separators=(",", ": "),
+    )
+
+
+def get_hash(thing, size=5):
+    return hashlib.blake2b(
+        json_dumps(thing).encode("utf-8"), digest_size=size
+    ).hexdigest()
+
+
+def get_unique_base_path(song_dir, prefix, arg_dict, progress, percent, hash_size=5):
+    dict_hash = get_hash(arg_dict, size=hash_size)
+    while True:
+        base_path = os.path.join(song_dir, f"{prefix}_{dict_hash}")
+        json_path = f"{base_path}.json"
+        if os.path.exists(json_path):
+            with open(json_path) as f:
+                file_dict = json.load(f)
+            if file_dict == arg_dict:
+                return base_path
+            display_progress("Rehashing...", percent, progress)
+            dict_hash = get_hash(dict_hash, size=hash_size)
+        else:
+            return base_path
+
+
+def get_file_hash(filepath, size=5):
     with open(filepath, "rb") as f:
-        file_hash = hashlib.blake2b()
+        file_hash = hashlib.blake2b(digest_size=size)
         while chunk := f.read(8192):
             file_hash.update(chunk)
 
-    return file_hash.hexdigest()[:11]
+    return file_hash.hexdigest()
 
 
 def display_progress(message, percent, progress=None):
@@ -214,27 +258,6 @@ def combine_audio(
     )
 
 
-def get_audio_paths(song_dir, output_sr):
-
-    audio_paths = {
-        audio_type: os.path.join(song_dir, file)
-        for file in os.listdir(song_dir)
-        for audio_type in [
-            "Original",
-            "Stereo",
-            "Vocals",
-            "Instrumental",
-            "Vocals_Main",
-            "Vocals_Backup",
-            "Vocals_Main_DeReverb",
-        ]
-        if os.path.splitext(file)[0]
-        .removesuffix(f"_sr_{output_sr}")
-        .endswith(audio_type)
-    }
-    return audio_paths
-
-
 def make_song_dir(
     song_input,
     voice_model,
@@ -261,7 +284,7 @@ def make_song_dir(
         # filenames cant contain '"' on windows and on linux it should be fine to
         # song_input = song_input.strip('"')
         if os.path.exists(song_input):
-            song_id = get_hash(song_input)
+            song_id = get_file_hash(song_input)
         else:
             error_msg = f"{song_input} does not exist."
             song_id = None
@@ -278,10 +301,14 @@ def retrieve_song(
     song_input,
     input_type,
     song_dir,
-    output_sr,
     progress,
 ):
-    audio_paths = get_audio_paths(song_dir, output_sr)
+    audio_paths = {
+        audio_type: os.path.join(song_dir, file)
+        for file in os.listdir(song_dir)
+        for audio_type in ["Original", "Stereo"]
+        if os.path.splitext(file)[0].endswith(f"_{audio_type}")
+    }
 
     orig_song_path = audio_paths.get("Original")
     stereo_path = audio_paths.get("Stereo")
@@ -298,7 +325,7 @@ def retrieve_song(
         else:
             song_input_base = os.path.basename(song_input)
             song_input_name, song_input_ext = os.path.splitext(song_input_base)
-            orig_song_name = f"{song_input_name}_Original"
+            orig_song_name = f"0_{song_input_name}_Original"
             orig_song_path = os.path.join(song_dir, orig_song_name + song_input_ext)
             shutil.copyfile(song_input, orig_song_path)
 
@@ -311,7 +338,10 @@ def retrieve_song(
                 0.05,
                 progress,
             )
-            stereo_path = f"{os.path.splitext(orig_song_path)[0]}_Stereo.wav"
+            stereo_path_base = os.path.splitext(orig_song_path)[0].removesuffix(
+                "_Original"
+            )
+            stereo_path = f"{stereo_path_base}_Stereo.wav"
             command = shlex.split(
                 f'ffmpeg -y -loglevel error -i "{orig_song_path}" -ac 2 -f wav "{stereo_path}"'
             )
@@ -320,21 +350,39 @@ def retrieve_song(
 
 
 def separate_vocals(
+    song_path,
     song_dir,
     output_sr,
     progress,
 ):
-    audio_paths = get_audio_paths(song_dir, output_sr)
-    orig_song_path = audio_paths.get("Original")
-    stereo_path = audio_paths.get("Stereo")
-    instrumentals_path = audio_paths.get("Instrumental")
-    vocals_path = audio_paths.get("Vocals")
-
-    if not orig_song_path:
+    if not song_path:
         error_msg = "Original song not available. Try and reset server."
         raise Exception(error_msg)
 
-    if not (vocals_path and instrumentals_path):
+    arg_dict = {
+        "input-files": [os.path.basename(song_path)],
+        "output-sample-rate": output_sr,
+    }
+
+    vocals_path_base = get_unique_base_path(
+        song_dir, "1_Vocals", arg_dict, progress, 0.075
+    )
+
+    instrumentals_path_base = get_unique_base_path(
+        song_dir, "1_Instrumental", arg_dict, progress, 0.075
+    )
+
+    vocals_path = f"{vocals_path_base}.wav"
+    vocals_json_path = f"{vocals_path_base}.json"
+    instrumentals_path = f"{instrumentals_path_base}.wav"
+    instrumentals_json_path = f"{instrumentals_path_base}.json"
+
+    if not (
+        os.path.exists(vocals_path)
+        and os.path.exists(vocals_json_path)
+        and os.path.exists(instrumentals_path)
+        and os.path.exists(instrumentals_json_path)
+    ):
         display_progress(
             "[~] Separating Vocals from Instrumentals...",
             0.1,
@@ -344,28 +392,56 @@ def separate_vocals(
             mdxnet_models_dir,
             song_dir,
             "UVR-MDX-NET-Voc_FT.onnx",
-            stereo_path or orig_song_path,
+            song_path,
+            suffix=vocals_path_base,
+            invert_suffix=instrumentals_path_base,
             denoise=True,
             sr=output_sr,
         )
+        with (
+            open(vocals_json_path, "w") as file1,
+            open(instrumentals_json_path, "w") as file2,
+        ):
+            json_dump(arg_dict, file1)
+            json_dump(arg_dict, file2)
     return vocals_path, instrumentals_path
 
 
 def separate_main_vocals(
+    vocals_path,
     song_dir,
     output_sr,
     progress,
 ):
-    audio_paths = get_audio_paths(song_dir, output_sr)
-    vocals_path = audio_paths.get("Vocals")
-    main_vocals_path = audio_paths.get("Vocals_Main")
-    backup_vocals_path = audio_paths.get("Vocals_Backup")
 
     if not vocals_path:
         error_msg = "Isolated Vocals not available. Try and reset server."
         raise Exception(error_msg)
 
-    if not (backup_vocals_path and main_vocals_path):
+    arg_dict = {
+        "input-files": [os.path.basename(vocals_path)],
+        "output-sample-rate": output_sr,
+    }
+
+    main_vocals_path_base = get_unique_base_path(
+        song_dir, "2_Vocals_Main", arg_dict, progress, 0.15
+    )
+
+    backup_vocals_path_base = get_unique_base_path(
+        song_dir, "2_Vocals_Backup", arg_dict, progress, 0.15
+    )
+
+    main_vocals_path = f"{main_vocals_path_base}.wav"
+    main_vocals_json_path = f"{main_vocals_path_base}.json"
+    backup_vocals_path = f"{backup_vocals_path_base}.wav"
+    backup_vocals_json_path = f"{backup_vocals_path_base}.json"
+
+    if not (
+        os.path.exists(main_vocals_path)
+        and os.path.exists(main_vocals_json_path)
+        and os.path.exists(backup_vocals_path)
+        and os.path.exists(backup_vocals_json_path)
+    ):
         display_progress(
             "[~] Separating Main Vocals from Backup Vocals...",
             0.2,
@@ -376,28 +452,47 @@ def separate_main_vocals(
             song_dir,
             "UVR_MDXNET_KARA_2.onnx",
             vocals_path,
-            suffix="Backup",
-            invert_suffix="Main",
+            suffix=backup_vocals_path_base,
+            invert_suffix=main_vocals_path_base,
             denoise=True,
             sr=output_sr,
         )
+        with (
+            open(main_vocals_json_path, "w") as file1,
+            open(backup_vocals_json_path, "w") as file2,
+        ):
+            json_dump(arg_dict, file1)
+            json_dump(arg_dict, file2)
     return backup_vocals_path, main_vocals_path
 
 
 def dereverb_main_vocals(
+    main_vocals_path,
     song_dir,
     output_sr,
     progress,
 ):
-    audio_paths = get_audio_paths(song_dir, output_sr)
-    main_vocals_path = audio_paths.get("Vocals_Main")
-    main_vocals_dereverb_path = audio_paths.get("Vocals_Main_DeReverb")
 
     if not main_vocals_path:
         error_msg = "Isolated Main Vocals not available. Try and reset server."
         raise Exception(error_msg)
 
-    if not main_vocals_dereverb_path:
+    arg_dict = {
+        "input-files": [os.path.basename(main_vocals_path)],
+        "output-sample-rate": output_sr,
+    }
+
+    main_vocals_dereverb_path_base = get_unique_base_path(
+        song_dir, "3_Vocals_Main_DeReverb", arg_dict, progress, 0.25
+    )
+
+    main_vocals_dereverb_path = f"{main_vocals_dereverb_path_base}.wav"
+    main_vocals_dereverb_json_path = f"{main_vocals_dereverb_path_base}.json"
+
+    if not (
+        os.path.exists(main_vocals_dereverb_path)
+        and os.path.exists(main_vocals_dereverb_json_path)
+    ):
         display_progress(
             "[~] Applying DeReverb to Vocals...",
             0.3,
@@ -408,11 +503,13 @@ def dereverb_main_vocals(
             song_dir,
             "Reverb_HQ_By_FoxJoy.onnx",
             main_vocals_path,
-            invert_suffix="DeReverb",
+            invert_suffix=main_vocals_dereverb_path_base,
             exclude_main=True,
             denoise=True,
             sr=output_sr,
         )
+        with open(main_vocals_dereverb_json_path, "w") as file:
+            json_dump(arg_dict, file)
     return main_vocals_dereverb_path
 
 
@@ -432,21 +529,28 @@ def convert_main_vocals(
     progress,
 ):
 
-    main_vocals_dereverb_path_base = os.path.splitext(
-        os.path.basename(main_vocals_dereverb_path)
-    )[0]
+    main_vocals_dereverb_path_base = os.path.basename(main_vocals_dereverb_path)
     pitch_change = pitch_change * 12 + pitch_change_all
     hop_length_suffix = "" if f0_method != "mangio-crepe" else f"_{crepe_hop_length}"
-    ai_vocals_path = os.path.join(
-        song_dir,
-        (
-            f"{main_vocals_dereverb_path_base}_vm_{voice_model}_p_{pitch_change}"
-            f"_i_{index_rate}_fr_{filter_radius}"
-            f"_rms_{rms_mix_rate}_pro_{protect}_{f0_method}{hop_length_suffix}.wav"
-        ),
-    )
+    arg_dict = {
+        "input-files": [main_vocals_dereverb_path_base],
+        "voice-model": voice_model,
+        "pitch-change": pitch_change,
+        "index-rate": index_rate,
+        "filter-radius": filter_radius,
+        "rms-mix-rate": rms_mix_rate,
+        "protect": protect,
+        "f0-method": f"{f0_method}{hop_length_suffix}",
+        "output-sample-rate": output_sr,
+    }
 
-    if not os.path.exists(ai_vocals_path):
+    ai_vocals_path_base = get_unique_base_path(
+        song_dir, "4_Vocals_Converted", arg_dict, progress, 0.40
+    )
+    ai_vocals_path = f"{ai_vocals_path_base}.wav"
+    ai_vocals_json_path = f"{ai_vocals_path_base}.json"
+
+    if not (os.path.exists(ai_vocals_path) and os.path.exists(ai_vocals_json_path)):
         display_progress("[~] Converting voice using RVC...", 0.5, progress)
         voice_change(
             voice_model,
@@ -461,6 +565,8 @@ def convert_main_vocals(
             crepe_hop_length,
             output_sr,
         )
+        with open(ai_vocals_json_path, "w") as file:
+            json_dump(arg_dict, file)
     return ai_vocals_path
 
 
@@ -473,16 +579,27 @@ def postprocess_main_vocals(
     reverb_damping,
     progress,
 ):
-    ai_vocals_mixed_path_base = os.path.splitext(os.path.basename(ai_vocals_path))[0]
-    ai_vocals_mixed_path = os.path.join(
-        song_dir,
-        (
-            f"{ai_vocals_mixed_path_base}_mixed_rm_size_{reverb_rm_size}"
-            f"_wet_{reverb_wet}_dry_{reverb_dry}_damping_{reverb_damping}.wav"
-        ),
+
+    ai_vocals_path_base = os.path.basename(ai_vocals_path)
+    arg_dict = {
+        "input-files": [ai_vocals_path_base],
+        "reverb-room-size": reverb_rm_size,
+        "reverb-wet": reverb_wet,
+        "reverb-dry": reverb_dry,
+        "reverb-damping": reverb_damping,
+    }
+
+    ai_vocals_mixed_path_base = get_unique_base_path(
+        song_dir, "5_Vocals_Mixed", arg_dict, progress, 0.7
     )
 
-    if not os.path.exists(ai_vocals_mixed_path):
+    ai_vocals_mixed_path = f"{ai_vocals_mixed_path_base}.wav"
+    ai_vocals_mixed_json_path = f"{ai_vocals_mixed_path_base}.json"
+
+    if not (
+        os.path.exists(ai_vocals_mixed_path)
+        and os.path.exists(ai_vocals_mixed_json_path)
+    ):
         display_progress("[~] Applying audio effects to Vocals...", 0.8, progress)
         add_audio_effects(
             ai_vocals_path,
@@ -492,6 +609,8 @@ def postprocess_main_vocals(
             reverb_dry,
             reverb_damping,
         )
+        with open(ai_vocals_mixed_json_path, "w") as file:
+            json_dump(arg_dict, file)
     return ai_vocals_mixed_path
 
 
@@ -506,14 +625,23 @@ def pitch_shift_background(
     backup_vocals_shifted_path = None
     if pitch_change_all != 0:
 
-        instrumentals_shifted_path_base = os.path.splitext(
-            os.path.basename(instrumentals_path)
-        )[0]
-        instrumentals_shifted_path = os.path.join(
-            song_dir,
-            f"{instrumentals_shifted_path_base}_p_{pitch_change_all}.wav",
+        instrumentals_path_base = os.path.basename(instrumentals_path)
+        instrumentals_dict = {
+            "input-files": [instrumentals_path_base],
+            "pitch-shift": pitch_change_all,
+        }
+
+        instrumentals_shifted_path_base = get_unique_base_path(
+            song_dir, "6_Instrumnetal_Shifted", instrumentals_dict, progress, 0.825
         )
-        if not os.path.exists(instrumentals_shifted_path):
+
+        instrumentals_shifted_path = f"{instrumentals_shifted_path_base}.wav"
+        instrumentals_shifted_json_path = f"{instrumentals_shifted_path_base}.json"
+
+        if not (
+            os.path.exists(instrumentals_shifted_path)
+            and os.path.exists(instrumentals_shifted_json_path)
+        ):
             display_progress(
                 "[~] Applying pitch change to instrumentals",
                 0.85,
@@ -524,14 +652,25 @@ def pitch_shift_background(
                 instrumentals_shifted_path,
                 pitch_change_all,
             )
-        backup_vocals_shifted_path_base = os.path.splitext(
-            os.path.basename(backup_vocals_path)
-        )[0]
-        backup_vocals_shifted_path = os.path.join(
-            song_dir,
-            f"{backup_vocals_shifted_path_base}_p_{pitch_change_all}.wav",
+            with open(instrumentals_shifted_json_path, "w") as file:
+                json_dump(instrumentals_dict, file)
+
+        backup_vocals_base = os.path.basename(backup_vocals_path)
+
+        backup_vocals_dict = {
+            "input-files": [backup_vocals_base],
+            "pitch-shift": pitch_change_all,
+        }
+
+        backup_vocals_shifted_path_base = get_unique_base_path(
+            song_dir, "6_Vocals_Backup_Shifted", backup_vocals_dict, progress, 0.865
         )
-        if not os.path.exists(backup_vocals_shifted_path):
+        backup_vocals_shifted_path = f"{backup_vocals_shifted_path_base}.wav"
+        backup_vocals_shifted_json_path = f"{backup_vocals_shifted_path_base}.json"
+        if not (
+            os.path.exists(backup_vocals_shifted_path)
+            and os.path.exists(backup_vocals_shifted_json_path)
+        ):
             display_progress(
                 "[~] Applying pitch change to backup vocals",
                 0.88,
@@ -542,6 +681,8 @@ def pitch_shift_background(
                 backup_vocals_shifted_path,
                 pitch_change_all,
             )
+            with open(backup_vocals_shifted_json_path, "w") as file:
+                json_dump(backup_vocals_dict, file)
     return instrumentals_shifted_path, backup_vocals_shifted_path
 
 
@@ -552,7 +693,6 @@ def combine_w_background(
     ai_vocals_mixed_path,
     voice_model,
     song_dir,
-    pitch_change_all,
     main_gain,
     backup_gain,
     inst_gain,
@@ -560,19 +700,30 @@ def combine_w_background(
     keep_files,
     progress,
 ):
+    ai_vocals_mixed_path_base = os.path.basename(ai_vocals_mixed_path)
+    backup_vocals_path_base = os.path.basename(backup_vocals_path)
+    instrumentals_path_base = os.path.basename(instrumentals_path)
 
-    combined_audio_path_base = os.path.splitext(os.path.basename(ai_vocals_mixed_path))[
-        0
-    ]
-    combined_audio_path = os.path.join(
-        song_dir,
-        (
-            f"{combined_audio_path_base}_bg_p_{pitch_change_all}"
-            f"_combined_mg_{main_gain}_bg_gain_{backup_gain}_inst_gain_{inst_gain}"
-            f".{output_format}"
-        ),
+    arg_dict = {
+        "input-files": [
+            ai_vocals_mixed_path_base,
+            backup_vocals_path_base,
+            instrumentals_path_base,
+        ],
+        "main-gain": main_gain,
+        "instrument-gain": inst_gain,
+        "background-gain": backup_gain,
+    }
+
+    combined_audio_path_base = get_unique_base_path(
+        song_dir, "7_Vocals_Background_Combined", arg_dict, progress, 0.89
     )
-    if not os.path.exists(combined_audio_path):
+    combined_audio_path = f"{combined_audio_path_base}.{output_format}"
+    combined_audio_json_path = f"{combined_audio_path_base}.json"
+
+    if not (
+        os.path.exists(combined_audio_path) and os.path.exists(combined_audio_json_path)
+    ):
         display_progress(
             "[~] Combining AI Vocals and Instrumentals...",
             0.9,
@@ -591,10 +742,15 @@ def combine_w_background(
             inst_gain,
             output_format,
         )
+        with open(combined_audio_json_path, "w") as file:
+            json_dump(arg_dict, file)
 
-    orig_song_path_base = os.path.splitext(os.path.basename(orig_song_path))[
-        0
-    ].removesuffix(f"_Original")
+    orig_song_path_base = (
+        os.path.splitext(os.path.basename(orig_song_path))[0]
+        .removeprefix("0_")
+        .removesuffix("_Original")
+        .removesuffix("_Stereo")
+    )
     ai_cover_path = os.path.join(
         output_dir,
         f"{orig_song_path_base} ({voice_model} Ver).{output_format}",
@@ -636,14 +792,16 @@ def song_cover_pipeline(
     progress=None,
 ):
     song_dir, input_type = make_song_dir(song_input, voice_model, progress)
-    orig_song_path = retrieve_song(
-        song_input, input_type, song_dir, output_sr, progress
+    orig_song_path = retrieve_song(song_input, input_type, song_dir, progress)
+    vocals_path, instrumentals_path = separate_vocals(
+        orig_song_path, song_dir, output_sr, progress
     )
-    vocals_path, instrumentals_path = separate_vocals(song_dir, output_sr, progress)
     backup_vocals_path, main_vocals_path = separate_main_vocals(
-        song_dir, output_sr, progress
+        vocals_path, song_dir, output_sr, progress
     )
-    main_vocals_dereverb_path = dereverb_main_vocals(song_dir, output_sr, progress)
+    main_vocals_dereverb_path = dereverb_main_vocals(
+        main_vocals_path, song_dir, output_sr, progress
+    )
     ai_vocals_path = convert_main_vocals(
         main_vocals_dereverb_path,
         song_dir,
@@ -683,7 +841,6 @@ def song_cover_pipeline(
         ai_vocals_mixed_path,
         voice_model,
         song_dir,
-        pitch_change_all,
         main_gain,
         backup_gain,
         inst_gain,

@@ -347,11 +347,8 @@ def run_mdx(
     stem_name = model.stem_name if suffix is None else suffix
 
     main_filepath = None
-    base_name = os.path.basename(os.path.splitext(filename)[0]).removesuffix(
-        f"_sr_{sr}"
-    )
     if not exclude_main:
-        main_filepath = os.path.join(output_dir, f"{base_name}_{stem_name}_sr_{sr}.wav")
+        main_filepath = os.path.join(output_dir, f"{stem_name}.wav")
         sf.write(main_filepath, wave_processed.T, sr)
 
     invert_filepath = None
@@ -360,9 +357,7 @@ def run_mdx(
             stem_naming.get(stem_name) if invert_suffix is None else invert_suffix
         )
         stem_name = f"{stem_name}_diff" if diff_stem_name is None else diff_stem_name
-        invert_filepath = os.path.join(
-            output_dir, f"{base_name}_{stem_name}_sr_{sr}.wav"
-        )
+        invert_filepath = os.path.join(output_dir, f"{stem_name}.wav")
         sf.write(invert_filepath, (-wave_processed.T * model.compensation) + wave.T, sr)
 
     if not keep_orig:

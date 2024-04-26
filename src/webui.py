@@ -456,7 +456,6 @@ with gr.Blocks(title="AICoverGenWebUI") as app:
                 choices=[16000, 44100, 48000, 96000, 192000],
                 value=44100,
                 label="Output sample rate",
-                info="Sample rate of generated audio files (including intermediate files)",
             )
         with gr.Accordion("Intermediate file options", open=False):
             with gr.Row():
@@ -654,15 +653,15 @@ with gr.Blocks(title="AICoverGenWebUI") as app:
             outputs=[ai_cover, original_track],
         ).success(
             partial(duplication_harness, separate_vocals),
-            inputs=[original_track, song_dir, output_sr],
+            inputs=[original_track, song_dir],
             outputs=[ai_cover, vocals_track, instrumentals_track],
         ).success(
             partial(duplication_harness, separate_main_vocals),
-            inputs=[vocals_track, song_dir, output_sr],
+            inputs=[vocals_track, song_dir],
             outputs=[ai_cover, background_vocals_track, main_vocals_track],
         ).success(
             partial(duplication_harness, dereverb_main_vocals),
-            inputs=[main_vocals_track, song_dir, output_sr],
+            inputs=[main_vocals_track, song_dir],
             outputs=[ai_cover, main_vocals_dereverbed_track],
         ).success(
             partial(duplication_harness, convert_main_vocals),
@@ -678,7 +677,6 @@ with gr.Blocks(title="AICoverGenWebUI") as app:
                 protect,
                 f0_method,
                 crepe_hop_length,
-                output_sr,
             ],
             outputs=[ai_cover, ai_vocals_track],
         ).success(
@@ -720,6 +718,7 @@ with gr.Blocks(title="AICoverGenWebUI") as app:
                 backup_gain,
                 inst_gain,
                 output_format,
+                output_sr,
                 keep_files,
             ],
             outputs=[ai_cover],

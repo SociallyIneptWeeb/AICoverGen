@@ -244,7 +244,13 @@ def add_audio_effects(
 
 
 def combine_audio(
-    audio_paths, output_path, main_gain, backup_gain, inst_gain, output_format
+    audio_paths,
+    output_path,
+    main_gain,
+    backup_gain,
+    inst_gain,
+    output_format,
+    output_sr,
 ):
     if output_format == "m4a":
         output_format = "ipod"
@@ -253,9 +259,11 @@ def combine_audio(
     main_vocal_audio = AudioSegment.from_wav(audio_paths[0]) - 4 + main_gain
     backup_vocal_audio = AudioSegment.from_wav(audio_paths[1]) - 6 + backup_gain
     instrumental_audio = AudioSegment.from_wav(audio_paths[2]) - 7 + inst_gain
-    main_vocal_audio.overlay(backup_vocal_audio).overlay(instrumental_audio).export(
-        output_path, format=output_format
+    combined_audio = main_vocal_audio.overlay(backup_vocal_audio).overlay(
+        instrumental_audio
     )
+    combined_audio_resampled = combined_audio.set_frame_rate(output_sr)
+    combined_audio_resampled.export(output_path, format=output_format)
 
 
 def make_song_dir(
@@ -352,7 +360,6 @@ def retrieve_song(
 def separate_vocals(
     song_path,
     song_dir,
-    output_sr,
     progress,
 ):
     if not song_path:
@@ -361,7 +368,6 @@ def separate_vocals(
 
     arg_dict = {
         "input-files": [os.path.basename(song_path)],
-        "output-sample-rate": output_sr,
     }
 
     vocals_path_base = get_unique_base_path(
@@ -396,7 +402,6 @@ def separate_vocals(
             suffix=vocals_path_base,
             invert_suffix=instrumentals_path_base,
             denoise=True,
-            sr=output_sr,
         )
         with (
             open(vocals_json_path, "w") as file1,
@@ -410,7 +415,6 @@ def separate_vocals(
 def separate_main_vocals(
     vocals_path,
     song_dir,
-    output_sr,
     progress,
 ):
 
@@ -420,7 +424,6 @@ def separate_main_vocals(
 
     arg_dict = {
         "input-files": [os.path.basename(vocals_path)],
-        "output-sample-rate": output_sr,
     }
 
     main_vocals_path_base = get_unique_base_path(
@@ -455,7 +458,6 @@ def separate_main_vocals(
             suffix=backup_vocals_path_base,
             invert_suffix=main_vocals_path_base,
             denoise=True,
-            sr=output_sr,
         )
         with (
             open(main_vocals_json_path, "w") as file1,
@@ -469,7 +471,6 @@ def separate_main_vocals(
 def dereverb_main_vocals(
     main_vocals_path,
     song_dir,
-    output_sr,
     progress,
 ):
 
@@ -479,7 +480,6 @@ def dereverb_main_vocals(
 
     arg_dict = {
         "input-files": [os.path.basename(main_vocals_path)],
-        "output-sample-rate": output_sr,
     }
 
     main_vocals_dereverb_path_base = get_unique_base_path(
@@ -506,7 +506,6 @@ def dereverb_main_vocals(
             invert_suffix=main_vocals_dereverb_path_base,
             exclude_main=True,
             denoise=True,
-            sr=output_sr,
         )
         with open(main_vocals_dereverb_json_path, "w") as file:
             json_dump(arg_dict, file)
@@ -525,7 +524,6 @@ def convert_main_vocals(
     protect,
     f0_method,
     crepe_hop_length,
-    output_sr,
     progress,
 ):
 
@@ -541,7 +539,6 @@ def convert_main_vocals(
         "rms-mix-rate": rms_mix_rate,
         "protect": protect,
         "f0-method": f"{f0_method}{hop_length_suffix}",
-        "output-sample-rate": output_sr,
     }
 
     ai_vocals_path_base = get_unique_base_path(
@@ -563,7 +560,7 @@ def convert_main_vocals(
             rms_mix_rate,
             protect,
             crepe_hop_length,
-            output_sr,
+            44100,
         )
         with open(ai_vocals_json_path, "w") as file:
             json_dump(arg_dict, file)
@@ -697,6 +694,7 @@ def combine_w_background(
     backup_gain,
     inst_gain,
     output_format,
+    output_sr,
     keep_files,
     progress,
 ):
@@ -713,6 +711,7 @@ def combine_w_background(
         "main-gain": main_gain,
         "instrument-gain": inst_gain,
         "background-gain": backup_gain,
+        "sample-rate": output_sr,
     }
 
     combined_audio_path_base = get_unique_base_path(
@@ -741,6 +740,7 @@ def combine_w_background(
             backup_gain,
             inst_gain,
             output_format,
+            output_sr,
         )
         with open(combined_audio_json_path, "w") as file:
             json_dump(arg_dict, file)
@@ -794,13 +794,13 @@ def song_cover_pipeline(
     song_dir, input_type = make_song_dir(song_input, voice_model, progress)
     orig_song_path = retrieve_song(song_input, input_type, song_dir, progress)
     vocals_path, instrumentals_path = separate_vocals(
-        orig_song_path, song_dir, output_sr, progress
+        orig_song_path, song_dir, progress
     )
     backup_vocals_path, main_vocals_path = separate_main_vocals(
-        vocals_path, song_dir, output_sr, progress
+        vocals_path, song_dir, progress
     )
     main_vocals_dereverb_path = dereverb_main_vocals(
-        main_vocals_path, song_dir, output_sr, progress
+        main_vocals_path, song_dir, progress
     )
     ai_vocals_path = convert_main_vocals(
         main_vocals_dereverb_path,
@@ -814,7 +814,6 @@ def song_cover_pipeline(
         protect,
         f0_method,
         crepe_hop_length,
-        output_sr,
         progress,
     )
     ai_vocals_mixed_path = postprocess_main_vocals(
@@ -845,6 +844,7 @@ def song_cover_pipeline(
         backup_gain,
         inst_gain,
         output_format,
+        output_sr,
         keep_files,
         progress,
     )
@@ -1009,14 +1009,14 @@ if __name__ == "__main__":
         "--output-format",
         type=str,
         default="mp3",
-        help="Output format of audio file. mp3 for smaller file size, wav for best quality",
+        help="format of output audio file",
     )
     parser.add_argument(
         "-osr",
         "--output-sr",
         type=int,
         default=44100,
-        help="Sample rate of generated audio files (also including intermediate audio files)",
+        help="Sample rate of output audio file.",
     )
     args = parser.parse_args()
 

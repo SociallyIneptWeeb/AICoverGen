@@ -650,19 +650,19 @@ with gr.Blocks(title="AICoverGenWebUI") as app:
             outputs=[song_dir, input_type],
         ).success(
             partial(duplication_harness, retrieve_song),
-            inputs=[song_input, input_type, song_dir, output_sr],
+            inputs=[song_input, input_type, song_dir],
             outputs=[ai_cover, original_track],
         ).success(
             partial(duplication_harness, separate_vocals),
-            inputs=[song_dir, output_sr],
+            inputs=[original_track, song_dir, output_sr],
             outputs=[ai_cover, vocals_track, instrumentals_track],
         ).success(
             partial(duplication_harness, separate_main_vocals),
-            inputs=[song_dir, output_sr],
+            inputs=[vocals_track, song_dir, output_sr],
             outputs=[ai_cover, background_vocals_track, main_vocals_track],
         ).success(
             partial(duplication_harness, dereverb_main_vocals),
-            inputs=[song_dir, output_sr],
+            inputs=[main_vocals_track, song_dir, output_sr],
             outputs=[ai_cover, main_vocals_dereverbed_track],
         ).success(
             partial(duplication_harness, convert_main_vocals),
@@ -716,7 +716,6 @@ with gr.Blocks(title="AICoverGenWebUI") as app:
                 mixed_ai_vocals_track,
                 rvc_model,
                 song_dir,
-                pitch_all,
                 main_gain,
                 backup_gain,
                 inst_gain,

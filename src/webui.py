@@ -103,42 +103,47 @@ def load_public_models():
     return gr.DataFrame(value=models_table), gr.CheckboxGroup(choices=tags)
 
 
-def extract_zip(extraction_folder, zip_name):
-    os.makedirs(extraction_folder)
-    with zipfile.ZipFile(zip_name, "r") as zip_ref:
-        zip_ref.extractall(extraction_folder)
-    os.remove(zip_name)
+def extract_zip(extraction_folder, zip_name, remove_zip):
+    try:
+        os.makedirs(extraction_folder)
+        with zipfile.ZipFile(zip_name, "r") as zip_ref:
+            zip_ref.extractall(extraction_folder)
 
-    index_filepath, model_filepath = None, None
-    for root, dirs, files in os.walk(extraction_folder):
-        for name in files:
-            if (
-                name.endswith(".index")
-                and os.stat(os.path.join(root, name)).st_size > 1024 * 100
-            ):
-                index_filepath = os.path.join(root, name)
+        index_filepath, model_filepath = None, None
+        for root, dirs, files in os.walk(extraction_folder):
+            for name in files:
+                if (
+                    name.endswith(".index")
+                    and os.stat(os.path.join(root, name)).st_size > 1024 * 100
+                ):
+                    index_filepath = os.path.join(root, name)
 
-            if (
-                name.endswith(".pth")
-                and os.stat(os.path.join(root, name)).st_size > 1024 * 1024 * 40
-            ):
-                model_filepath = os.path.join(root, name)
+                if (
+                    name.endswith(".pth")
+                    and os.stat(os.path.join(root, name)).st_size > 1024 * 1024 * 40
+                ):
+                    model_filepath = os.path.join(root, name)
 
-    if not model_filepath:
-        raise gr.Error(
-            f"No .pth model file was found in the extracted zip. Please check {extraction_folder}."
-        )
+        if not model_filepath:
+            raise Exception(f"No .pth model file was found in the extracted zip.")
+        # move model and index file to extraction folder
 
-    # move model and index file to extraction folder
-    os.rename(
-        model_filepath,
-        os.path.join(extraction_folder, os.path.basename(model_filepath)),
-    )
-    if index_filepath:
         os.rename(
-            index_filepath,
-            os.path.join(extraction_folder, os.path.basename(index_filepath)),
+            model_filepath,
+            os.path.join(extraction_folder, os.path.basename(model_filepath)),
         )
+        if index_filepath:
+            os.rename(
+                index_filepath,
+                os.path.join(extraction_folder, os.path.basename(index_filepath)),
+            )
+    except Exception as e:
+        if os.path.exists(extraction_folder):
+            shutil.rmtree(extraction_folder)
+        raise e
+    finally:
+        if remove_zip and os.path.exists(zip_name):
+            os.remove(zip_name)
 
     # remove any unnecessary nested folders
     for filepath in os.listdir(extraction_folder):
@@ -146,13 +151,27 @@ def extract_zip(extraction_folder, zip_name):
             shutil.rmtree(os.path.join(extraction_folder, filepath))
 
 
+def remove_suffix_after(text: str, occurrence: str):
+    location = text.rfind(occurrence)
+    if location == -1:
+        return text
+    else:
+        return text[: location + len(occurrence)]
+
+
 def download_online_model(url, dir_name, progress=gr.Progress()):
     try:
         progress(0, desc=f"[~] Downloading voice model with name {dir_name}...")
-        zip_name = url.split("/")[-1]
+        if not url:
+            raise Exception("Voice model link missing!")
+        zip_name = remove_suffix_after(url.split("/")[-1], ".zip")
+        if not zip_name.endswith(".zip"):
+            raise Exception("Link does not point to a valid zip file!")
+        if not dir_name:
+            raise Exception("Voice model name missing!")
         extraction_folder = os.path.join(rvc_models_dir, dir_name)
         if os.path.exists(extraction_folder):
-            raise gr.Error(
+            raise Exception(
                 f"Voice model directory {dir_name} already exists! Choose a different name for your voice model."
             )
 
@@ -162,7 +181,7 @@ def download_online_model(url, dir_name, progress=gr.Progress()):
         urllib.request.urlretrieve(url, zip_name)
 
         progress(0.5, desc="[~] Extracting zip...")
-        extract_zip(extraction_folder, zip_name)
+        extract_zip(extraction_folder, zip_name, remove_zip=True)
         return f"[+] {dir_name} Model successfully downloaded!"
 
     except Exception as e:
@@ -171,15 +190,19 @@ def download_online_model(url, dir_name, progress=gr.Progress()):
 
 def upload_local_model(zip_path, dir_name, progress=gr.Progress()):
     try:
+        if not zip_path:
+            raise Exception("No voice model selected.")
+        if not dir_name:
+            raise Exception("No name given for voice model.")
         extraction_folder = os.path.join(rvc_models_dir, dir_name)
         if os.path.exists(extraction_folder):
-            raise gr.Error(
+            raise Exception(
                 f"Voice model directory {dir_name} already exists! Choose a different name for your voice model."
             )
 
         zip_name = zip_path.name
         progress(0.5, desc="[~] Extracting zip...")
-        extract_zip(extraction_folder, zip_name)
+        extract_zip(extraction_folder, zip_name, remove_zip=False)
         return f"[+] {dir_name} Model successfully uploaded!"
 
     except Exception as e:
@@ -553,7 +576,7 @@ with gr.Blocks(title="AICoverGenWebUI") as app:
                 scale=2,
             )
             generate_btn2 = gr.Button(
-                "Generate step-by-step", variant="primary", scale=1, visible=True
+                "Generate step-by-step", variant="primary", scale=1, visible=False
             )
             generate_btn = gr.Button("Generate", variant="primary", scale=2)
             ai_cover = gr.Audio(label="AI Cover", scale=3)

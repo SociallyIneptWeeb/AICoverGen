@@ -553,7 +553,7 @@ with gr.Blocks(title="AICoverGenWebUI") as app:
                 scale=2,
             )
             generate_btn2 = gr.Button(
-                "Generate step-by-step", variant="primary", scale=1, visible=False
+                "Generate step-by-step", variant="primary", scale=1, visible=True
             )
             generate_btn = gr.Button("Generate", variant="primary", scale=2)
             ai_cover = gr.Audio(label="AI Cover", scale=3)
@@ -583,8 +583,8 @@ with gr.Blocks(title="AICoverGenWebUI") as app:
         )
 
         ref_btn.click(update_models_list, None, outputs=rvc_model)
-        song_dir = gr.Text(visible=False)
-        input_type = gr.Text(visible=False)
+        song_dir = gr.State()
+        input_type = gr.State()
         generate_btn.click(
             lambda: (gr.update(interactive=False),) * 2,
             inputs=[],

@@ -125,7 +125,9 @@ def extract_zip(extraction_folder, zip_name, remove_zip):
                     model_filepath = os.path.join(root, name)
 
         if not model_filepath:
-            raise Exception(f"No .pth model file was found in the extracted zip.")
+            raise Exception(
+                f"No .pth model file was found in the extracted zip folder."
+            )
         # move model and index file to extraction folder
 
         os.rename(
@@ -137,6 +139,12 @@ def extract_zip(extraction_folder, zip_name, remove_zip):
                 index_filepath,
                 os.path.join(extraction_folder, os.path.basename(index_filepath)),
             )
+
+        # remove any unnecessary nested folders
+        for filepath in os.listdir(extraction_folder):
+            if os.path.isdir(os.path.join(extraction_folder, filepath)):
+                shutil.rmtree(os.path.join(extraction_folder, filepath))
+
     except Exception as e:
         if os.path.exists(extraction_folder):
             shutil.rmtree(extraction_folder)
@@ -145,10 +153,13 @@ def extract_zip(extraction_folder, zip_name, remove_zip):
         if remove_zip and os.path.exists(zip_name):
             os.remove(zip_name)
 
-    # remove any unnecessary nested folders
-    for filepath in os.listdir(extraction_folder):
-        if os.path.isdir(os.path.join(extraction_folder, filepath)):
-            shutil.rmtree(os.path.join(extraction_folder, filepath))
+
+def copy_files_to_new_folder(file_paths, folder_path):
+    os.makedirs(folder_path)
+    for file_path in file_paths:
+        shutil.copyfile(
+            file_path, os.path.join(folder_path, os.path.basename(file_path))
+        )
 
 
 def remove_suffix_after(text: str, occurrence: str):
@@ -161,49 +172,74 @@ def remove_suffix_after(text: str, occurrence: str):
 
 def download_online_model(url, dir_name, progress=gr.Progress()):
     try:
-        progress(0, desc=f"[~] Downloading voice model with name {dir_name}...")
         if not url:
-            raise Exception("Voice model link missing!")
-        zip_name = remove_suffix_after(url.split("/")[-1], ".zip")
-        if not zip_name.endswith(".zip"):
-            raise Exception("Link does not point to a valid zip file!")
+            raise Exception("Download link to model missing!")
         if not dir_name:
-            raise Exception("Voice model name missing!")
+            raise Exception("Model name missing!")
         extraction_folder = os.path.join(rvc_models_dir, dir_name)
         if os.path.exists(extraction_folder):
             raise Exception(
                 f"Voice model directory {dir_name} already exists! Choose a different name for your voice model."
             )
+        zip_name = url.split("/")[-1].split("?")[0]
 
         if "pixeldrain.com" in url:
             url = f"https://pixeldrain.com/api/file/{zip_name}"
 
+        progress(0, desc=f"[~] Downloading voice model with name {dir_name}...")
+
         urllib.request.urlretrieve(url, zip_name)
 
-        progress(0.5, desc="[~] Extracting zip...")
+        progress(0.5, desc="[~] Extracting zip file...")
         extract_zip(extraction_folder, zip_name, remove_zip=True)
-        return f"[+] {dir_name} Model successfully downloaded!"
+        return f"[+] Model with name {dir_name} successfully downloaded!"
 
     except Exception as e:
         raise gr.Error(str(e))
 
 
-def upload_local_model(zip_path, dir_name, progress=gr.Progress()):
+def upload_local_model(input_paths, dir_name, progress=gr.Progress()):
     try:
-        if not zip_path:
-            raise Exception("No voice model selected.")
+        if not input_paths:
+            raise Exception("No files selected!")
+        if len(input_paths) > 2:
+            raise Exception("At most two files can be uploaded!")
         if not dir_name:
-            raise Exception("No name given for voice model.")
-        extraction_folder = os.path.join(rvc_models_dir, dir_name)
-        if os.path.exists(extraction_folder):
+            raise Exception("Model name missing!")
+        output_folder = os.path.join(rvc_models_dir, dir_name)
+        if os.path.exists(output_folder):
             raise Exception(
                 f"Voice model directory {dir_name} already exists! Choose a different name for your voice model."
             )
+        input_names = [input_path.name for input_path in input_paths]
+        if len(input_names) == 1:
+            input_name = input_names[0]
+            if input_name.endswith(".pth"):
+                progress(0.5, desc="[~] Copying .pth file ...")
+                copy_files_to_new_folder(input_names, output_folder)
+            # NOTE a .pth file is actually itself a zip file
+            elif zipfile.is_zipfile(input_name):
+                progress(0.5, desc="[~] Extracting zip file...")
+                extract_zip(output_folder, input_name, remove_zip=False)
+            else:
+                raise Exception(
+                    "Only a .pth file or a .zip file can be uploaded by itself!"
+                )
+        else:
+            # sort two input files by extension type
+            input_names_sorted = sorted(
+                input_names, key=lambda f: os.path.splitext(f)[1]
+            )
+            index_name, pth_name = input_names_sorted
+            if pth_name.endswith(".pth") and index_name.endswith(".index"):
+                progress(0.5, desc="[~] Copying .pth file and index file ...")
+                copy_files_to_new_folder(input_names, output_folder)
+            else:
+                raise Exception(
+                    "Only a .pth file and an .index file can be uploaded together!"
+                )
 
-        zip_name = zip_path.name
-        progress(0.5, desc="[~] Extracting zip...")
-        extract_zip(extraction_folder, zip_name, remove_zip=False)
-        return f"[+] {dir_name} Model successfully uploaded!"
+        return f"[+] Model with name {dir_name} successfully uploaded!"
 
     except Exception as e:
         raise gr.Error(str(e))
@@ -803,11 +839,11 @@ with gr.Blocks(title="AICoverGenWebUI") as app:
             with gr.Row():
                 model_zip_link = gr.Text(
                     label="Download link to model",
-                    info="Should be a zip file containing a .pth model file and an optional .index file.",
+                    info="Should point to a zip file containing a .pth model file and an optional .index file.",
                 )
                 model_name = gr.Text(
-                    label="Name your model",
-                    info="Give your new model a unique name from your other voice models.",
+                    label="Model name",
+                    info="Enter a unique name for the model.",
                 )
 
             with gr.Row():
@@ -825,6 +861,10 @@ with gr.Blocks(title="AICoverGenWebUI") as app:
             gr.Markdown("## Input Examples")
             gr.Examples(
                 [
+                    [
+                        "https://huggingface.co/coreliastreet/taylorswift1989/resolve/main/taylorswift.zip?download=true",
+                        "Taylor Swift",
+                    ],
                     [
                         "https://huggingface.co/phant0m4r/LiSA/resolve/main/LiSA.zip",
                         "Lisa",
@@ -898,17 +938,19 @@ with gr.Blocks(title="AICoverGenWebUI") as app:
 
     # Upload tab
     with gr.Tab("Upload model"):
-        gr.Markdown("## Upload locally trained RVC v2 model and index file")
+        gr.Markdown("## Upload locally trained RVC v2 model and optional index file")
         gr.Markdown(
             "- Find model file (weights folder) and optional index file (logs/[name] folder)"
         )
-        gr.Markdown("- Compress files into zip file")
-        gr.Markdown("- Upload zip file and give unique name for voice")
+        gr.Markdown(
+            "- Upload model file and optional index file directly or compress into a zip file and upload that"
+        )
+        gr.Markdown("- Enter a unique name for the model")
         gr.Markdown("- Click Upload model")
 
         with gr.Row():
             with gr.Column():
-                zip_file = gr.File(label="Zip file")
+                model_files = gr.File(label="Files", file_count="multiple")
 
             local_model_name = gr.Text(label="Model name")
 
@@ -919,7 +961,7 @@ with gr.Blocks(title="AICoverGenWebUI") as app:
             )
             model_upload_button.click(
                 upload_local_model,
-                inputs=[zip_file, local_model_name],
+                inputs=[model_files, local_model_name],
                 outputs=local_upload_output_message,
             )
 

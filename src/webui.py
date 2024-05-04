@@ -29,6 +29,13 @@ if os.name == "nt":
 progress_bar = gr.Progress()
 
 
+def confirmation_harness(fun, confirm, *args):
+    if confirm:
+        return fun(*args)
+    else:
+        raise gr.Error("Confirmation missing!")
+
+
 def exception_harness(fun, *args):
     new_args = args + (progress_bar,)
     try:
@@ -73,6 +80,11 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 mdxnet_models_dir = os.path.join(BASE_DIR, "mdxnet_models")
 rvc_models_dir = os.path.join(BASE_DIR, "rvc_models")
 output_dir = os.path.join(BASE_DIR, "song_output")
+
+
+def confirm_box_js(msg):
+    formatted_msg = f"'{msg}'"
+    return f"(x) => confirm({formatted_msg})"
 
 
 def get_current_models(models_dir):
@@ -996,6 +1008,8 @@ with gr.Blocks(title="AICoverGenWebUI") as app:
             )
 
     with gr.Tab("Delete models"):
+        model_delete_confirmation = gr.State(False)
+        dummy_deletion_checkbox = gr.Checkbox(visible=False)
         with gr.Row():
             with gr.Column():
                 rvc_models_to_delete = gr.Dropdown(
@@ -1020,14 +1034,28 @@ with gr.Blocks(title="AICoverGenWebUI") as app:
             with gr.Column():
                 pass
         delete_models_button_click = delete_models_button.click(
-            delete_models,
-            inputs=rvc_models_to_delete,
+            # NOTE not sure why, but in order for subsequent event listener
+            # to trigger, changes coming from the js code
+            # have to be routed through an identity function which takes as
+            # input some dummy component of type bool.
+            lambda x: x,
+            inputs=dummy_deletion_checkbox,
+            outputs=model_delete_confirmation,
+            js=confirm_box_js("Are you sure you want to delete the selected models?"),
+        ).then(
+            partial(confirmation_harness, delete_models),
+            inputs=[model_delete_confirmation, rvc_models_to_delete],
             outputs=rvc_models_deleted_message,
         )
 
         delete_all_models_btn_click = delete_all_models_button.click(
-            delete_all_models,
-            inputs=None,
+            lambda x: x,
+            inputs=dummy_deletion_checkbox,
+            outputs=model_delete_confirmation,
+            js=confirm_box_js("Are you sure you want to delete all models?"),
+        ).then(
+            partial(confirmation_harness, delete_all_models),
+            inputs=model_delete_confirmation,
             outputs=rvc_models_deleted_message,
         )
 

@@ -81,9 +81,42 @@ def get_current_models(models_dir):
     return [item for item in models_list if item not in items_to_remove]
 
 
-def update_models_list():
+def update_model_lists():
     models_l = get_current_models(rvc_models_dir)
-    return gr.Dropdown(choices=models_l)
+    return gr.Dropdown(choices=models_l), gr.Dropdown(choices=models_l, value=[])
+
+
+def delete_models(model_names):
+    try:
+        if not model_names:
+            raise Exception("No models selected!")
+        for model_name in model_names:
+            model_dir = os.path.join(rvc_models_dir, model_name)
+            if os.path.isdir(model_dir):
+                shutil.rmtree(model_dir)
+        models_names_formatted = [f"'{w}'" for w in model_names]
+        if len(model_names) == 1:
+            return (
+                f"[+] Model with name {models_names_formatted[0]} successfully deleted!"
+            )
+        else:
+            first_models = ", ".join(models_names_formatted[:-1])
+            last_model = models_names_formatted[-1]
+            return f"[+] Models with names {first_models} and {last_model} successfully deleted!"
+    except Exception as e:
+        raise gr.Error(str(e))
+
+
+def delete_all_models():
+    try:
+        all_models = get_current_models(rvc_models_dir)
+        for model_name in all_models:
+            model_dir = os.path.join(rvc_models_dir, model_name)
+            if os.path.isdir(model_dir):
+                shutil.rmtree(model_dir)
+        return f"[+] All models successfully deleted!"
+    except Exception as e:
+        raise gr.Error(str(e))
 
 
 def load_public_models():
@@ -146,7 +179,7 @@ def extract_zip(extraction_folder, zip_name, remove_zip):
                 shutil.rmtree(os.path.join(extraction_folder, filepath))
 
     except Exception as e:
-        if os.path.exists(extraction_folder):
+        if os.path.isdir(extraction_folder):
             shutil.rmtree(extraction_folder)
         raise e
     finally:
@@ -360,9 +393,8 @@ with gr.Blocks(title="AICoverGenWebUI") as app:
                     rvc_model = gr.Dropdown(
                         voice_models,
                         label="Voice Models",
-                        info='Models folder "AICoverGen --> rvc_models". After new models are added into this folder, click the refresh button',
+                        info='Models folder "ultimate-rvc --> rvc_models".',
                     )
-                    ref_btn = gr.Button("Refresh Models 🔁", variant="primary")
 
                 with gr.Column() as yt_link_col:
                     song_input = gr.Text(
@@ -640,8 +672,6 @@ with gr.Blocks(title="AICoverGenWebUI") as app:
                 background_vocals_shifted_track,
             ],
         )
-
-        ref_btn.click(update_models_list, None, outputs=rvc_model)
         song_dir = gr.State()
         input_type = gr.State()
         generate_btn.click(
@@ -852,7 +882,7 @@ with gr.Blocks(title="AICoverGenWebUI") as app:
                     label="Output Message", interactive=False, scale=20
                 )
 
-            download_btn.click(
+            download_button_click = download_btn.click(
                 download_online_model,
                 inputs=[model_zip_link, model_name],
                 outputs=dl_output_message,
@@ -930,7 +960,7 @@ with gr.Blocks(title="AICoverGenWebUI") as app:
                 inputs=[filter_tags, search_query],
                 outputs=public_models_table,
             )
-            download_pub_btn.click(
+            download_pub_btn_click = download_pub_btn.click(
                 download_online_model,
                 inputs=[pub_zip_link, pub_model_name],
                 outputs=pub_dl_output_message,
@@ -959,11 +989,58 @@ with gr.Blocks(title="AICoverGenWebUI") as app:
             local_upload_output_message = gr.Text(
                 label="Output Message", interactive=False, scale=20
             )
-            model_upload_button.click(
+            model_upload_button_click = model_upload_button.click(
                 upload_local_model,
                 inputs=[model_files, local_model_name],
                 outputs=local_upload_output_message,
             )
+
+    with gr.Tab("Delete models"):
+        with gr.Row():
+            with gr.Column():
+                rvc_models_to_delete = gr.Dropdown(
+                    voice_models,
+                    label="Voice models",
+                    filterable=True,
+                    multiselect=True,
+                )
+            with gr.Column():
+                rvc_models_deleted_message = gr.Text(
+                    label="Output Message", interactive=False
+                )
+
+        with gr.Row():
+            with gr.Column():
+                delete_models_button = gr.Button(
+                    "Delete selected models", variant="primary"
+                )
+                delete_all_models_button = gr.Button(
+                    "Delete all models", variant="primary"
+                )
+            with gr.Column():
+                pass
+        delete_models_button_click = delete_models_button.click(
+            delete_models,
+            inputs=rvc_models_to_delete,
+            outputs=rvc_models_deleted_message,
+        )
+
+        delete_all_models_btn_click = delete_all_models_button.click(
+            delete_all_models,
+            inputs=None,
+            outputs=rvc_models_deleted_message,
+        )
+
+    for click_event in [
+        download_button_click,
+        download_pub_btn_click,
+        model_upload_button_click,
+        delete_models_button_click,
+        delete_all_models_btn_click,
+    ]:
+        click_event.success(
+            update_model_lists, inputs=None, outputs=[rvc_model, rvc_models_to_delete]
+        )
 
 
 if __name__ == "__main__":

@@ -224,20 +224,20 @@ def download_online_model(url, dir_name, progress=gr.Progress()):
         extraction_folder = os.path.join(rvc_models_dir, dir_name)
         if os.path.exists(extraction_folder):
             raise Exception(
-                f"Voice model directory {dir_name} already exists! Choose a different name for your voice model."
+                f'Voice model directory "{dir_name}" already exists! Choose a different name for your voice model.'
             )
         zip_name = url.split("/")[-1].split("?")[0]
 
         if "pixeldrain.com" in url:
             url = f"https://pixeldrain.com/api/file/{zip_name}"
 
-        progress(0, desc=f"[~] Downloading voice model with name {dir_name}...")
+        progress(0, desc=f"[~] Downloading voice model with name '{dir_name}'...")
 
         urllib.request.urlretrieve(url, zip_name)
 
         progress(0.5, desc="[~] Extracting zip file...")
         extract_zip(extraction_folder, zip_name, remove_zip=True)
-        return f"[+] Model with name {dir_name} successfully downloaded!"
+        return f"[+] Model with name '{dir_name}' successfully downloaded!"
 
     except Exception as e:
         raise gr.Error(str(e))
@@ -254,7 +254,7 @@ def upload_local_model(input_paths, dir_name, progress=gr.Progress()):
         output_folder = os.path.join(rvc_models_dir, dir_name)
         if os.path.exists(output_folder):
             raise Exception(
-                f"Voice model directory {dir_name} already exists! Choose a different name for your voice model."
+                f'Voice model directory "{dir_name}" already exists! Choose a different name for your voice model.'
             )
         input_names = [input_path.name for input_path in input_paths]
         if len(input_names) == 1:
@@ -284,7 +284,7 @@ def upload_local_model(input_paths, dir_name, progress=gr.Progress()):
                     "Only a .pth file and an .index file can be uploaded together!"
                 )
 
-        return f"[+] Model with name {dir_name} successfully uploaded!"
+        return f"[+] Model with name '{dir_name}' successfully uploaded!"
 
     except Exception as e:
         raise gr.Error(str(e))

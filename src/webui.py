@@ -907,15 +907,13 @@ with gr.Blocks(title="Ultimate RVC") as app:
                 )
 
             with gr.Tab("From Public Index"):
-
-                gr.Markdown("")
-                gr.Markdown("## How to use")
-                gr.Markdown("- Click Initialize public models table")
-                gr.Markdown("- Filter models using tags or search bar")
-                gr.Markdown(
-                    "- Select a row to autofill the download link and model name"
-                )
-                gr.Markdown("- Click Download")
+                with gr.Accordion("HOW TO USE"):
+                    gr.Markdown("- Click Initialize public models table")
+                    gr.Markdown("- Filter models using tags or search bar")
+                    gr.Markdown(
+                        "- Select a row to autofill the download link and model name"
+                    )
+                    gr.Markdown("- Click Download")
 
                 with gr.Row():
                     pub_zip_link = gr.Text(label="Download link to model")
@@ -969,18 +967,15 @@ with gr.Blocks(title="Ultimate RVC") as app:
 
         # Upload tab
         with gr.Tab("Upload model"):
-            gr.Markdown("")
-            gr.Markdown(
-                "## Upload locally trained RVC v2 model and optional index file"
-            )
-            gr.Markdown(
-                "- Find model file (weights folder) and optional index file (logs/[name] folder)"
-            )
-            gr.Markdown(
-                "- Upload model file and optional index file directly or compress into a zip file and upload that"
-            )
-            gr.Markdown("- Enter a unique name for the model")
-            gr.Markdown("- Click Upload model")
+            with gr.Accordion("HOW TO USE"):
+                gr.Markdown(
+                    "- Find locally trained RVC v2 model file (weights folder) and optional index file (logs/[name] folder)"
+                )
+                gr.Markdown(
+                    "- Upload model file and optional index file directly or compress into a zip file and upload that"
+                )
+                gr.Markdown("- Enter a unique name for the model")
+                gr.Markdown("- Click Upload model")
 
             with gr.Row():
                 with gr.Column():

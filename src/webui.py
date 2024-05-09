@@ -31,7 +31,7 @@ progress_bar = gr.Progress()
 
 def confirmation_harness(fun, confirm, *args):
     if confirm:
-        return fun(*args)
+        return exception_harness(fun, *args)
     else:
         raise gr.Error("Confirmation missing!")
 
@@ -98,37 +98,31 @@ def update_model_lists():
     return gr.Dropdown(choices=models_l), gr.Dropdown(choices=models_l, value=[])
 
 
-def delete_models(model_names):
-    try:
-        if not model_names:
-            raise Exception("No models selected!")
-        for model_name in model_names:
-            model_dir = os.path.join(rvc_models_dir, model_name)
-            if os.path.isdir(model_dir):
-                shutil.rmtree(model_dir)
-        models_names_formatted = [f"'{w}'" for w in model_names]
-        if len(model_names) == 1:
-            return (
-                f"[+] Model with name {models_names_formatted[0]} successfully deleted!"
-            )
-        else:
-            first_models = ", ".join(models_names_formatted[:-1])
-            last_model = models_names_formatted[-1]
-            return f"[+] Models with names {first_models} and {last_model} successfully deleted!"
-    except Exception as e:
-        raise gr.Error(str(e))
+def delete_models(model_names, progress):
+    if not model_names:
+        raise Exception("No models selected!")
+    progress(0.5, desc="[~] Deleting selected models ...")
+    for model_name in model_names:
+        model_dir = os.path.join(rvc_models_dir, model_name)
+        if os.path.isdir(model_dir):
+            shutil.rmtree(model_dir)
+    models_names_formatted = [f"'{w}'" for w in model_names]
+    if len(model_names) == 1:
+        return f"[+] Model with name {models_names_formatted[0]} successfully deleted!"
+    else:
+        first_models = ", ".join(models_names_formatted[:-1])
+        last_model = models_names_formatted[-1]
+        return f"[+] Models with names {first_models} and {last_model} successfully deleted!"
 
 
-def delete_all_models():
-    try:
-        all_models = get_current_models(rvc_models_dir)
-        for model_name in all_models:
-            model_dir = os.path.join(rvc_models_dir, model_name)
-            if os.path.isdir(model_dir):
-                shutil.rmtree(model_dir)
-        return f"[+] All models successfully deleted!"
-    except Exception as e:
-        raise gr.Error(str(e))
+def delete_all_models(progress):
+    all_models = get_current_models(rvc_models_dir)
+    progress(0.5, desc="[~] Deleting all models ...")
+    for model_name in all_models:
+        model_dir = os.path.join(rvc_models_dir, model_name)
+        if os.path.isdir(model_dir):
+            shutil.rmtree(model_dir)
+    return f"[+] All models successfully deleted!"
 
 
 def load_public_models():
@@ -215,79 +209,69 @@ def remove_suffix_after(text: str, occurrence: str):
         return text[: location + len(occurrence)]
 
 
-def download_online_model(url, dir_name, progress=gr.Progress()):
-    try:
-        if not url:
-            raise Exception("Download link to model missing!")
-        if not dir_name:
-            raise Exception("Model name missing!")
-        extraction_folder = os.path.join(rvc_models_dir, dir_name)
-        if os.path.exists(extraction_folder):
-            raise Exception(
-                f'Voice model directory "{dir_name}" already exists! Choose a different name for your voice model.'
-            )
-        zip_name = url.split("/")[-1].split("?")[0]
+def download_online_model(url, dir_name, progress):
+    if not url:
+        raise Exception("Download link to model missing!")
+    if not dir_name:
+        raise Exception("Model name missing!")
+    extraction_folder = os.path.join(rvc_models_dir, dir_name)
+    if os.path.exists(extraction_folder):
+        raise Exception(
+            f'Voice model directory "{dir_name}" already exists! Choose a different name for your voice model.'
+        )
+    zip_name = url.split("/")[-1].split("?")[0]
 
-        if "pixeldrain.com" in url:
-            url = f"https://pixeldrain.com/api/file/{zip_name}"
+    if "pixeldrain.com" in url:
+        url = f"https://pixeldrain.com/api/file/{zip_name}"
 
-        progress(0, desc=f"[~] Downloading voice model with name '{dir_name}'...")
+    progress(0, desc=f"[~] Downloading voice model with name '{dir_name}'...")
 
-        urllib.request.urlretrieve(url, zip_name)
+    urllib.request.urlretrieve(url, zip_name)
 
-        progress(0.5, desc="[~] Extracting zip file...")
-        extract_zip(extraction_folder, zip_name, remove_zip=True)
-        return f"[+] Model with name '{dir_name}' successfully downloaded!"
-
-    except Exception as e:
-        raise gr.Error(str(e))
+    progress(0.5, desc="[~] Extracting zip file...")
+    extract_zip(extraction_folder, zip_name, remove_zip=True)
+    return f"[+] Model with name '{dir_name}' successfully downloaded!"
 
 
-def upload_local_model(input_paths, dir_name, progress=gr.Progress()):
-    try:
-        if not input_paths:
-            raise Exception("No files selected!")
-        if len(input_paths) > 2:
-            raise Exception("At most two files can be uploaded!")
-        if not dir_name:
-            raise Exception("Model name missing!")
-        output_folder = os.path.join(rvc_models_dir, dir_name)
-        if os.path.exists(output_folder):
-            raise Exception(
-                f'Voice model directory "{dir_name}" already exists! Choose a different name for your voice model.'
-            )
-        input_names = [input_path.name for input_path in input_paths]
-        if len(input_names) == 1:
-            input_name = input_names[0]
-            if input_name.endswith(".pth"):
-                progress(0.5, desc="[~] Copying .pth file ...")
-                copy_files_to_new_folder(input_names, output_folder)
-            # NOTE a .pth file is actually itself a zip file
-            elif zipfile.is_zipfile(input_name):
-                progress(0.5, desc="[~] Extracting zip file...")
-                extract_zip(output_folder, input_name, remove_zip=False)
-            else:
-                raise Exception(
-                    "Only a .pth file or a .zip file can be uploaded by itself!"
-                )
+def upload_local_model(input_paths, dir_name, progress):
+    if not input_paths:
+        raise Exception("No files selected!")
+    if len(input_paths) > 2:
+        raise Exception("At most two files can be uploaded!")
+    if not dir_name:
+        raise Exception("Model name missing!")
+    output_folder = os.path.join(rvc_models_dir, dir_name)
+    if os.path.exists(output_folder):
+        raise Exception(
+            f'Voice model directory "{dir_name}" already exists! Choose a different name for your voice model.'
+        )
+    input_names = [input_path.name for input_path in input_paths]
+    if len(input_names) == 1:
+        input_name = input_names[0]
+        if input_name.endswith(".pth"):
+            progress(0.5, desc="[~] Copying .pth file ...")
+            copy_files_to_new_folder(input_names, output_folder)
+        # NOTE a .pth file is actually itself a zip file
+        elif zipfile.is_zipfile(input_name):
+            progress(0.5, desc="[~] Extracting zip file...")
+            extract_zip(output_folder, input_name, remove_zip=False)
         else:
-            # sort two input files by extension type
-            input_names_sorted = sorted(
-                input_names, key=lambda f: os.path.splitext(f)[1]
+            raise Exception(
+                "Only a .pth file or a .zip file can be uploaded by itself!"
             )
-            index_name, pth_name = input_names_sorted
-            if pth_name.endswith(".pth") and index_name.endswith(".index"):
-                progress(0.5, desc="[~] Copying .pth file and index file ...")
-                copy_files_to_new_folder(input_names, output_folder)
-            else:
-                raise Exception(
-                    "Only a .pth file and an .index file can be uploaded together!"
-                )
+    else:
+        # sort two input files by extension type
+        input_names_sorted = sorted(input_names, key=lambda f: os.path.splitext(f)[1])
+        index_name, pth_name = input_names_sorted
+        if pth_name.endswith(".pth") and index_name.endswith(".index"):
+            progress(0.5, desc="[~] Copying .pth file and index file ...")
+            copy_files_to_new_folder(input_names, output_folder)
+        else:
+            raise Exception(
+                "Only a .pth file and an .index file can be uploaded together!"
+            )
 
-        return f"[+] Model with name '{dir_name}' successfully uploaded!"
-
-    except Exception as e:
-        raise gr.Error(str(e))
+    return f"[+] Model with name '{dir_name}' successfully uploaded!"
 
 
 def filter_models(tags, query):
@@ -895,7 +879,7 @@ with gr.Blocks(title="AICoverGenWebUI") as app:
                 )
 
             download_button_click = download_btn.click(
-                download_online_model,
+                partial(exception_harness, download_online_model),
                 inputs=[model_zip_link, model_name],
                 outputs=dl_output_message,
             )
@@ -919,7 +903,7 @@ with gr.Blocks(title="AICoverGenWebUI") as app:
                 ],
                 [model_zip_link, model_name],
                 [],
-                download_online_model,
+                partial(exception_harness, download_online_model),
             )
 
         with gr.Tab("From Public Index"):
@@ -973,7 +957,7 @@ with gr.Blocks(title="AICoverGenWebUI") as app:
                 outputs=public_models_table,
             )
             download_pub_btn_click = download_pub_btn.click(
-                download_online_model,
+                partial(exception_harness, download_online_model),
                 inputs=[pub_zip_link, pub_model_name],
                 outputs=pub_dl_output_message,
             )
@@ -1002,7 +986,7 @@ with gr.Blocks(title="AICoverGenWebUI") as app:
                 label="Output Message", interactive=False, scale=20
             )
             model_upload_button_click = model_upload_button.click(
-                upload_local_model,
+                partial(exception_harness, upload_local_model),
                 inputs=[model_files, local_model_name],
                 outputs=local_upload_output_message,
             )

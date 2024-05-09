@@ -376,12 +376,12 @@ with open(
 ) as infile:
     public_models = json.load(infile)
 
-with gr.Blocks(title="AICoverGenWebUI") as app:
+with gr.Blocks(title="Ultimate RVC") as app:
 
-    gr.Label("AICoverGen WebUI created with ❤️", show_label=False)
+    gr.Label("Ultimate RVC ❤️", show_label=False)
 
     # main tab
-    with gr.Tab("Generate"):
+    with gr.Tab("Generate song covers"):
 
         with gr.Accordion("Main Options"):
             with gr.Row():
@@ -856,202 +856,217 @@ with gr.Blocks(title="AICoverGenWebUI") as app:
                 show_intermediate_files,
             ],
         )
+    with gr.Tab("Manage models"):
 
-    # Download tab
-    with gr.Tab("Download model"):
+        # Download tab
+        with gr.Tab("Download model"):
 
-        with gr.Tab("From HuggingFace/Pixeldrain URL"):
-            with gr.Row():
-                model_zip_link = gr.Text(
-                    label="Download link to model",
-                    info="Should point to a zip file containing a .pth model file and an optional .index file.",
+            with gr.Tab("From HuggingFace/Pixeldrain URL"):
+                with gr.Row():
+                    model_zip_link = gr.Text(
+                        label="Download link to model",
+                        info="Should point to a zip file containing a .pth model file and an optional .index file.",
+                    )
+                    model_name = gr.Text(
+                        label="Model name",
+                        info="Enter a unique name for the model.",
+                    )
+
+                with gr.Row():
+                    download_btn = gr.Button("Download 🌐", variant="primary", scale=19)
+                    dl_output_message = gr.Text(
+                        label="Output Message", interactive=False, scale=20
+                    )
+
+                download_button_click = download_btn.click(
+                    partial(exception_harness, download_online_model),
+                    inputs=[model_zip_link, model_name],
+                    outputs=dl_output_message,
                 )
-                model_name = gr.Text(
-                    label="Model name",
-                    info="Enter a unique name for the model.",
+
+                gr.Markdown("## Input Examples")
+                gr.Examples(
+                    [
+                        [
+                            "https://huggingface.co/coreliastreet/taylorswift1989/resolve/main/taylorswift.zip?download=true",
+                            "Taylor Swift",
+                        ],
+                        [
+                            "https://huggingface.co/phant0m4r/LiSA/resolve/main/LiSA.zip",
+                            "Lisa",
+                        ],
+                        ["https://pixeldrain.com/u/3tJmABXA", "Gura"],
+                        [
+                            "https://huggingface.co/Kit-Lemonfoot/kitlemonfoot_rvc_models/resolve/main/AZKi%20(Hybrid).zip",
+                            "Azki",
+                        ],
+                    ],
+                    [model_zip_link, model_name],
+                    [],
+                    partial(exception_harness, download_online_model),
                 )
 
+            with gr.Tab("From Public Index"):
+
+                gr.Markdown("")
+                gr.Markdown("## How to use")
+                gr.Markdown("- Click Initialize public models table")
+                gr.Markdown("- Filter models using tags or search bar")
+                gr.Markdown(
+                    "- Select a row to autofill the download link and model name"
+                )
+                gr.Markdown("- Click Download")
+
+                with gr.Row():
+                    pub_zip_link = gr.Text(label="Download link to model")
+                    pub_model_name = gr.Text(label="Model name")
+
+                with gr.Row():
+                    download_pub_btn = gr.Button(
+                        "Download 🌐", variant="primary", scale=19
+                    )
+                    pub_dl_output_message = gr.Text(
+                        label="Output Message", interactive=False, scale=20
+                    )
+
+                filter_tags = gr.CheckboxGroup(
+                    value=[], label="Show voice models with tags", choices=[]
+                )
+                search_query = gr.Text(label="Search")
+                load_public_models_button = gr.Button(
+                    value="Initialize public models table", variant="primary"
+                )
+
+                public_models_table = gr.DataFrame(
+                    value=[],
+                    headers=["Model Name", "Description", "Credit", "URL", "Tags"],
+                    label="Available Public Models",
+                    interactive=False,
+                )
+                public_models_table.select(
+                    pub_dl_autofill,
+                    inputs=[public_models_table],
+                    outputs=[pub_zip_link, pub_model_name],
+                )
+                load_public_models_button.click(
+                    load_public_models, outputs=[public_models_table, filter_tags]
+                )
+                search_query.change(
+                    filter_models,
+                    inputs=[filter_tags, search_query],
+                    outputs=public_models_table,
+                )
+                filter_tags.select(
+                    filter_models,
+                    inputs=[filter_tags, search_query],
+                    outputs=public_models_table,
+                )
+                download_pub_btn_click = download_pub_btn.click(
+                    partial(exception_harness, download_online_model),
+                    inputs=[pub_zip_link, pub_model_name],
+                    outputs=pub_dl_output_message,
+                )
+
+        # Upload tab
+        with gr.Tab("Upload model"):
+            gr.Markdown("")
+            gr.Markdown(
+                "## Upload locally trained RVC v2 model and optional index file"
+            )
+            gr.Markdown(
+                "- Find model file (weights folder) and optional index file (logs/[name] folder)"
+            )
+            gr.Markdown(
+                "- Upload model file and optional index file directly or compress into a zip file and upload that"
+            )
+            gr.Markdown("- Enter a unique name for the model")
+            gr.Markdown("- Click Upload model")
+
             with gr.Row():
-                download_btn = gr.Button("Download 🌐", variant="primary", scale=19)
-                dl_output_message = gr.Text(
+                with gr.Column():
+                    model_files = gr.File(label="Files", file_count="multiple")
+
+                local_model_name = gr.Text(label="Model name")
+
+            with gr.Row():
+                model_upload_button = gr.Button(
+                    "Upload model", variant="primary", scale=19
+                )
+                local_upload_output_message = gr.Text(
                     label="Output Message", interactive=False, scale=20
                 )
+                model_upload_button_click = model_upload_button.click(
+                    partial(exception_harness, upload_local_model),
+                    inputs=[model_files, local_model_name],
+                    outputs=local_upload_output_message,
+                )
 
-            download_button_click = download_btn.click(
-                partial(exception_harness, download_online_model),
-                inputs=[model_zip_link, model_name],
-                outputs=dl_output_message,
-            )
-
-            gr.Markdown("## Input Examples")
-            gr.Examples(
-                [
-                    [
-                        "https://huggingface.co/coreliastreet/taylorswift1989/resolve/main/taylorswift.zip?download=true",
-                        "Taylor Swift",
-                    ],
-                    [
-                        "https://huggingface.co/phant0m4r/LiSA/resolve/main/LiSA.zip",
-                        "Lisa",
-                    ],
-                    ["https://pixeldrain.com/u/3tJmABXA", "Gura"],
-                    [
-                        "https://huggingface.co/Kit-Lemonfoot/kitlemonfoot_rvc_models/resolve/main/AZKi%20(Hybrid).zip",
-                        "Azki",
-                    ],
-                ],
-                [model_zip_link, model_name],
-                [],
-                partial(exception_harness, download_online_model),
-            )
-
-        with gr.Tab("From Public Index"):
-
-            gr.Markdown("## How to use")
-            gr.Markdown("- Click Initialize public models table")
-            gr.Markdown("- Filter models using tags or search bar")
-            gr.Markdown("- Select a row to autofill the download link and model name")
-            gr.Markdown("- Click Download")
+        with gr.Tab("Delete models"):
+            model_delete_confirmation = gr.State(False)
+            dummy_deletion_checkbox = gr.Checkbox(visible=False)
+            with gr.Row():
+                with gr.Column():
+                    rvc_models_to_delete = gr.Dropdown(
+                        voice_models,
+                        label="Voice models",
+                        filterable=True,
+                        multiselect=True,
+                    )
+                with gr.Column():
+                    rvc_models_deleted_message = gr.Text(
+                        label="Output Message", interactive=False
+                    )
 
             with gr.Row():
-                pub_zip_link = gr.Text(label="Download link to model")
-                pub_model_name = gr.Text(label="Model name")
-
-            with gr.Row():
-                download_pub_btn = gr.Button("Download 🌐", variant="primary", scale=19)
-                pub_dl_output_message = gr.Text(
-                    label="Output Message", interactive=False, scale=20
-                )
-
-            filter_tags = gr.CheckboxGroup(
-                value=[], label="Show voice models with tags", choices=[]
-            )
-            search_query = gr.Text(label="Search")
-            load_public_models_button = gr.Button(
-                value="Initialize public models table", variant="primary"
-            )
-
-            public_models_table = gr.DataFrame(
-                value=[],
-                headers=["Model Name", "Description", "Credit", "URL", "Tags"],
-                label="Available Public Models",
-                interactive=False,
-            )
-            public_models_table.select(
-                pub_dl_autofill,
-                inputs=[public_models_table],
-                outputs=[pub_zip_link, pub_model_name],
-            )
-            load_public_models_button.click(
-                load_public_models, outputs=[public_models_table, filter_tags]
-            )
-            search_query.change(
-                filter_models,
-                inputs=[filter_tags, search_query],
-                outputs=public_models_table,
-            )
-            filter_tags.select(
-                filter_models,
-                inputs=[filter_tags, search_query],
-                outputs=public_models_table,
-            )
-            download_pub_btn_click = download_pub_btn.click(
-                partial(exception_harness, download_online_model),
-                inputs=[pub_zip_link, pub_model_name],
-                outputs=pub_dl_output_message,
+                with gr.Column():
+                    delete_models_button = gr.Button(
+                        "Delete selected models", variant="primary"
+                    )
+                    delete_all_models_button = gr.Button(
+                        "Delete all models", variant="primary"
+                    )
+                with gr.Column():
+                    pass
+            delete_models_button_click = delete_models_button.click(
+                # NOTE not sure why, but in order for subsequent event listener
+                # to trigger, changes coming from the js code
+                # have to be routed through an identity function which takes as
+                # input some dummy component of type bool.
+                lambda x: x,
+                inputs=dummy_deletion_checkbox,
+                outputs=model_delete_confirmation,
+                js=confirm_box_js(
+                    "Are you sure you want to delete the selected models?"
+                ),
+            ).then(
+                partial(confirmation_harness, delete_models),
+                inputs=[model_delete_confirmation, rvc_models_to_delete],
+                outputs=rvc_models_deleted_message,
             )
 
-    # Upload tab
-    with gr.Tab("Upload model"):
-        gr.Markdown("## Upload locally trained RVC v2 model and optional index file")
-        gr.Markdown(
-            "- Find model file (weights folder) and optional index file (logs/[name] folder)"
-        )
-        gr.Markdown(
-            "- Upload model file and optional index file directly or compress into a zip file and upload that"
-        )
-        gr.Markdown("- Enter a unique name for the model")
-        gr.Markdown("- Click Upload model")
-
-        with gr.Row():
-            with gr.Column():
-                model_files = gr.File(label="Files", file_count="multiple")
-
-            local_model_name = gr.Text(label="Model name")
-
-        with gr.Row():
-            model_upload_button = gr.Button("Upload model", variant="primary", scale=19)
-            local_upload_output_message = gr.Text(
-                label="Output Message", interactive=False, scale=20
-            )
-            model_upload_button_click = model_upload_button.click(
-                partial(exception_harness, upload_local_model),
-                inputs=[model_files, local_model_name],
-                outputs=local_upload_output_message,
+            delete_all_models_btn_click = delete_all_models_button.click(
+                lambda x: x,
+                inputs=dummy_deletion_checkbox,
+                outputs=model_delete_confirmation,
+                js=confirm_box_js("Are you sure you want to delete all models?"),
+            ).then(
+                partial(confirmation_harness, delete_all_models),
+                inputs=model_delete_confirmation,
+                outputs=rvc_models_deleted_message,
             )
 
-    with gr.Tab("Delete models"):
-        model_delete_confirmation = gr.State(False)
-        dummy_deletion_checkbox = gr.Checkbox(visible=False)
-        with gr.Row():
-            with gr.Column():
-                rvc_models_to_delete = gr.Dropdown(
-                    voice_models,
-                    label="Voice models",
-                    filterable=True,
-                    multiselect=True,
-                )
-            with gr.Column():
-                rvc_models_deleted_message = gr.Text(
-                    label="Output Message", interactive=False
-                )
-
-        with gr.Row():
-            with gr.Column():
-                delete_models_button = gr.Button(
-                    "Delete selected models", variant="primary"
-                )
-                delete_all_models_button = gr.Button(
-                    "Delete all models", variant="primary"
-                )
-            with gr.Column():
-                pass
-        delete_models_button_click = delete_models_button.click(
-            # NOTE not sure why, but in order for subsequent event listener
-            # to trigger, changes coming from the js code
-            # have to be routed through an identity function which takes as
-            # input some dummy component of type bool.
-            lambda x: x,
-            inputs=dummy_deletion_checkbox,
-            outputs=model_delete_confirmation,
-            js=confirm_box_js("Are you sure you want to delete the selected models?"),
-        ).then(
-            partial(confirmation_harness, delete_models),
-            inputs=[model_delete_confirmation, rvc_models_to_delete],
-            outputs=rvc_models_deleted_message,
-        )
-
-        delete_all_models_btn_click = delete_all_models_button.click(
-            lambda x: x,
-            inputs=dummy_deletion_checkbox,
-            outputs=model_delete_confirmation,
-            js=confirm_box_js("Are you sure you want to delete all models?"),
-        ).then(
-            partial(confirmation_harness, delete_all_models),
-            inputs=model_delete_confirmation,
-            outputs=rvc_models_deleted_message,
-        )
-
-    for click_event in [
-        download_button_click,
-        download_pub_btn_click,
-        model_upload_button_click,
-        delete_models_button_click,
-        delete_all_models_btn_click,
-    ]:
-        click_event.success(
-            update_model_lists, inputs=None, outputs=[rvc_model, rvc_models_to_delete]
-        )
+        for click_event in [
+            download_button_click,
+            download_pub_btn_click,
+            model_upload_button_click,
+            delete_models_button_click,
+            delete_all_models_btn_click,
+        ]:
+            click_event.success(
+                update_model_lists,
+                inputs=None,
+                outputs=[rvc_model, rvc_models_to_delete],
+            )
 
 
 if __name__ == "__main__":

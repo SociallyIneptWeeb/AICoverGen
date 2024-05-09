@@ -17,14 +17,10 @@ from pedalboard import Pedalboard, Reverb, Compressor, HighpassFilter
 from pedalboard.io import AudioFile
 from pydub import AudioSegment, utils as pydub_utils
 
+from common import MDXNET_MODELS_DIR, RVC_MODELS_DIR, SONGS_DIR
+from common import display_progress, json_dump, get_hash, get_file_hash, get_rvc_model
 from mdx import run_mdx
 from rvc import Config, load_hubert, get_vc, rvc_infer
-
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-
-mdxnet_models_dir = os.path.join(BASE_DIR, "mdxnet_models")
-rvc_models_dir = os.path.join(BASE_DIR, "rvc_models")
-output_dir = os.path.join(BASE_DIR, "song_output")
 
 
 def get_youtube_video_id(url, ignore_playlist=True):
@@ -59,8 +55,8 @@ def get_youtube_video_id(url, ignore_playlist=True):
     return None
 
 
-def yt_download(link, song_output_dir):
-    outtmpl = os.path.join(song_output_dir, "0_%(title)s_Original")
+def yt_download(link, song_dir):
+    outtmpl = os.path.join(song_dir, "0_%(title)s_Original")
     ydl_opts = {
         "format": "bestaudio",
         "outtmpl": outtmpl,
@@ -78,58 +74,12 @@ def yt_download(link, song_output_dir):
     return download_path
 
 
-def get_rvc_model(voice_model):
-    rvc_model_filename, rvc_index_filename = None, None
-    model_dir = os.path.join(rvc_models_dir, voice_model)
-    for file in os.listdir(model_dir):
-        ext = os.path.splitext(file)[1]
-        if ext == ".pth":
-            rvc_model_filename = file
-        if ext == ".index":
-            rvc_index_filename = file
-
-    if rvc_model_filename is None:
-        error_msg = f"No model file exists in {model_dir}."
-        raise Exception(error_msg)
-
-    return os.path.join(model_dir, rvc_model_filename), (
-        os.path.join(model_dir, rvc_index_filename) if rvc_index_filename else ""
-    )
-
-
 def pitch_shift(audio_path, output_path, pitch_change):
     y, sr = sf.read(audio_path)
     tfm = sox.Transformer()
     tfm.pitch(pitch_change)
     y_shifted = tfm.build_array(input_array=y, sample_rate_in=sr)
     sf.write(output_path, y_shifted, sr)
-
-
-def json_dumps(thing):
-    return json.dumps(
-        thing,
-        ensure_ascii=False,
-        sort_keys=True,
-        indent=4,
-        separators=(",", ": "),
-    )
-
-
-def json_dump(thing, file):
-    return json.dump(
-        thing,
-        file,
-        ensure_ascii=False,
-        sort_keys=True,
-        indent=4,
-        separators=(",", ": "),
-    )
-
-
-def get_hash(thing, size=5):
-    return hashlib.blake2b(
-        json_dumps(thing).encode("utf-8"), digest_size=size
-    ).hexdigest()
 
 
 def get_unique_base_path(song_dir, prefix, arg_dict, progress, percent, hash_size=5):
@@ -146,22 +96,6 @@ def get_unique_base_path(song_dir, prefix, arg_dict, progress, percent, hash_siz
             dict_hash = get_hash(dict_hash, size=hash_size)
         else:
             return base_path
-
-
-def get_file_hash(filepath, size=5):
-    with open(filepath, "rb") as f:
-        file_hash = hashlib.blake2b(digest_size=size)
-        while chunk := f.read(8192):
-            file_hash.update(chunk)
-
-    return file_hash.hexdigest()
-
-
-def display_progress(message, percent, progress=None):
-    if progress is None:
-        print(message)
-    else:
-        progress(percent, desc=message)
 
 
 def voice_change(
@@ -181,7 +115,7 @@ def voice_change(
     device = "cuda:0"
     config = Config(device, True)
     hubert_model = load_hubert(
-        device, config.is_half, os.path.join(rvc_models_dir, "hubert_base.pt")
+        device, config.is_half, os.path.join(RVC_MODELS_DIR, "hubert_base.pt")
     )
     cpt, version, net_g, tgt_sr, vc = get_vc(
         device, config.is_half, config, rvc_model_path
@@ -298,7 +232,7 @@ def make_song_dir(
             song_id = None
             raise Exception(error_msg)
 
-    song_dir = os.path.join(output_dir, "temp", song_id)
+    song_dir = os.path.join(SONGS_DIR, "temp", song_id)
 
     Path(song_dir).mkdir(parents=True, exist_ok=True)
 
@@ -395,7 +329,7 @@ def separate_vocals(
             progress,
         )
         vocals_path, instrumentals_path = run_mdx(
-            mdxnet_models_dir,
+            MDXNET_MODELS_DIR,
             song_dir,
             "UVR-MDX-NET-Voc_FT.onnx",
             song_path,
@@ -451,7 +385,7 @@ def separate_main_vocals(
             progress,
         )
         backup_vocals_path, main_vocals_path = run_mdx(
-            mdxnet_models_dir,
+            MDXNET_MODELS_DIR,
             song_dir,
             "UVR_MDXNET_KARA_2.onnx",
             vocals_path,
@@ -499,7 +433,7 @@ def dereverb_main_vocals(
             progress,
         )
         _, main_vocals_dereverb_path = run_mdx(
-            mdxnet_models_dir,
+            MDXNET_MODELS_DIR,
             song_dir,
             "Reverb_HQ_By_FoxJoy.onnx",
             main_vocals_path,
@@ -752,7 +686,7 @@ def combine_w_background(
         .removesuffix("_Stereo")
     )
     ai_cover_path = os.path.join(
-        output_dir,
+        SONGS_DIR,
         f"{orig_song_path_base} ({voice_model} Ver).{output_format}",
     )
     shutil.copyfile(combined_audio_path, ai_cover_path)
@@ -767,7 +701,7 @@ def combine_w_background(
     return ai_cover_path
 
 
-def song_cover_pipeline(
+def run_pipeline(
     song_input,
     voice_model,
     pitch_change=0,
@@ -1021,12 +955,12 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     rvc_dirname = args.rvc_dirname
-    if not os.path.exists(os.path.join(rvc_models_dir, rvc_dirname)):
+    if not os.path.exists(os.path.join(RVC_MODELS_DIR, rvc_dirname)):
         raise Exception(
-            f"The folder {os.path.join(rvc_models_dir, rvc_dirname)} does not exist."
+            f"The folder {os.path.join(RVC_MODELS_DIR, rvc_dirname)} does not exist."
         )
 
-    cover_path = song_cover_pipeline(
+    song_cover_path = run_pipeline(
         args.song_input,
         rvc_dirname,
         args.pitch_change,
@@ -1050,4 +984,4 @@ if __name__ == "__main__":
         output_sr=args.output_sr,
         progress=None,
     )
-    print(f"[+] Cover generated at {cover_path}")
+    print(f"[+] Cover generated at {song_cover_path}")

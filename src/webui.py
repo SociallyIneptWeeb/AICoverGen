@@ -634,9 +634,8 @@ with gr.Blocks(title="AICoverGenWebUI") as app:
                     )
 
         with gr.Row():
-            clear_btn = gr.ClearButton(
-                value="Clear",
-                components=[song_input, rvc_model, local_file],
+            clear_btn = gr.Button(
+                value="Reset settings",
                 scale=2,
             )
             generate_btn2 = gr.Button(

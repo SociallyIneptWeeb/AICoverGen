@@ -616,70 +616,14 @@ with gr.Blocks(title="Ultimate RVC") as app:
         # Download tab
         with gr.Tab("Download model"):
 
-            with gr.Tab("From HuggingFace/Pixeldrain URL"):
-                with gr.Row():
-                    model_zip_link = gr.Text(
-                        label="Download link to model",
-                        info="Should point to a zip file containing a .pth model file and an optional .index file.",
-                    )
-                    model_name = gr.Text(
-                        label="Model name",
-                        info="Enter a unique name for the model.",
-                    )
+            with gr.Accordion("View public models table", open=False):
 
-                with gr.Row():
-                    download_btn = gr.Button("Download 🌐", variant="primary", scale=19)
-                    dl_output_message = gr.Text(
-                        label="Output Message", interactive=False, scale=20
-                    )
-
-                download_button_click = download_btn.click(
-                    partial(exception_harness, download_online_model),
-                    inputs=[model_zip_link, model_name],
-                    outputs=dl_output_message,
+                gr.Markdown("")
+                gr.Markdown("HOW TO USE")
+                gr.Markdown("- Filter models using tags or search bar")
+                gr.Markdown(
+                    "- Select a row to autofill the download link and model name"
                 )
-
-                gr.Markdown("## Input Examples")
-                gr.Examples(
-                    [
-                        [
-                            "https://huggingface.co/coreliastreet/taylorswift1989/resolve/main/taylorswift.zip?download=true",
-                            "Taylor Swift",
-                        ],
-                        [
-                            "https://huggingface.co/phant0m4r/LiSA/resolve/main/LiSA.zip",
-                            "Lisa",
-                        ],
-                        ["https://pixeldrain.com/u/3tJmABXA", "Gura"],
-                        [
-                            "https://huggingface.co/Kit-Lemonfoot/kitlemonfoot_rvc_models/resolve/main/AZKi%20(Hybrid).zip",
-                            "Azki",
-                        ],
-                    ],
-                    [model_zip_link, model_name],
-                    [],
-                    partial(exception_harness, download_online_model),
-                )
-
-            with gr.Tab("From Public Index"):
-                with gr.Accordion("HOW TO USE"):
-                    gr.Markdown("- Filter models using tags or search bar")
-                    gr.Markdown(
-                        "- Select a row to autofill the download link and model name"
-                    )
-                    gr.Markdown("- Click Download")
-
-                with gr.Row():
-                    pub_zip_link = gr.Text(label="Download link to model")
-                    pub_model_name = gr.Text(label="Model name")
-
-                with gr.Row():
-                    download_pub_btn = gr.Button(
-                        "Download 🌐", variant="primary", scale=19
-                    )
-                    pub_dl_output_message = gr.Text(
-                        label="Output Message", interactive=False, scale=20
-                    )
 
                 filter_tags = gr.CheckboxGroup(
                     value=[],
@@ -701,26 +645,44 @@ with gr.Blocks(title="Ultimate RVC") as app:
                     label="Available Public Models",
                     interactive=False,
                 )
-                public_models_table.select(
-                    pub_dl_autofill,
-                    inputs=[public_models_table],
-                    outputs=[pub_zip_link, pub_model_name],
+
+            with gr.Row():
+                model_zip_link = gr.Text(
+                    label="Download link to model",
+                    info="Should point to a zip file containing a .pth model file and an optional .index file.",
                 )
-                search_query.change(
-                    partial(exception_harness, filter_public_models_table_harness),
-                    inputs=[filter_tags, search_query],
-                    outputs=public_models_table,
+                model_name = gr.Text(
+                    label="Model name",
+                    info="Enter a unique name for the model.",
                 )
-                filter_tags.select(
-                    partial(exception_harness, filter_public_models_table_harness),
-                    inputs=[filter_tags, search_query],
-                    outputs=public_models_table,
+
+            with gr.Row():
+                download_btn = gr.Button("Download 🌐", variant="primary", scale=19)
+                dl_output_message = gr.Text(
+                    label="Output Message", interactive=False, scale=20
                 )
-                download_pub_btn_click = download_pub_btn.click(
-                    partial(exception_harness, download_online_model),
-                    inputs=[pub_zip_link, pub_model_name],
-                    outputs=pub_dl_output_message,
-                )
+
+            download_button_click = download_btn.click(
+                partial(exception_harness, download_online_model),
+                inputs=[model_zip_link, model_name],
+                outputs=dl_output_message,
+            )
+
+            public_models_table.select(
+                pub_dl_autofill,
+                inputs=[public_models_table],
+                outputs=[model_zip_link, model_name],
+            )
+            search_query.change(
+                partial(exception_harness, filter_public_models_table_harness),
+                inputs=[filter_tags, search_query],
+                outputs=public_models_table,
+            )
+            filter_tags.select(
+                partial(exception_harness, filter_public_models_table_harness),
+                inputs=[filter_tags, search_query],
+                outputs=public_models_table,
+            )
 
         # Upload tab
         with gr.Tab("Upload model"):
@@ -809,7 +771,6 @@ with gr.Blocks(title="Ultimate RVC") as app:
 
         for click_event in [
             download_button_click,
-            download_pub_btn_click,
             model_upload_button_click,
             delete_models_button_click,
             delete_all_models_btn_click,

@@ -1,8 +1,4 @@
-import json
 import os
-import shutil
-import urllib.request
-import zipfile
 from argparse import ArgumentParser
 
 import gradio as gr
@@ -10,7 +6,18 @@ import asyncio
 
 from functools import partial
 
-from main import (
+from manage_voice_models import (
+    get_current_models,
+    load_public_models_table,
+    load_public_models_tags,
+    filter_public_models_table,
+    download_online_model,
+    upload_local_model,
+    delete_models,
+    delete_all_models,
+)
+
+from generate_song_cover import (
     make_song_dir,
     retrieve_song,
     separate_vocals,
@@ -20,7 +27,7 @@ from main import (
     postprocess_main_vocals,
     pitch_shift_background,
     combine_w_background,
-    song_cover_pipeline,
+    run_pipeline,
 )
 
 if os.name == "nt":
@@ -54,7 +61,7 @@ def duplication_harness(fun, *args):
 
 
 def update_audio_components(*args):
-    res = song_cover_pipeline(*args)
+    res = run_pipeline(*args)
     if isinstance(res, tuple):
         return res
     else:
@@ -75,11 +82,9 @@ def combine_w_background_harness(
     )
 
 
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-
-mdxnet_models_dir = os.path.join(BASE_DIR, "mdxnet_models")
-rvc_models_dir = os.path.join(BASE_DIR, "rvc_models")
-output_dir = os.path.join(BASE_DIR, "song_output")
+def filter_public_models_table_harness(tags, query, progress):
+    models_table = filter_public_models_table(tags, query, progress)
+    return gr.DataFrame(value=models_table)
 
 
 def confirm_box_js(msg):
@@ -87,255 +92,9 @@ def confirm_box_js(msg):
     return f"(x) => confirm({formatted_msg})"
 
 
-def get_current_models(models_dir):
-    models_list = os.listdir(models_dir)
-    items_to_remove = ["hubert_base.pt", "MODELS.txt", "public_models.json", "rmvpe.pt"]
-    return [item for item in models_list if item not in items_to_remove]
-
-
 def update_model_lists():
-    models_l = get_current_models(rvc_models_dir)
+    models_l = get_current_models()
     return gr.Dropdown(choices=models_l), gr.Dropdown(choices=models_l, value=[])
-
-
-def delete_models(model_names, progress):
-    if not model_names:
-        raise Exception("No models selected!")
-    progress(0.5, desc="[~] Deleting selected models ...")
-    for model_name in model_names:
-        model_dir = os.path.join(rvc_models_dir, model_name)
-        if os.path.isdir(model_dir):
-            shutil.rmtree(model_dir)
-    models_names_formatted = [f"'{w}'" for w in model_names]
-    if len(model_names) == 1:
-        return f"[+] Model with name {models_names_formatted[0]} successfully deleted!"
-    else:
-        first_models = ", ".join(models_names_formatted[:-1])
-        last_model = models_names_formatted[-1]
-        return f"[+] Models with names {first_models} and {last_model} successfully deleted!"
-
-
-def delete_all_models(progress):
-    all_models = get_current_models(rvc_models_dir)
-    progress(0.5, desc="[~] Deleting all models ...")
-    for model_name in all_models:
-        model_dir = os.path.join(rvc_models_dir, model_name)
-        if os.path.isdir(model_dir):
-            shutil.rmtree(model_dir)
-    return f"[+] All models successfully deleted!"
-
-
-def load_public_models():
-    models_table = []
-    for model in public_models["voice_models"]:
-        if not model["name"] in voice_models:
-            model = [
-                model["name"],
-                model["description"],
-                model["credit"],
-                model["url"],
-                ", ".join(model["tags"]),
-            ]
-            models_table.append(model)
-
-    tags = list(public_models["tags"].keys())
-    return gr.DataFrame(value=models_table), gr.CheckboxGroup(choices=tags)
-
-
-def extract_zip(extraction_folder, zip_name, remove_zip):
-    try:
-        os.makedirs(extraction_folder)
-        with zipfile.ZipFile(zip_name, "r") as zip_ref:
-            zip_ref.extractall(extraction_folder)
-
-        index_filepath, model_filepath = None, None
-        for root, dirs, files in os.walk(extraction_folder):
-            for name in files:
-                if (
-                    name.endswith(".index")
-                    and os.stat(os.path.join(root, name)).st_size > 1024 * 100
-                ):
-                    index_filepath = os.path.join(root, name)
-
-                if (
-                    name.endswith(".pth")
-                    and os.stat(os.path.join(root, name)).st_size > 1024 * 1024 * 40
-                ):
-                    model_filepath = os.path.join(root, name)
-
-        if not model_filepath:
-            raise Exception(
-                f"No .pth model file was found in the extracted zip folder."
-            )
-        # move model and index file to extraction folder
-
-        os.rename(
-            model_filepath,
-            os.path.join(extraction_folder, os.path.basename(model_filepath)),
-        )
-        if index_filepath:
-            os.rename(
-                index_filepath,
-                os.path.join(extraction_folder, os.path.basename(index_filepath)),
-            )
-
-        # remove any unnecessary nested folders
-        for filepath in os.listdir(extraction_folder):
-            if os.path.isdir(os.path.join(extraction_folder, filepath)):
-                shutil.rmtree(os.path.join(extraction_folder, filepath))
-
-    except Exception as e:
-        if os.path.isdir(extraction_folder):
-            shutil.rmtree(extraction_folder)
-        raise e
-    finally:
-        if remove_zip and os.path.exists(zip_name):
-            os.remove(zip_name)
-
-
-def copy_files_to_new_folder(file_paths, folder_path):
-    os.makedirs(folder_path)
-    for file_path in file_paths:
-        shutil.copyfile(
-            file_path, os.path.join(folder_path, os.path.basename(file_path))
-        )
-
-
-def remove_suffix_after(text: str, occurrence: str):
-    location = text.rfind(occurrence)
-    if location == -1:
-        return text
-    else:
-        return text[: location + len(occurrence)]
-
-
-def download_online_model(url, dir_name, progress):
-    if not url:
-        raise Exception("Download link to model missing!")
-    if not dir_name:
-        raise Exception("Model name missing!")
-    extraction_folder = os.path.join(rvc_models_dir, dir_name)
-    if os.path.exists(extraction_folder):
-        raise Exception(
-            f'Voice model directory "{dir_name}" already exists! Choose a different name for your voice model.'
-        )
-    zip_name = url.split("/")[-1].split("?")[0]
-
-    if "pixeldrain.com" in url:
-        url = f"https://pixeldrain.com/api/file/{zip_name}"
-
-    progress(0, desc=f"[~] Downloading voice model with name '{dir_name}'...")
-
-    urllib.request.urlretrieve(url, zip_name)
-
-    progress(0.5, desc="[~] Extracting zip file...")
-    extract_zip(extraction_folder, zip_name, remove_zip=True)
-    return f"[+] Model with name '{dir_name}' successfully downloaded!"
-
-
-def upload_local_model(input_paths, dir_name, progress):
-    if not input_paths:
-        raise Exception("No files selected!")
-    if len(input_paths) > 2:
-        raise Exception("At most two files can be uploaded!")
-    if not dir_name:
-        raise Exception("Model name missing!")
-    output_folder = os.path.join(rvc_models_dir, dir_name)
-    if os.path.exists(output_folder):
-        raise Exception(
-            f'Voice model directory "{dir_name}" already exists! Choose a different name for your voice model.'
-        )
-    input_names = [input_path.name for input_path in input_paths]
-    if len(input_names) == 1:
-        input_name = input_names[0]
-        if input_name.endswith(".pth"):
-            progress(0.5, desc="[~] Copying .pth file ...")
-            copy_files_to_new_folder(input_names, output_folder)
-        # NOTE a .pth file is actually itself a zip file
-        elif zipfile.is_zipfile(input_name):
-            progress(0.5, desc="[~] Extracting zip file...")
-            extract_zip(output_folder, input_name, remove_zip=False)
-        else:
-            raise Exception(
-                "Only a .pth file or a .zip file can be uploaded by itself!"
-            )
-    else:
-        # sort two input files by extension type
-        input_names_sorted = sorted(input_names, key=lambda f: os.path.splitext(f)[1])
-        index_name, pth_name = input_names_sorted
-        if pth_name.endswith(".pth") and index_name.endswith(".index"):
-            progress(0.5, desc="[~] Copying .pth file and index file ...")
-            copy_files_to_new_folder(input_names, output_folder)
-        else:
-            raise Exception(
-                "Only a .pth file and an .index file can be uploaded together!"
-            )
-
-    return f"[+] Model with name '{dir_name}' successfully uploaded!"
-
-
-def filter_models(tags, query):
-    models_table = []
-
-    # no filter
-    if len(tags) == 0 and len(query) == 0:
-        for model in public_models["voice_models"]:
-            models_table.append(
-                [
-                    model["name"],
-                    model["description"],
-                    model["credit"],
-                    model["url"],
-                    model["tags"],
-                ]
-            )
-
-    # filter based on tags and query
-    elif len(tags) > 0 and len(query) > 0:
-        for model in public_models["voice_models"]:
-            if all(tag in model["tags"] for tag in tags):
-                model_attributes = f"{model['name']} {model['description']} {model['credit']} {' '.join(model['tags'])}".lower()
-                if query.lower() in model_attributes:
-                    models_table.append(
-                        [
-                            model["name"],
-                            model["description"],
-                            model["credit"],
-                            model["url"],
-                            model["tags"],
-                        ]
-                    )
-
-    # filter based on only tags
-    elif len(tags) > 0:
-        for model in public_models["voice_models"]:
-            if all(tag in model["tags"] for tag in tags):
-                models_table.append(
-                    [
-                        model["name"],
-                        model["description"],
-                        model["credit"],
-                        model["url"],
-                        model["tags"],
-                    ]
-                )
-
-    # filter based on only query
-    else:
-        for model in public_models["voice_models"]:
-            model_attributes = f"{model['name']} {model['description']} {model['credit']} {' '.join(model['tags'])}".lower()
-            if query.lower() in model_attributes:
-                models_table.append(
-                    [
-                        model["name"],
-                        model["description"],
-                        model["credit"],
-                        model["url"],
-                        model["tags"],
-                    ]
-                )
-
-    return gr.DataFrame(value=models_table)
 
 
 def pub_dl_autofill(pub_models, event: gr.SelectData):
@@ -370,11 +129,7 @@ def toggle_intermediate_files_accordion(visible):
     return (gr.update(visible=visible, open=False),) + accordions + audio_components
 
 
-voice_models = get_current_models(rvc_models_dir)
-with open(
-    os.path.join(rvc_models_dir, "public_models.json"), encoding="utf8"
-) as infile:
-    public_models = json.load(infile)
+voice_models = get_current_models()
 
 with gr.Blocks(title="Ultimate RVC") as app:
 
@@ -908,7 +663,6 @@ with gr.Blocks(title="Ultimate RVC") as app:
 
             with gr.Tab("From Public Index"):
                 with gr.Accordion("HOW TO USE"):
-                    gr.Markdown("- Click Initialize public models table")
                     gr.Markdown("- Filter models using tags or search bar")
                     gr.Markdown(
                         "- Select a row to autofill the download link and model name"
@@ -928,16 +682,22 @@ with gr.Blocks(title="Ultimate RVC") as app:
                     )
 
                 filter_tags = gr.CheckboxGroup(
-                    value=[], label="Show voice models with tags", choices=[]
+                    value=[],
+                    label="Show voice models with tags",
+                    choices=load_public_models_tags(),
                 )
                 search_query = gr.Text(label="Search")
-                load_public_models_button = gr.Button(
-                    value="Initialize public models table", variant="primary"
-                )
 
                 public_models_table = gr.DataFrame(
-                    value=[],
-                    headers=["Model Name", "Description", "Credit", "URL", "Tags"],
+                    value=load_public_models_table([], progress_bar),
+                    headers=[
+                        "Model Name",
+                        "Description",
+                        "Tags",
+                        "Credit",
+                        "Added",
+                        "URL",
+                    ],
                     label="Available Public Models",
                     interactive=False,
                 )
@@ -946,16 +706,13 @@ with gr.Blocks(title="Ultimate RVC") as app:
                     inputs=[public_models_table],
                     outputs=[pub_zip_link, pub_model_name],
                 )
-                load_public_models_button.click(
-                    load_public_models, outputs=[public_models_table, filter_tags]
-                )
                 search_query.change(
-                    filter_models,
+                    partial(exception_harness, filter_public_models_table_harness),
                     inputs=[filter_tags, search_query],
                     outputs=public_models_table,
                 )
                 filter_tags.select(
-                    filter_models,
+                    partial(exception_harness, filter_public_models_table_harness),
                     inputs=[filter_tags, search_query],
                     outputs=public_models_table,
                 )

@@ -81,7 +81,7 @@ pip install -r requirements.txt
 Run the following command to download the required MDXNET vocal separation models and hubert base model.
 
 ```
-python src/download_models.py
+python src/download_base_models.py
 ```
 
 

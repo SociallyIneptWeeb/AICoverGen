@@ -25,15 +25,16 @@ def json_dumps(thing):
     )
 
 
-def json_dump(thing, file):
-    return json.dump(
-        thing,
-        file,
-        ensure_ascii=False,
-        sort_keys=True,
-        indent=4,
-        separators=(",", ": "),
-    )
+def json_dump(thing, path):
+    with open(path, "w", encoding="utf-8") as file:
+        return json.dump(
+            thing,
+            file,
+            ensure_ascii=False,
+            sort_keys=True,
+            indent=4,
+            separators=(",", ": "),
+        )
 
 
 def get_hash(thing, size=5):

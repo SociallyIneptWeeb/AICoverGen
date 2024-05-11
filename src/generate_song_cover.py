@@ -57,14 +57,19 @@ def get_youtube_video_id(url, ignore_playlist=True):
 def yt_download(link, song_dir):
     outtmpl = os.path.join(song_dir, "0_%(title)s_Original")
     ydl_opts = {
+        "quiet": True,
+        "no_warnings": True,
         "format": "bestaudio",
         "outtmpl": outtmpl,
-        "nocheckcertificate": True,
         "ignoreerrors": True,
-        "no_warnings": True,
-        "quiet": True,
-        "extractaudio": True,
-        "postprocessors": [{"key": "FFmpegExtractAudio", "preferredcodec": "mp3"}],
+        "nocheckcertificate": True,
+        "postprocessors": [
+            {
+                "key": "FFmpegExtractAudio",
+                "preferredcodec": "mp3",
+                "preferredquality": 0,
+            }
+        ],
     }
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
         result = ydl.extract_info(link, download=True)
@@ -189,9 +194,9 @@ def combine_audio(
         output_format = "ipod"
     elif output_format == "aac":
         output_format = "adts"
-    main_vocal_audio = AudioSegment.from_wav(audio_paths[0]) - 4 + main_gain
-    backup_vocal_audio = AudioSegment.from_wav(audio_paths[1]) - 6 + backup_gain
-    instrumental_audio = AudioSegment.from_wav(audio_paths[2]) - 7 + inst_gain
+    main_vocal_audio = AudioSegment.from_wav(audio_paths[0]) + main_gain
+    backup_vocal_audio = AudioSegment.from_wav(audio_paths[1]) + backup_gain
+    instrumental_audio = AudioSegment.from_wav(audio_paths[2]) + inst_gain
     combined_audio = main_vocal_audio.overlay(backup_vocal_audio).overlay(
         instrumental_audio
     )
@@ -208,7 +213,7 @@ def make_song_dir(
         raise Exception(
             "Ensure that the song input field and voice model field is filled."
         )
-
+    display_progress("[~] Creating song directory...", 0.012, progress)
     # if youtube url
     if urlparse(song_input).scheme == "https":
         input_type = "yt"
@@ -256,12 +261,13 @@ def retrieve_song(
         if input_type == "yt":
             display_progress(
                 "[~] Downloading song...",
-                0,
+                0.025,
                 progress,
             )
             song_link = song_input.split("&")[0]
             orig_song_path = yt_download(song_link, song_dir)
         else:
+            display_progress("[~] Copying song...", 0.025, progress)
             song_input_base = os.path.basename(song_input)
             song_input_name, song_input_ext = os.path.splitext(song_input_base)
             orig_song_name = f"0_{song_input_name}_Original"
@@ -334,12 +340,8 @@ def separate_vocals(
             invert_suffix=instrumentals_path_base,
             denoise=True,
         )
-        with (
-            open(vocals_json_path, "w") as file1,
-            open(instrumentals_json_path, "w") as file2,
-        ):
-            json_dump(arg_dict, file1)
-            json_dump(arg_dict, file2)
+        json_dump(arg_dict, vocals_json_path)
+        json_dump(arg_dict, instrumentals_json_path)
     return vocals_path, instrumentals_path
 
 
@@ -390,12 +392,8 @@ def separate_main_vocals(
             invert_suffix=main_vocals_path_base,
             denoise=True,
         )
-        with (
-            open(main_vocals_json_path, "w") as file1,
-            open(backup_vocals_json_path, "w") as file2,
-        ):
-            json_dump(arg_dict, file1)
-            json_dump(arg_dict, file2)
+        json_dump(arg_dict, main_vocals_json_path)
+        json_dump(arg_dict, backup_vocals_json_path)
     return backup_vocals_path, main_vocals_path
 
 
@@ -438,8 +436,7 @@ def dereverb_main_vocals(
             exclude_main=True,
             denoise=True,
         )
-        with open(main_vocals_dereverb_json_path, "w") as file:
-            json_dump(arg_dict, file)
+        json_dump(arg_dict, main_vocals_dereverb_json_path)
     return main_vocals_dereverb_path
 
 
@@ -493,8 +490,7 @@ def convert_main_vocals(
             crepe_hop_length,
             44100,
         )
-        with open(ai_vocals_json_path, "w") as file:
-            json_dump(arg_dict, file)
+        json_dump(arg_dict, ai_vocals_json_path)
     return ai_vocals_path
 
 
@@ -539,8 +535,7 @@ def postprocess_main_vocals(
             reverb_dry,
             reverb_damping,
         )
-        with open(ai_vocals_mixed_json_path, "w") as file:
-            json_dump(arg_dict, file)
+        json_dump(arg_dict, ai_vocals_mixed_json_path)
     return ai_vocals_mixed_path
 
 
@@ -582,8 +577,7 @@ def pitch_shift_background(
                 instrumentals_shifted_path,
                 pitch_change_all,
             )
-            with open(instrumentals_shifted_json_path, "w") as file:
-                json_dump(instrumentals_dict, file)
+            json_dump(instrumentals_dict, instrumentals_shifted_json_path)
 
         backup_vocals_base = os.path.basename(backup_vocals_path)
 
@@ -611,8 +605,7 @@ def pitch_shift_background(
                 backup_vocals_shifted_path,
                 pitch_change_all,
             )
-            with open(backup_vocals_shifted_json_path, "w") as file:
-                json_dump(backup_vocals_dict, file)
+            json_dump(backup_vocals_dict, backup_vocals_shifted_json_path)
     return instrumentals_shifted_path, backup_vocals_shifted_path
 
 
@@ -675,8 +668,7 @@ def combine_w_background(
             output_format,
             output_sr,
         )
-        with open(combined_audio_json_path, "w") as file:
-            json_dump(arg_dict, file)
+        json_dump(arg_dict, combined_audio_json_path)
 
     orig_song_path_base = (
         os.path.splitext(os.path.basename(orig_song_path))[0]

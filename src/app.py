@@ -138,19 +138,12 @@ with gr.Blocks(title="Ultimate RVC") as app:
     # main tab
     with gr.Tab("Generate song covers"):
 
-        with gr.Accordion("Main Options"):
+        with gr.Accordion("Main options"):
             with gr.Row():
-                with gr.Column():
-                    rvc_model = gr.Dropdown(
-                        voice_models,
-                        label="Voice Models",
-                        info='Models folder "ultimate-rvc --> rvc_models".',
-                    )
-
                 with gr.Column() as yt_link_col:
                     song_input = gr.Text(
                         label="Song input",
-                        info="Link to a song on YouTube or full path to a local file. For file upload, click the button below.",
+                        info="Link to a song on YouTube or the full path of a local audio file. For file upload, click the button below.",
                     )
                     show_file_upload_button = gr.Button("Upload file instead")
 
@@ -160,7 +153,7 @@ with gr.Blocks(title="Ultimate RVC") as app:
                         "Upload 📂", file_types=["audio"], variant="primary"
                     )
                     show_yt_link_button = gr.Button(
-                        "Paste YouTube link/Path to local file instead"
+                        "Paste YouTube link/path to local file instead"
                     )
                     song_input_file.upload(
                         process_file_upload,
@@ -169,21 +162,27 @@ with gr.Blocks(title="Ultimate RVC") as app:
                     )
 
                 with gr.Column():
-                    pitch = gr.Slider(
+                    rvc_model = gr.Dropdown(
+                        voice_models,
+                        label="Voice model",
+                    )
+
+                with gr.Column():
+                    pitch_change_vocals = gr.Slider(
                         -3,
                         3,
                         value=0,
                         step=1,
-                        label="Pitch Change (Vocals ONLY)",
-                        info="Generally, use 1 for male to female conversions and -1 for vice-versa. (Octaves)",
+                        label="Pitch shift of vocals",
+                        info="Shift pitch of converted vocals. Measured in octaves. Generally, use 1 for male-to-female conversions and -1 for vice-versa.",
                     )
-                    pitch_all = gr.Slider(
+                    pitch_change_all = gr.Slider(
                         -12,
                         12,
                         value=0,
                         step=1,
-                        label="Overall Pitch Change",
-                        info="Changes pitch/key of vocals and instrumentals together. Altering this slightly reduces sound quality. (Semitones)",
+                        label="Overall pitch shift",
+                        info="Shift pitch of converted vocals, backup vocals and instrumentals. Measured in semi-tones. Altering this slightly reduces sound quality.",
                     )
                 show_file_upload_button.click(
                     swap_visibility,
@@ -194,14 +193,14 @@ with gr.Blocks(title="Ultimate RVC") as app:
                     outputs=[yt_link_col, file_upload_col, song_input, local_file],
                 )
 
-        with gr.Accordion("Voice conversion options", open=False):
+        with gr.Accordion("Vocal conversion options", open=False):
             with gr.Row():
                 index_rate = gr.Slider(
                     0,
                     1,
                     value=0.5,
-                    label="Index Rate",
-                    info="Controls how much of the AI voice's accent to keep in the vocals",
+                    label="Index rate",
+                    info="Controls how much of the accent in the voice model to keep in the converted vocals",
                 )
                 filter_radius = gr.Slider(
                     0,
@@ -209,14 +208,14 @@ with gr.Blocks(title="Ultimate RVC") as app:
                     value=3,
                     step=1,
                     label="Filter radius",
-                    info="If >=3: apply median filtering median filtering to the harvested pitch results. Can reduce breathiness",
+                    info="If >=3: apply median filtering to the harvested pitch results. Can reduce breathiness",
                 )
                 rms_mix_rate = gr.Slider(
                     0,
                     1,
                     value=0.25,
                     label="RMS mix rate",
-                    info="Control how much to mimic the original vocal's loudness (0) or a fixed loudness (1)",
+                    info="Control how much to mimic the loudness (0) of the input vocals or a fixed loudness (1)",
                 )
                 protect = gr.Slider(
                     0,
@@ -245,13 +244,8 @@ with gr.Blocks(title="Ultimate RVC") as app:
                         show_hop_slider, inputs=f0_method, outputs=crepe_hop_length
                     )
         with gr.Accordion("Audio mixing options", open=False):
-            gr.Markdown("### Volume Change (decibels)")
-            with gr.Row():
-                main_gain = gr.Slider(-20, 20, value=0, step=1, label="Main Vocals")
-                backup_gain = gr.Slider(-20, 20, value=0, step=1, label="Backup Vocals")
-                inst_gain = gr.Slider(-20, 20, value=0, step=1, label="Music")
-
-            gr.Markdown("### Reverb Control on AI Vocals")
+            gr.Markdown("")
+            gr.Markdown("### Reverb control on converted vocals")
             with gr.Row():
                 reverb_rm_size = gr.Slider(
                     0,
@@ -265,14 +259,14 @@ with gr.Blocks(title="Ultimate RVC") as app:
                     1,
                     value=0.2,
                     label="Wetness level",
-                    info="Level of AI vocals with reverb",
+                    info="Loudness level of converted vocals with reverb",
                 )
                 reverb_dry = gr.Slider(
                     0,
                     1,
                     value=0.8,
                     label="Dryness level",
-                    info="Level of AI vocals without reverb",
+                    info="Loudness level of converted vocals without reverb",
                 )
                 reverb_damping = gr.Slider(
                     0,
@@ -281,7 +275,19 @@ with gr.Blocks(title="Ultimate RVC") as app:
                     label="Damping level",
                     info="Absorption of high frequencies in the reverb",
                 )
+
+            gr.Markdown("")
+            gr.Markdown("### Volume controls (dB)")
+            with gr.Row():
+                main_gain = gr.Slider(-20, 20, value=0, step=1, label="Main vocals")
+                backup_gain = gr.Slider(-20, 20, value=0, step=1, label="Backup vocals")
+                inst_gain = gr.Slider(-20, 20, value=0, step=1, label="Instrumentals")
         with gr.Accordion("Audio output options", open=False):
+            output_sr = gr.Radio(
+                choices=[16000, 44100, 48000, 96000, 192000],
+                value=44100,
+                label="Output sample rate",
+            )
             output_format = gr.Dropdown(
                 [
                     "mp3",
@@ -292,19 +298,14 @@ with gr.Blocks(title="Ultimate RVC") as app:
                     "ogg",
                 ],
                 value="mp3",
-                label="Output file type",
-            )
-            output_sr = gr.Radio(
-                choices=[16000, 44100, 48000, 96000, 192000],
-                value=44100,
-                label="Output sample rate",
+                label="Output file format",
             )
         with gr.Accordion("Intermediate file options", open=False):
             with gr.Row():
                 keep_files = gr.Checkbox(
                     label="Keep intermediate files",
                     value=True,
-                    info="Keep all intermediate audio files generated in the song_output/id directory. Leave unchecked to save space",
+                    info="Keep all intermediate audio files. Leave unchecked to save space",
                 )
                 show_intermediate_files = gr.Checkbox(
                     label="Show intermediate files",
@@ -316,7 +317,7 @@ with gr.Blocks(title="Ultimate RVC") as app:
         )
         with intermediate_files_accordion:
             original_accordion = gr.Accordion(
-                "Step 0: Input",
+                "Step 0: input",
                 open=False,
             )
             with original_accordion:
@@ -324,19 +325,19 @@ with gr.Blocks(title="Ultimate RVC") as app:
                     label="Original song", type="filepath", interactive=False
                 )
             vocals_separation_accordion = gr.Accordion(
-                "Step 1: Instruments/vocals separation",
+                "Step 1: instrumentals/vocals separation",
                 open=False,
             )
             with vocals_separation_accordion:
                 with gr.Row():
                     instrumentals_track = gr.Audio(
-                        label="Instruments", type="filepath", interactive=False
+                        label="Instrumentals", type="filepath", interactive=False
                     )
                     vocals_track = gr.Audio(
                         label="Vocals", type="filepath", interactive=False
                     )
             main_vocals_separation_accordion = gr.Accordion(
-                "Step 2: Main vocals/ background vocals separation",
+                "Step 2: main vocals/ backup vocals separation",
                 open=False,
             )
             with main_vocals_separation_accordion:
@@ -344,46 +345,48 @@ with gr.Blocks(title="Ultimate RVC") as app:
                     main_vocals_track = gr.Audio(
                         label="Main vocals", type="filepath", interactive=False
                     )
-                    background_vocals_track = gr.Audio(
-                        label="Background vocals", type="filepath", interactive=False
+                    backup_vocals_track = gr.Audio(
+                        label="Backup vocals", type="filepath", interactive=False
                     )
             main_vocals_cleanup_accordion = gr.Accordion(
-                "Step 3: Main vocals cleanup",
+                "Step 3: main vocals cleanup",
                 open=False,
             )
             with main_vocals_cleanup_accordion:
                 main_vocals_dereverbed_track = gr.Audio(
-                    label="Vocals dereverbed", type="filepath", interactive=False
+                    label="De-reverbed main vocals", type="filepath", interactive=False
                 )
-            voice_conversion_accordion = gr.Accordion(
-                "Step 4: Voice conversion",
+            vocals_conversion_accordion = gr.Accordion(
+                "Step 4: conversion of main vocals",
                 open=False,
             )
-            with voice_conversion_accordion:
+            with vocals_conversion_accordion:
                 ai_vocals_track = gr.Audio(
-                    label="AI vocals", type="filepath", interactive=False
+                    label="Converted vocals", type="filepath", interactive=False
                 )
-            voice_postprocessing_accordion = gr.Accordion(
-                "Step 5: Voice post-processing",
+            vocals_postprocessing_accordion = gr.Accordion(
+                "Step 5: post-processing of converted vocals",
                 open=False,
             )
-            with voice_postprocessing_accordion:
+            with vocals_postprocessing_accordion:
                 mixed_ai_vocals_track = gr.Audio(
-                    label="Post-processed AI vocals", type="filepath", interactive=False
+                    label="Post-processed vocals",
+                    type="filepath",
+                    interactive=False,
                 )
             pitch_shift_accordion = gr.Accordion(
-                "Step 6: Pitch shift of instrumentals and background vocals",
+                "Step 6: Pitch shift of instrumentals and backup vocals",
                 open=False,
             )
             with pitch_shift_accordion:
                 with gr.Row():
                     instrumentals_shifted_track = gr.Audio(
-                        label="Pitch-shifted instrumentals",
+                        label="Pitch shifted instrumentals",
                         type="filepath",
                         interactive=False,
                     )
-                    background_vocals_shifted_track = gr.Audio(
-                        label="Pitch-shifted background vocals",
+                    backup_vocals_shifted_track = gr.Audio(
+                        label="Pitch shifted backup vocals",
                         type="filepath",
                         interactive=False,
                     )
@@ -397,7 +400,7 @@ with gr.Blocks(title="Ultimate RVC") as app:
                 "Generate step-by-step", variant="primary", scale=1, visible=False
             )
             generate_btn = gr.Button("Generate", variant="primary", scale=2)
-            ai_cover = gr.Audio(label="AI Cover", scale=3)
+            ai_cover = gr.Audio(label="Song cover", scale=3)
         show_intermediate_files.change(
             toggle_intermediate_files_accordion,
             inputs=show_intermediate_files,
@@ -407,19 +410,19 @@ with gr.Blocks(title="Ultimate RVC") as app:
                 vocals_separation_accordion,
                 main_vocals_separation_accordion,
                 main_vocals_cleanup_accordion,
-                voice_conversion_accordion,
-                voice_postprocessing_accordion,
+                vocals_conversion_accordion,
+                vocals_postprocessing_accordion,
                 pitch_shift_accordion,
                 original_track,
                 vocals_track,
                 instrumentals_track,
                 main_vocals_track,
-                background_vocals_track,
+                backup_vocals_track,
                 main_vocals_dereverbed_track,
                 ai_vocals_track,
                 mixed_ai_vocals_track,
                 instrumentals_shifted_track,
-                background_vocals_shifted_track,
+                backup_vocals_shifted_track,
             ],
         )
         song_dir = gr.State()
@@ -434,37 +437,37 @@ with gr.Blocks(title="Ultimate RVC") as app:
             inputs=[
                 song_input,
                 rvc_model,
-                pitch,
-                keep_files,
-                show_intermediate_files,
-                main_gain,
-                backup_gain,
-                inst_gain,
+                pitch_change_vocals,
+                pitch_change_all,
                 index_rate,
                 filter_radius,
                 rms_mix_rate,
+                protect,
                 f0_method,
                 crepe_hop_length,
-                protect,
-                pitch_all,
                 reverb_rm_size,
                 reverb_wet,
                 reverb_dry,
                 reverb_damping,
-                output_format,
+                main_gain,
+                backup_gain,
+                inst_gain,
                 output_sr,
+                output_format,
+                keep_files,
+                show_intermediate_files,
             ],
             outputs=[
                 original_track,
                 vocals_track,
                 instrumentals_track,
                 main_vocals_track,
-                background_vocals_track,
+                backup_vocals_track,
                 main_vocals_dereverbed_track,
                 ai_vocals_track,
                 mixed_ai_vocals_track,
                 instrumentals_shifted_track,
-                background_vocals_shifted_track,
+                backup_vocals_shifted_track,
                 ai_cover,
             ],
         ).then(
@@ -497,7 +500,7 @@ with gr.Blocks(title="Ultimate RVC") as app:
         ).success(
             partial(duplication_harness, separate_main_vocals),
             inputs=[vocals_track, song_dir],
-            outputs=[ai_cover, background_vocals_track, main_vocals_track],
+            outputs=[ai_cover, backup_vocals_track, main_vocals_track],
         ).success(
             partial(duplication_harness, dereverb_main_vocals),
             inputs=[main_vocals_track, song_dir],
@@ -508,8 +511,8 @@ with gr.Blocks(title="Ultimate RVC") as app:
                 main_vocals_dereverbed_track,
                 song_dir,
                 rvc_model,
-                pitch,
-                pitch_all,
+                pitch_change_vocals,
+                pitch_change_all,
                 index_rate,
                 filter_radius,
                 rms_mix_rate,
@@ -533,31 +536,31 @@ with gr.Blocks(title="Ultimate RVC") as app:
             partial(duplication_harness, pitch_shift_background),
             inputs=[
                 instrumentals_track,
-                background_vocals_track,
+                backup_vocals_track,
                 song_dir,
-                pitch_all,
+                pitch_change_all,
             ],
             outputs=[
                 ai_cover,
                 instrumentals_shifted_track,
-                background_vocals_shifted_track,
+                backup_vocals_shifted_track,
             ],
         ).success(
             partial(exception_harness, combine_w_background_harness),
             inputs=[
                 instrumentals_track,
-                background_vocals_track,
+                backup_vocals_track,
                 instrumentals_shifted_track,
-                background_vocals_shifted_track,
+                backup_vocals_shifted_track,
                 original_track,
                 mixed_ai_vocals_track,
-                rvc_model,
                 song_dir,
+                rvc_model,
                 main_gain,
                 backup_gain,
                 inst_gain,
-                output_format,
                 output_sr,
+                output_format,
                 keep_files,
             ],
             outputs=[ai_cover],
@@ -571,42 +574,42 @@ with gr.Blocks(title="Ultimate RVC") as app:
             lambda: [
                 0,
                 0,
-                0,
-                0,
                 0.5,
                 3,
                 0.25,
                 0.33,
                 "rmvpe",
                 128,
-                0,
                 0.15,
                 0.2,
                 0.8,
                 0.7,
-                "mp3",
+                0,
+                0,
+                0,
                 44100,
+                "mp3",
                 True,
                 False,
             ],
             outputs=[
-                pitch,
-                main_gain,
-                backup_gain,
-                inst_gain,
+                pitch_change_vocals,
+                pitch_change_all,
                 index_rate,
                 filter_radius,
                 rms_mix_rate,
                 protect,
                 f0_method,
                 crepe_hop_length,
-                pitch_all,
                 reverb_rm_size,
                 reverb_wet,
                 reverb_dry,
                 reverb_damping,
-                output_format,
+                main_gain,
+                backup_gain,
+                inst_gain,
                 output_sr,
+                output_format,
                 keep_files,
                 show_intermediate_files,
             ],
@@ -659,7 +662,7 @@ with gr.Blocks(title="Ultimate RVC") as app:
             with gr.Row():
                 download_btn = gr.Button("Download 🌐", variant="primary", scale=19)
                 dl_output_message = gr.Text(
-                    label="Output Message", interactive=False, scale=20
+                    label="Output message", interactive=False, scale=20
                 )
 
             download_button_click = download_btn.click(
@@ -694,7 +697,7 @@ with gr.Blocks(title="Ultimate RVC") as app:
                     "- Upload model file and optional index file directly or compress into a zip file and upload that"
                 )
                 gr.Markdown("- Enter a unique name for the model")
-                gr.Markdown("- Click Upload model")
+                gr.Markdown("- Click 'Upload model'")
 
             with gr.Row():
                 with gr.Column():
@@ -707,7 +710,7 @@ with gr.Blocks(title="Ultimate RVC") as app:
                     "Upload model", variant="primary", scale=19
                 )
                 local_upload_output_message = gr.Text(
-                    label="Output Message", interactive=False, scale=20
+                    label="Output message", interactive=False, scale=20
                 )
                 model_upload_button_click = model_upload_button.click(
                     partial(exception_harness, upload_local_model),
@@ -728,7 +731,7 @@ with gr.Blocks(title="Ultimate RVC") as app:
                     )
                 with gr.Column():
                     rvc_models_deleted_message = gr.Text(
-                        label="Output Message", interactive=False
+                        label="Output message", interactive=False
                     )
 
             with gr.Row():
@@ -785,7 +788,7 @@ with gr.Blocks(title="Ultimate RVC") as app:
 if __name__ == "__main__":
 
     parser = ArgumentParser(
-        description="Generate a AI cover song in the song_output/id directory.",
+        description="Generate a song cover song in the song_output/id directory.",
         add_help=True,
     )
     parser.add_argument(

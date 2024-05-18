@@ -2,6 +2,7 @@ import argparse
 import gc
 import json
 import os
+import glob
 from pathlib import Path
 import shutil
 import shlex
@@ -76,6 +77,23 @@ def yt_download(link, song_dir):
         download_path = ydl.prepare_filename(result, outtmpl=f"{outtmpl}.mp3")
 
     return download_path
+
+
+def get_cached_input_paths():
+    # TODO if we later add .json file for input then we need to exclude those here
+    input_paths_pattern = os.path.join(TEMP_AUDIO_DIR, "*", "*_Original*")
+    return glob.glob(input_paths_pattern)
+
+
+def get_cached_input_paths_named():
+    input_paths = get_cached_input_paths()
+    input_names = [
+        os.path.splitext(os.path.basename(path))[0]
+        .removeprefix("0_")
+        .removesuffix("_Original")
+        for path in input_paths
+    ]
+    return [(name, path) for name, path in zip(input_names, input_paths)]
 
 
 def pitch_shift(audio_path, output_path, n_semi_tones):
@@ -213,6 +231,13 @@ def make_song_dir(
         raise Exception(
             "Ensure that the song input field and voice model field is filled."
         )
+
+    if song_input in get_cached_input_paths():
+        display_progress("[~] Using existing song directory...", 0.012, progress)
+        song_dir, _ = os.path.split(song_input)
+        input_type = "local"
+        return song_dir, input_type
+
     display_progress("[~] Creating song directory...", 0.012, progress)
     # if youtube url
     if urlparse(song_input).scheme == "https":

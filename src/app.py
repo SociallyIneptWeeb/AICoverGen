@@ -18,6 +18,7 @@ from manage_voice_models import (
 )
 
 from generate_song_cover import (
+    get_cached_input_paths_named,
     make_song_dir,
     retrieve_song,
     separate_vocals,
@@ -97,6 +98,11 @@ def update_model_lists():
     return gr.Dropdown(choices=models_l), gr.Dropdown(choices=models_l, value=[])
 
 
+def update_cached_input_songs():
+    songs_l = get_cached_input_paths_named()
+    return gr.Dropdown(choices=songs_l)
+
+
 def pub_dl_autofill(pub_models, event: gr.SelectData):
     return gr.Text(value=pub_models.loc[event.index[0], "URL"]), gr.Text(
         value=pub_models.loc[event.index[0], "Model Name"]
@@ -108,6 +114,7 @@ def swap_visibility():
         gr.update(visible=True),
         gr.update(visible=False),
         gr.update(value=""),
+        gr.update(value=None),
         gr.update(value=None),
     )
 
@@ -130,6 +137,7 @@ def toggle_intermediate_files_accordion(visible):
 
 
 voice_models = get_current_models()
+cached_input_songs = get_cached_input_paths_named()
 
 with gr.Blocks(title="Ultimate RVC") as app:
 
@@ -144,6 +152,22 @@ with gr.Blocks(title="Ultimate RVC") as app:
                     song_input = gr.Text(
                         label="Song input",
                         info="Link to a song on YouTube or the full path of a local audio file. For file upload, click the button below.",
+                    )
+                    cached_input_songs_dropdown = gr.Dropdown(
+                        cached_input_songs,
+                        label="Cached input songs",
+                    )
+                    song_input.input(
+                        lambda: gr.update(value=None),
+                        inputs=None,
+                        outputs=cached_input_songs_dropdown,
+                        show_progress="hidden",
+                    )
+                    cached_input_songs_dropdown.input(
+                        lambda x: gr.update(value=x),
+                        inputs=cached_input_songs_dropdown,
+                        outputs=song_input,
+                        show_progress="hidden",
                     )
                     show_file_upload_button = gr.Button("Upload file instead")
 
@@ -186,11 +210,23 @@ with gr.Blocks(title="Ultimate RVC") as app:
                     )
                 show_file_upload_button.click(
                     swap_visibility,
-                    outputs=[file_upload_col, yt_link_col, song_input, local_file],
+                    outputs=[
+                        file_upload_col,
+                        yt_link_col,
+                        song_input,
+                        local_file,
+                        cached_input_songs_dropdown,
+                    ],
                 )
                 show_yt_link_button.click(
                     swap_visibility,
-                    outputs=[yt_link_col, file_upload_col, song_input, local_file],
+                    outputs=[
+                        yt_link_col,
+                        file_upload_col,
+                        song_input,
+                        local_file,
+                        cached_input_songs_dropdown,
+                    ],
                 )
 
         with gr.Accordion("Vocal conversion options", open=False):
@@ -471,6 +507,10 @@ with gr.Blocks(title="Ultimate RVC") as app:
                 ai_cover,
             ],
         ).then(
+            update_cached_input_songs,
+            inputs=None,
+            outputs=cached_input_songs_dropdown,
+        ).then(
             lambda: (gr.update(interactive=True),) * 2,
             inputs=[],
             outputs=[show_intermediate_files, generate_btn2],
@@ -564,6 +604,10 @@ with gr.Blocks(title="Ultimate RVC") as app:
                 keep_files,
             ],
             outputs=[ai_cover],
+        ).then(
+            update_cached_input_songs,
+            inputs=None,
+            outputs=cached_input_songs_dropdown,
         ).then(
             lambda: (gr.update(interactive=True),) * 4,
             inputs=[],

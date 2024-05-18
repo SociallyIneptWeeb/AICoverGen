@@ -1,11 +1,13 @@
 import os
 import json
 import hashlib
+import shutil
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 MDXNET_MODELS_DIR = os.path.join(BASE_DIR, "mdxnet_models")
 RVC_MODELS_DIR = os.path.join(BASE_DIR, "rvc_models")
 SONGS_DIR = os.path.join(BASE_DIR, "songs")
+TEMP_AUDIO_DIR = os.path.join(SONGS_DIR, "temp")
 
 
 def display_progress(message, percent, progress=None):
@@ -13,6 +15,22 @@ def display_progress(message, percent, progress=None):
         print(message)
     else:
         progress(percent, desc=message)
+
+
+def remove_suffix_after(text: str, occurrence: str):
+    location = text.rfind(occurrence)
+    if location == -1:
+        return text
+    else:
+        return text[: location + len(occurrence)]
+
+
+def copy_files_to_new_folder(file_paths, folder_path):
+    os.makedirs(folder_path)
+    for file_path in file_paths:
+        shutil.copyfile(
+            file_path, os.path.join(folder_path, os.path.basename(file_path))
+        )
 
 
 def json_dumps(thing):

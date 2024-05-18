@@ -16,7 +16,7 @@ from pedalboard import Pedalboard, Reverb, Compressor, HighpassFilter
 from pedalboard.io import AudioFile
 from pydub import AudioSegment, utils as pydub_utils
 
-from common import MDXNET_MODELS_DIR, RVC_MODELS_DIR, SONGS_DIR
+from common import MDXNET_MODELS_DIR, RVC_MODELS_DIR, SONGS_DIR, TEMP_AUDIO_DIR
 from common import display_progress, json_dump, get_hash, get_file_hash, get_rvc_model
 from mdx import run_mdx
 from rvc import Config, load_hubert, get_vc, rvc_infer
@@ -234,7 +234,7 @@ def make_song_dir(
             song_id = None
             raise Exception(error_msg)
 
-    song_dir = os.path.join(SONGS_DIR, "temp", song_id)
+    song_dir = os.path.join(TEMP_AUDIO_DIR, song_id)
 
     Path(song_dir).mkdir(parents=True, exist_ok=True)
 

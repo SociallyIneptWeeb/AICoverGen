@@ -9,7 +9,7 @@ from functools import partial
 from manage_voice_models import (
     get_current_models,
     load_public_models_table,
-    load_public_models_tags,
+    load_public_model_tags,
     filter_public_models_table,
     download_online_model,
     upload_local_model,
@@ -631,7 +631,7 @@ with gr.Blocks(title="Ultimate RVC") as app:
                 filter_tags = gr.CheckboxGroup(
                     value=[],
                     label="Show voice models with tags",
-                    choices=load_public_models_tags(),
+                    choices=load_public_model_tags(),
                 )
                 search_query = gr.Text(label="Search")
 

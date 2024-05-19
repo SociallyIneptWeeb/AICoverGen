@@ -341,20 +341,20 @@ with gr.Blocks(title="Ultimate RVC") as app:
                 value="mp3",
                 label="Output file format",
             )
-        with gr.Accordion("Intermediate file options", open=False):
+        with gr.Accordion("Intermediate audio options", open=False):
             with gr.Row():
                 keep_files = gr.Checkbox(
-                    label="Keep intermediate files",
+                    label="Keep intermediate audio files",
                     value=True,
                     info="Keep all intermediate audio files. Leave unchecked to save space",
                 )
                 show_intermediate_files = gr.Checkbox(
-                    label="Show intermediate files",
+                    label="Show intermediate audio files",
                     value=False,
                     info="Show available intermediate audio files when audio generation completes. Leave unchecked to optimize performance.",
                 )
         with gr.Accordion(
-            "Access intermediate files", open=False, visible=False
+            "Access intermediate audio files", open=False, visible=False
         ) as intermediate_files_accordion:
 
             with gr.Accordion("Step 0: input", open=False) as original_accordion:

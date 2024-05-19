@@ -22,7 +22,7 @@ def get_current_models():
 def load_public_models_table(predicates, progress):
     models_table = []
     keys = ["name", "description", "tags", "credit", "added", "url"]
-    display_progress("[~] Loading public models ...", 0.5, progress)
+    display_progress("[~] Loading public models table ...", 0.5, progress)
     for model in public_models["voice_models"]:
         if all([predicate(model) for predicate in predicates]):
             models_table.append([model[key] for key in keys])

@@ -114,7 +114,7 @@ def get_unique_base_path(song_dir, prefix, arg_dict, progress, percent, hash_siz
                 file_dict = json.load(f)
             if file_dict == arg_dict:
                 return base_path
-            display_progress("Rehashing...", percent, progress)
+            display_progress("[~] Rehashing...", percent, progress)
             dict_hash = get_hash(dict_hash, size=hash_size)
         else:
             return base_path

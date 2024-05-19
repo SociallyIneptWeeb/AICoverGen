@@ -353,23 +353,18 @@ with gr.Blocks(title="Ultimate RVC") as app:
                     value=False,
                     info="Show available intermediate audio files when audio generation completes. Leave unchecked to optimize performance.",
                 )
-        intermediate_files_accordion = gr.Accordion(
+        with gr.Accordion(
             "Access intermediate files", open=False, visible=False
-        )
-        with intermediate_files_accordion:
-            original_accordion = gr.Accordion(
-                "Step 0: input",
-                open=False,
-            )
-            with original_accordion:
+        ) as intermediate_files_accordion:
+
+            with gr.Accordion("Step 0: input", open=False) as original_accordion:
                 original_track = gr.Audio(
                     label="Original song", type="filepath", interactive=False
                 )
-            vocals_separation_accordion = gr.Accordion(
-                "Step 1: instrumentals/vocals separation",
-                open=False,
-            )
-            with vocals_separation_accordion:
+
+            with gr.Accordion(
+                "Step 1: instrumentals/vocals separation", open=False
+            ) as vocals_separation_accordion:
                 with gr.Row():
                     instrumentals_track = gr.Audio(
                         label="Instrumentals", type="filepath", interactive=False
@@ -377,11 +372,9 @@ with gr.Blocks(title="Ultimate RVC") as app:
                     vocals_track = gr.Audio(
                         label="Vocals", type="filepath", interactive=False
                     )
-            main_vocals_separation_accordion = gr.Accordion(
-                "Step 2: main vocals/ backup vocals separation",
-                open=False,
-            )
-            with main_vocals_separation_accordion:
+            with gr.Accordion(
+                "Step 2: main vocals/ backup vocals separation", open=False
+            ) as main_vocals_separation_accordion:
                 with gr.Row():
                     main_vocals_track = gr.Audio(
                         label="Main vocals", type="filepath", interactive=False
@@ -389,37 +382,30 @@ with gr.Blocks(title="Ultimate RVC") as app:
                     backup_vocals_track = gr.Audio(
                         label="Backup vocals", type="filepath", interactive=False
                     )
-            main_vocals_cleanup_accordion = gr.Accordion(
-                "Step 3: main vocals cleanup",
-                open=False,
-            )
-            with main_vocals_cleanup_accordion:
+            with gr.Accordion(
+                "Step 3: main vocals cleanup", open=False
+            ) as main_vocals_cleanup_accordion:
                 main_vocals_dereverbed_track = gr.Audio(
                     label="De-reverbed main vocals", type="filepath", interactive=False
                 )
-            vocals_conversion_accordion = gr.Accordion(
-                "Step 4: conversion of main vocals",
-                open=False,
-            )
-            with vocals_conversion_accordion:
+            with gr.Accordion(
+                "Step 4: conversion of main vocals", open=False
+            ) as vocals_conversion_accordion:
                 ai_vocals_track = gr.Audio(
                     label="Converted vocals", type="filepath", interactive=False
                 )
-            vocals_postprocessing_accordion = gr.Accordion(
-                "Step 5: post-processing of converted vocals",
-                open=False,
-            )
-            with vocals_postprocessing_accordion:
+            with gr.Accordion(
+                "Step 5: post-processing of converted vocals", open=False
+            ) as vocals_postprocessing_accordion:
                 mixed_ai_vocals_track = gr.Audio(
                     label="Post-processed vocals",
                     type="filepath",
                     interactive=False,
                 )
-            pitch_shift_accordion = gr.Accordion(
+            with gr.Accordion(
                 "Step 6: Pitch shift of instrumentals and backup vocals",
                 open=False,
-            )
-            with pitch_shift_accordion:
+            ) as pitch_shift_accordion:
                 with gr.Row():
                     instrumentals_shifted_track = gr.Audio(
                         label="Pitch shifted instrumentals",

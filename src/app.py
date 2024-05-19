@@ -119,10 +119,6 @@ def swap_visibility():
     )
 
 
-def process_file_upload(file):
-    return file.name, gr.update(value=file.name)
-
-
 def show_hop_slider(pitch_detection_algo):
     if pitch_detection_algo == "mangio-crepe":
         return gr.update(visible=True)
@@ -168,20 +164,19 @@ with gr.Blocks(title="Ultimate RVC") as app:
                         outputs=song_input,
                         show_progress="hidden",
                     )
-                    show_file_upload_button = gr.Button("Upload file instead")
+                    show_file_upload_button = gr.Button("Upload local file instead")
 
                 with gr.Column(visible=False) as file_upload_col:
-                    local_file = gr.File(label="Audio file")
-                    song_input_file = gr.UploadButton(
-                        "Upload 📂", file_types=["audio"], variant="primary"
+                    local_file = gr.Audio(
+                        label="Song input", sources="upload", type="filepath"
                     )
                     show_yt_link_button = gr.Button(
                         "Paste YouTube link/path to local file instead"
                     )
-                    song_input_file.upload(
-                        process_file_upload,
-                        inputs=song_input_file,
-                        outputs=[local_file, song_input],
+                    local_file.change(
+                        lambda x: gr.update(value=x),
+                        inputs=local_file,
+                        outputs=song_input,
                     )
 
                 with gr.Column():

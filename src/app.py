@@ -217,6 +217,7 @@ with gr.Blocks(title="Ultimate RVC") as app:
                         local_file,
                         cached_input_songs_dropdown,
                     ],
+                    show_progress="hidden",
                 )
                 show_yt_link_button.click(
                     swap_visibility,
@@ -227,6 +228,7 @@ with gr.Blocks(title="Ultimate RVC") as app:
                         local_file,
                         cached_input_songs_dropdown,
                     ],
+                    show_progress="hidden",
                 )
 
         with gr.Accordion("Vocal conversion options", open=False):
@@ -277,7 +279,10 @@ with gr.Blocks(title="Ultimate RVC") as app:
                         info="Lower values leads to longer conversions and higher risk of voice cracks, but better pitch accuracy.",
                     )
                     f0_method.change(
-                        show_hop_slider, inputs=f0_method, outputs=crepe_hop_length
+                        show_hop_slider,
+                        inputs=f0_method,
+                        outputs=crepe_hop_length,
+                        show_progress="hidden",
                     )
         with gr.Accordion("Audio mixing options", open=False):
             gr.Markdown("")
@@ -460,6 +465,7 @@ with gr.Blocks(title="Ultimate RVC") as app:
                 instrumentals_shifted_track,
                 backup_vocals_shifted_track,
             ],
+            show_progress="hidden",
         )
         song_dir = gr.State()
         input_type = gr.State()
@@ -467,7 +473,7 @@ with gr.Blocks(title="Ultimate RVC") as app:
             lambda: (gr.update(interactive=False),) * 2,
             inputs=[],
             outputs=[show_intermediate_files, generate_btn2],
-            show_progress=False,
+            show_progress="hidden",
         ).success(
             partial(exception_harness, update_audio_components),
             inputs=[
@@ -514,14 +520,14 @@ with gr.Blocks(title="Ultimate RVC") as app:
             lambda: (gr.update(interactive=True),) * 2,
             inputs=[],
             outputs=[show_intermediate_files, generate_btn2],
-            show_progress=False,
+            show_progress="hidden",
         )
 
         generate_btn2.click(
             lambda: (gr.update(interactive=False),) * 4,
             inputs=[],
             outputs=[show_intermediate_files, generate_btn, generate_btn2, clear_btn],
-            show_progress=False,
+            show_progress="hidden",
         ).success(
             partial(exception_harness, make_song_dir),
             inputs=[
@@ -612,7 +618,7 @@ with gr.Blocks(title="Ultimate RVC") as app:
             lambda: (gr.update(interactive=True),) * 4,
             inputs=[],
             outputs=[show_intermediate_files, generate_btn, generate_btn2, clear_btn],
-            show_progress=False,
+            show_progress="hidden",
         )
         clear_btn.click(
             lambda: [
@@ -657,6 +663,7 @@ with gr.Blocks(title="Ultimate RVC") as app:
                 keep_files,
                 show_intermediate_files,
             ],
+            show_progress="hidden",
         )
     with gr.Tab("Manage models"):
 
@@ -719,6 +726,7 @@ with gr.Blocks(title="Ultimate RVC") as app:
                 pub_dl_autofill,
                 inputs=[public_models_table],
                 outputs=[model_zip_link, model_name],
+                show_progress="hidden",
             )
             search_query.change(
                 partial(exception_harness, filter_public_models_table_harness),

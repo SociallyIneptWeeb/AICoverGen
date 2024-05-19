@@ -159,7 +159,6 @@ with gr.Blocks(title="Ultimate RVC") as app:
                     )
                     song_input.input(
                         lambda: gr.update(value=None),
-                        inputs=None,
                         outputs=cached_input_songs_dropdown,
                         show_progress="hidden",
                     )
@@ -181,7 +180,7 @@ with gr.Blocks(title="Ultimate RVC") as app:
                     )
                     song_input_file.upload(
                         process_file_upload,
-                        inputs=[song_input_file],
+                        inputs=song_input_file,
                         outputs=[local_file, song_input],
                     )
 
@@ -457,7 +456,6 @@ with gr.Blocks(title="Ultimate RVC") as app:
         input_type = gr.State()
         generate_btn.click(
             lambda: (gr.update(interactive=False),) * 2,
-            inputs=[],
             outputs=[show_intermediate_files, generate_btn2],
             show_progress="hidden",
         ).success(
@@ -500,26 +498,20 @@ with gr.Blocks(title="Ultimate RVC") as app:
             ],
         ).then(
             update_cached_input_songs,
-            inputs=None,
             outputs=cached_input_songs_dropdown,
         ).then(
             lambda: (gr.update(interactive=True),) * 2,
-            inputs=[],
             outputs=[show_intermediate_files, generate_btn2],
             show_progress="hidden",
         )
 
         generate_btn2.click(
             lambda: (gr.update(interactive=False),) * 4,
-            inputs=[],
             outputs=[show_intermediate_files, generate_btn, generate_btn2, clear_btn],
             show_progress="hidden",
         ).success(
             partial(exception_harness, make_song_dir),
-            inputs=[
-                song_input,
-                rvc_model,
-            ],
+            inputs=[song_input, rvc_model],
             outputs=[song_dir, input_type],
         ).success(
             partial(duplication_harness, retrieve_song),
@@ -595,14 +587,12 @@ with gr.Blocks(title="Ultimate RVC") as app:
                 output_format,
                 keep_files,
             ],
-            outputs=[ai_cover],
+            outputs=ai_cover,
         ).then(
             update_cached_input_songs,
-            inputs=None,
             outputs=cached_input_songs_dropdown,
         ).then(
             lambda: (gr.update(interactive=True),) * 4,
-            inputs=[],
             outputs=[show_intermediate_files, generate_btn, generate_btn2, clear_btn],
             show_progress="hidden",
         )
@@ -710,7 +700,7 @@ with gr.Blocks(title="Ultimate RVC") as app:
 
             public_models_table.select(
                 pub_dl_autofill,
-                inputs=[public_models_table],
+                inputs=public_models_table,
                 outputs=[model_zip_link, model_name],
                 show_progress="hidden",
             )
@@ -818,7 +808,6 @@ with gr.Blocks(title="Ultimate RVC") as app:
         ]:
             click_event.success(
                 update_model_lists,
-                inputs=None,
                 outputs=[rvc_model, rvc_models_to_delete],
             )
 

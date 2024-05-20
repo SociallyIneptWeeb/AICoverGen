@@ -109,14 +109,10 @@ def pub_dl_autofill(pub_models, event: gr.SelectData):
     )
 
 
-def swap_visibility():
-    return (
-        gr.update(visible=True),
-        gr.update(visible=False),
-        gr.update(value=""),
-        gr.update(value=None),
-        gr.update(value=None),
-    )
+def toggle_components(main_index, max_index=3):
+    update_args = [{"visible": False, "value": None} for _ in range(max_index)]
+    update_args[main_index]["visible"] = True
+    return tuple(gr.update(**update_arg) for update_arg in update_args)
 
 
 def show_hop_slider(pitch_detection_algo):
@@ -144,39 +140,50 @@ with gr.Blocks(title="Ultimate RVC") as app:
 
         with gr.Accordion("Main options"):
             with gr.Row():
-                with gr.Column() as yt_link_col:
+                with gr.Column():
+                    song_input_type_dropdown = gr.Dropdown(
+                        [
+                            "YouTube link/local path",
+                            "Local file",
+                            "Cached song",
+                        ],
+                        value="YouTube link/local path",
+                        label="Song input type",
+                        type="index",
+                    )
                     song_input = gr.Text(
                         label="Song input",
-                        info="Link to a song on YouTube or the full path of a local audio file. For file upload, click the button below.",
+                        info="Link to a song on YouTube or the full path of a local audio file.",
+                    )
+                    local_file = gr.Audio(
+                        label="Song input",
+                        sources="upload",
+                        type="filepath",
+                        visible=False,
                     )
                     cached_input_songs_dropdown = gr.Dropdown(
                         cached_input_songs,
-                        label="Cached input songs",
+                        label="Song input",
+                        info="Select a song from the list of cached songs.",
+                        visible=False,
                     )
-                    song_input.input(
-                        lambda: gr.update(value=None),
-                        outputs=cached_input_songs_dropdown,
+                    song_input_type_dropdown.input(
+                        toggle_components,
+                        inputs=song_input_type_dropdown,
+                        outputs=[song_input, local_file, cached_input_songs_dropdown],
                         show_progress="hidden",
+                    )
+
+                    local_file.change(
+                        lambda x: gr.update(value=x),
+                        inputs=local_file,
+                        outputs=song_input,
                     )
                     cached_input_songs_dropdown.input(
                         lambda x: gr.update(value=x),
                         inputs=cached_input_songs_dropdown,
                         outputs=song_input,
                         show_progress="hidden",
-                    )
-                    show_file_upload_button = gr.Button("Upload local file instead")
-
-                with gr.Column(visible=False) as file_upload_col:
-                    local_file = gr.Audio(
-                        label="Song input", sources="upload", type="filepath"
-                    )
-                    show_yt_link_button = gr.Button(
-                        "Paste YouTube link/path to local file instead"
-                    )
-                    local_file.change(
-                        lambda x: gr.update(value=x),
-                        inputs=local_file,
-                        outputs=song_input,
                     )
 
                 with gr.Column():
@@ -202,28 +209,6 @@ with gr.Blocks(title="Ultimate RVC") as app:
                         label="Overall pitch shift",
                         info="Shift pitch of converted vocals, backup vocals and instrumentals. Measured in semi-tones. Altering this slightly reduces sound quality.",
                     )
-                show_file_upload_button.click(
-                    swap_visibility,
-                    outputs=[
-                        file_upload_col,
-                        yt_link_col,
-                        song_input,
-                        local_file,
-                        cached_input_songs_dropdown,
-                    ],
-                    show_progress="hidden",
-                )
-                show_yt_link_button.click(
-                    swap_visibility,
-                    outputs=[
-                        yt_link_col,
-                        file_upload_col,
-                        song_input,
-                        local_file,
-                        cached_input_songs_dropdown,
-                    ],
-                    show_progress="hidden",
-                )
 
         with gr.Accordion("Vocal conversion options", open=False):
             with gr.Row():

@@ -19,6 +19,8 @@ from manage_voice_models import (
 
 from generate_song_cover import (
     get_cached_input_paths_named,
+    delete_intermediate_audio,
+    delete_all_intermediate_audio,
     make_song_dir,
     retrieve_song,
     separate_vocals,
@@ -100,7 +102,7 @@ def update_model_lists():
 
 def update_cached_input_songs():
     songs_l = get_cached_input_paths_named()
-    return gr.Dropdown(choices=songs_l)
+    return gr.Dropdown(choices=songs_l), gr.Dropdown(choices=songs_l, value=[])
 
 
 def pub_dl_autofill(pub_models, event: gr.SelectData):
@@ -135,6 +137,8 @@ with gr.Blocks(title="Ultimate RVC") as app:
 
     gr.Label("Ultimate RVC ❤️", show_label=False)
 
+    dummy_deletion_checkbox = gr.Checkbox(visible=False)
+    delete_confirmation = gr.State(False)
     # main tab
     with gr.Tab("Generate song covers"):
 
@@ -325,13 +329,72 @@ with gr.Blocks(title="Ultimate RVC") as app:
                 keep_files = gr.Checkbox(
                     label="Keep intermediate audio files",
                     value=True,
-                    info="Keep all intermediate audio files. Leave unchecked to save space",
+                    info="Keep intermediate audio files generated during song cover generation. Leave unchecked to save space.",
                 )
                 show_intermediate_files = gr.Checkbox(
                     label="Show intermediate audio files",
                     value=False,
-                    info="Show available intermediate audio files when audio generation completes. Leave unchecked to optimize performance.",
+                    info="Show generated intermediate audio files when song cover generation completes. Leave unchecked to optimize performance.",
                 )
+            with gr.Accordion("Delete intermediate audio files", open=False):
+                with gr.Row():
+                    with gr.Column():
+                        intermediate_audio_to_delete = gr.Dropdown(
+                            cached_input_songs,
+                            label="Songs with intermediate audio files",
+                            filterable=True,
+                            multiselect=True,
+                            info="Select one or more songs to delete their asssociated intermediate audio files.",
+                        )
+                        delete_intermediate_audio_btn = gr.Button(
+                            "Delete selected",
+                            variant="secondary",
+                        )
+                        delete_all_intermediate_audio_btn = gr.Button(
+                            "Delete all", variant="primary"
+                        )
+                    with gr.Row():
+                        intermediate_audio_delete_msg = gr.Text(
+                            label="Output message", interactive=False
+                        )
+
+                delete_intermediate_audio_click = delete_intermediate_audio_btn.click(
+                    lambda x: x,
+                    inputs=dummy_deletion_checkbox,
+                    outputs=delete_confirmation,
+                    js=confirm_box_js(
+                        "Are you sure you want to delete intermediate audio files for the selected songs?"
+                    ),
+                ).then(
+                    partial(confirmation_harness, delete_intermediate_audio),
+                    inputs=[delete_confirmation, intermediate_audio_to_delete],
+                    outputs=intermediate_audio_delete_msg,
+                )
+
+                delete_all_intermediate_audio_click = delete_all_intermediate_audio_btn.click(
+                    lambda x: x,
+                    inputs=dummy_deletion_checkbox,
+                    outputs=delete_confirmation,
+                    js=confirm_box_js(
+                        "Are you sure you want to delete all intermediate audio files?"
+                    ),
+                ).then(
+                    partial(confirmation_harness, delete_all_intermediate_audio),
+                    inputs=delete_confirmation,
+                    outputs=intermediate_audio_delete_msg,
+                )
+                for click_event in [
+                    delete_intermediate_audio_click,
+                    delete_all_intermediate_audio_click,
+                ]:
+                    click_event.success(
+                        update_cached_input_songs,
+                        outputs=[
+                            cached_input_songs_dropdown,
+                            intermediate_audio_to_delete,
+                        ],
+                    )
+
         with gr.Accordion(
             "Access intermediate audio files", open=False, visible=False
         ) as intermediate_files_accordion:
@@ -478,7 +541,7 @@ with gr.Blocks(title="Ultimate RVC") as app:
             ],
         ).then(
             update_cached_input_songs,
-            outputs=cached_input_songs_dropdown,
+            outputs=[cached_input_songs_dropdown, intermediate_audio_to_delete],
         ).then(
             lambda: (gr.update(interactive=True),) * 2,
             outputs=[show_intermediate_files, generate_btn2],
@@ -570,7 +633,7 @@ with gr.Blocks(title="Ultimate RVC") as app:
             outputs=ai_cover,
         ).then(
             update_cached_input_songs,
-            outputs=cached_input_songs_dropdown,
+            outputs=[cached_input_songs_dropdown, intermediate_audio_to_delete],
         ).then(
             lambda: (gr.update(interactive=True),) * 4,
             outputs=[show_intermediate_files, generate_btn, generate_btn2, clear_btn],
@@ -727,8 +790,6 @@ with gr.Blocks(title="Ultimate RVC") as app:
                 )
 
         with gr.Tab("Delete models"):
-            model_delete_confirmation = gr.State(False)
-            dummy_deletion_checkbox = gr.Checkbox(visible=False)
             with gr.Row():
                 with gr.Column():
                     rvc_models_to_delete = gr.Dropdown(
@@ -745,7 +806,7 @@ with gr.Blocks(title="Ultimate RVC") as app:
             with gr.Row():
                 with gr.Column():
                     delete_models_button = gr.Button(
-                        "Delete selected models", variant="primary"
+                        "Delete selected models", variant="secondary"
                     )
                     delete_all_models_button = gr.Button(
                         "Delete all models", variant="primary"
@@ -759,24 +820,24 @@ with gr.Blocks(title="Ultimate RVC") as app:
                 # input some dummy component of type bool.
                 lambda x: x,
                 inputs=dummy_deletion_checkbox,
-                outputs=model_delete_confirmation,
+                outputs=delete_confirmation,
                 js=confirm_box_js(
                     "Are you sure you want to delete the selected models?"
                 ),
             ).then(
                 partial(confirmation_harness, delete_models),
-                inputs=[model_delete_confirmation, rvc_models_to_delete],
+                inputs=[delete_confirmation, rvc_models_to_delete],
                 outputs=rvc_models_deleted_message,
             )
 
             delete_all_models_btn_click = delete_all_models_button.click(
                 lambda x: x,
                 inputs=dummy_deletion_checkbox,
-                outputs=model_delete_confirmation,
+                outputs=delete_confirmation,
                 js=confirm_box_js("Are you sure you want to delete all models?"),
             ).then(
                 partial(confirmation_harness, delete_all_models),
-                inputs=model_delete_confirmation,
+                inputs=delete_confirmation,
                 outputs=rvc_models_deleted_message,
             )
 

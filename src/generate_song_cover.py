@@ -85,17 +85,6 @@ def get_cached_input_paths():
     return glob.glob(input_paths_pattern)
 
 
-def get_cached_input_paths_named():
-    input_paths = get_cached_input_paths()
-    input_names = [
-        os.path.splitext(os.path.basename(path))[0]
-        .removeprefix("0_")
-        .removesuffix("_Original")
-        for path in input_paths
-    ]
-    return [(name, path) for name, path in zip(input_names, input_paths)]
-
-
 def pitch_shift(audio_path, output_path, n_semi_tones):
     y, sr = sf.read(audio_path)
     tfm = sox.Transformer()
@@ -220,6 +209,41 @@ def combine_audio(
     )
     combined_audio_resampled = combined_audio.set_frame_rate(output_sr)
     combined_audio_resampled.export(output_path, format=output_format)
+
+
+def get_cached_input_paths_named():
+    input_paths = get_cached_input_paths()
+    input_names = [
+        os.path.splitext(os.path.basename(path))[0]
+        .removeprefix("0_")
+        .removesuffix("_Original")
+        for path in input_paths
+    ]
+    return [(name, path) for name, path in zip(input_names, input_paths)]
+
+
+def delete_intermediate_audio(song_inputs, progress):
+    if not song_inputs:
+        raise Exception("No songs selected!")
+    display_progress(
+        "[~] Deleting intermediate audio files for selected songs...",
+        0.5,
+        progress,
+    )
+    cached_input_paths = get_cached_input_paths()
+    for song_input in song_inputs:
+        if song_input in cached_input_paths:
+            song_dir, _ = os.path.split(song_input)
+            shutil.rmtree(song_dir)
+    return "[+] Successfully deleted intermediate audio files for selected songs!"
+
+
+def delete_all_intermediate_audio(progress):
+    display_progress("[~] Deleting all intermediate audio files...", 0.5, progress)
+    if os.path.isdir(TEMP_AUDIO_DIR):
+        shutil.rmtree(TEMP_AUDIO_DIR)
+
+    return "[+] All intermediate audio files successfully deleted!"
 
 
 def make_song_dir(

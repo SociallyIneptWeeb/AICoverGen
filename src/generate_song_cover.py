@@ -99,14 +99,9 @@ def pitch_shift(audio_path, output_path, n_semi_tones):
     sf.write(output_path, y_shifted, sr)
 
 
-# TODO have check for whether files are almost similar if their hashes are equal.
-#      if not then do rehashing. Could maybe use the file hash function for this
-#      (as it does not check complete equality)
-# TODO could also replace input paths base name with this hash of input files.
-# we will still save json file with path names but for computing the final hash we will
-# remove the field with hash of input files
-# TODO finally we need to check whether the hash file funciton can even be used for generating
-# song directories, as some different files might get the same hash
+# TODO consider increasing size to 16
+# otherwise we might have problems with hash collisions
+# when using app as CLI
 def get_unique_base_path(song_dir, prefix, arg_dict, progress, percent, hash_size=5):
     dict_hash = get_hash(arg_dict, size=hash_size)
     while True:
@@ -390,7 +385,9 @@ def separate_vocals(
         raise Exception("Song directory does not exist!")
 
     arg_dict = {
-        "input-files": [os.path.basename(song_path)],
+        "input-files": [
+            {"name": os.path.basename(song_path), "hash": get_file_hash(song_path)}
+        ],
     }
 
     vocals_path_base = get_unique_base_path(
@@ -450,7 +447,12 @@ def separate_main_vocals(
         raise Exception("song directory does not exist!")
 
     arg_dict = {
-        "input-files": [os.path.basename(vocals_path)],
+        "input-files": [
+            {
+                "name": os.path.basename(vocals_path),
+                "hash": get_file_hash(vocals_path),
+            }
+        ],
     }
 
     main_vocals_path_base = get_unique_base_path(
@@ -505,7 +507,12 @@ def dereverb_main_vocals(main_vocals_path, song_dir, progress=None, percentages=
         raise Exception("song directory does not exist!")
 
     arg_dict = {
-        "input-files": [os.path.basename(main_vocals_path)],
+        "input-files": [
+            {
+                "name": os.path.basename(main_vocals_path),
+                "hash": get_file_hash(main_vocals_path),
+            }
+        ],
     }
 
     main_vocals_dereverb_path_base = get_unique_base_path(
@@ -580,7 +587,12 @@ def convert_main_vocals(
     pitch_change = pitch_change_vocals * 12 + pitch_change_all
     hop_length_suffix = "" if f0_method != "mangio-crepe" else f"_{crepe_hop_length}"
     arg_dict = {
-        "input-files": [main_vocals_dereverb_path_base],
+        "input-files": [
+            {
+                "name": main_vocals_dereverb_path_base,
+                "hash": get_file_hash(main_vocals_dereverb_path),
+            }
+        ],
         "voice-model": voice_model,
         "pitch-shift": pitch_change,
         "index-rate": index_rate,
@@ -627,6 +639,7 @@ def postprocess_main_vocals(
     progress=None,
     percentages=[0.0],
 ):
+    print(ai_vocals_path)
     if len(percentages) != 1:
         raise ValueError("Percentages must be a list of length 1.")
     if not ai_vocals_path:
@@ -640,7 +653,9 @@ def postprocess_main_vocals(
 
     ai_vocals_path_base = os.path.basename(ai_vocals_path)
     arg_dict = {
-        "input-files": [ai_vocals_path_base],
+        "input-files": [
+            {"name": ai_vocals_path_base, "hash": get_file_hash(ai_vocals_path)}
+        ],
         "reverb-room-size": reverb_rm_size,
         "reverb-wet": reverb_wet,
         "reverb-dry": reverb_dry,
@@ -706,7 +721,12 @@ def pitch_shift_background(
 
         instrumentals_path_base = os.path.basename(instrumentals_path)
         instrumentals_dict = {
-            "input-files": [instrumentals_path_base],
+            "input-files": [
+                {
+                    "name": instrumentals_path_base,
+                    "hash": get_file_hash(instrumentals_path),
+                }
+            ],
             "pitch-shift": pitch_change_all,
         }
 
@@ -736,7 +756,9 @@ def pitch_shift_background(
         backup_vocals_base = os.path.basename(backup_vocals_path)
 
         backup_vocals_dict = {
-            "input-files": [backup_vocals_base],
+            "input-files": [
+                {"name": backup_vocals_base, "hash": get_file_hash(backup_vocals_path)}
+            ],
             "pitch-shift": pitch_change_all,
         }
 
@@ -794,8 +816,8 @@ def get_song_cover_name(
             if os.path.isfile(mixed_vocals_json_path):
                 mixed_vocals_json_dict = json_load(mixed_vocals_json_path)
                 input_files = mixed_vocals_json_dict.get("input-files")
-                if input_files:
-                    input_path = input_files[0]
+                input_path = input_files[0].get("name") if input_files else None
+                if input_path:
                     input_path_no_ext = os.path.splitext(input_path)[0]
                     ai_vocals_json_path = os.path.join(
                         song_dir, f"{input_path_no_ext}.json"
@@ -847,7 +869,18 @@ def mix_w_background(
 
     arg_dict = {
         "input-files": [
-            ai_vocals_mixed_path_base,
+            {
+                "name": ai_vocals_mixed_path_base,
+                "hash": get_file_hash(ai_vocals_mixed_path),
+            },
+            {
+                "name": backup_vocals_path_base,
+                "hash": get_file_hash(backup_vocals_path),
+            },
+            {
+                "name": instrumentals_path_base,
+                "hash": get_file_hash(instrumentals_path),
+            },
             backup_vocals_path_base,
             instrumentals_path_base,
         ],

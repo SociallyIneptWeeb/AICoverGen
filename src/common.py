@@ -68,6 +68,9 @@ def get_hash(thing, size=5):
     ).hexdigest()
 
 
+# TODO consider increasing size to 16
+# otherwise we might have problems with hash collisions
+# when using app as CLI
 def get_file_hash(filepath, size=5):
     with open(filepath, "rb") as f:
         file_hash = hashlib.blake2b(digest_size=size)

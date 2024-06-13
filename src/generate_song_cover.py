@@ -270,6 +270,47 @@ def delete_all_intermediate_audio(progress=None, percentages=[0.0]):
     return "[+] All intermediate audio files successfully deleted!"
 
 
+def convert_to_stereo(song_path, song_dir, progress=None, percentages=[0.0, 0.5]):
+    if len(percentages) != 2:
+        raise ValueError("Percentages must be a list of length 2.")
+    if not song_path:
+        raise Exception("Input song missing!")
+    if not os.path.isfile(song_path):
+        raise Exception("Input song does not exist!")
+    if not song_dir:
+        raise Exception("Song directory missing!")
+    if not os.path.isdir(song_dir):
+        raise Exception("Song directory does not exist!")
+
+    stereo_path = song_path
+
+    song_info = pydub_utils.mediainfo(song_path)
+    if song_info["channels"] == "1":
+        arg_dict = {
+            "input-files": [
+                {"name": os.path.basename(song_path), "hash": get_file_hash(song_path)}
+            ],
+        }
+        stereo_path_base = get_unique_base_path(
+            song_dir, "0_Stereo", arg_dict, progress, percentages[0]
+        )
+        stereo_path = f"{stereo_path_base}.wav"
+        stereo_json_path = f"{stereo_path_base}.json"
+        if not (os.path.exists(stereo_path) and os.path.exists(stereo_json_path)):
+            display_progress(
+                "[~] Converting song to stereo...",
+                percentages[1],
+                progress,
+            )
+            command = shlex.split(
+                f'ffmpeg -y -loglevel error -i "{song_path}" -ac 2 -f wav "{stereo_path}"'
+            )
+            subprocess.run(command)
+            json_dump(arg_dict, stereo_json_path)
+
+    return stereo_path
+
+
 def make_song_dir(song_input, progress=None, percentages=[0.0]):
     if len(percentages) != 1:
         raise ValueError("Percentages must be a list of length 1.")
@@ -310,25 +351,19 @@ def make_song_dir(song_input, progress=None, percentages=[0.0]):
 def retrieve_song(
     song_input,
     progress=None,
-    percentages=[0.0, 0.33, 0.66],
+    percentages=[i / 4 for i in range(4)],
 ):
-    if len(percentages) != 3:
-        raise ValueError("Percentages must be a list of length 3.")
+    if len(percentages) != 4:
+        raise ValueError("Percentages must be a list of length 4.")
     if not song_input:
         raise Exception(
             "Song input missing! Please provide a valid YouTube url or local audio file."
         )
 
     song_dir, input_type = make_song_dir(song_input, progress, percentages[:1])
-    audio_paths = {
-        audio_type: os.path.join(song_dir, file)
-        for file in os.listdir(song_dir)
-        for audio_type in ["Original", "Stereo"]
-        if os.path.splitext(file)[0].endswith(f"_{audio_type}")
-    }
-
-    orig_song_path = audio_paths.get("Original")
-    stereo_path = audio_paths.get("Stereo")
+    orig_song_path = next(
+        iter(glob.glob(os.path.join(song_dir, "0_*_Original*"))), None
+    )
 
     if not orig_song_path:
         if input_type == "yt":
@@ -347,34 +382,18 @@ def retrieve_song(
             orig_song_path = os.path.join(song_dir, orig_song_name + song_input_ext)
             shutil.copyfile(song_input, orig_song_path)
 
-    if not stereo_path:
-        orig_song_info = pydub_utils.mediainfo(orig_song_path)
-        # check if mono
-        if orig_song_info["channels"] == "1":
-            display_progress(
-                "[~] Converting song to stereo...",
-                percentages[2],
-                progress,
-            )
-            stereo_path_base = os.path.splitext(orig_song_path)[0].removesuffix(
-                "_Original"
-            )
-            stereo_path = f"{stereo_path_base}_Stereo.wav"
-            command = shlex.split(
-                f'ffmpeg -y -loglevel error -i "{orig_song_path}" -ac 2 -f wav "{stereo_path}"'
-            )
-            subprocess.run(command)
-    return stereo_path or orig_song_path, song_dir
+    stereo_path = convert_to_stereo(orig_song_path, song_dir, progress, percentages[2:])
+    return stereo_path, song_dir
 
 
 def separate_vocals(
     song_path,
     song_dir,
     progress=None,
-    percentages=[0.0],
+    percentages=[i / 4 for i in range(4)],
 ):
-    if len(percentages) != 1:
-        raise ValueError("Percentages must be a list of length 1.")
+    if len(percentages) != 4:
+        raise ValueError("Percentages must be a list of length 4.")
     if not song_path:
         raise Exception("Input song missing!")
     if not os.path.isfile(song_path):
@@ -384,6 +403,8 @@ def separate_vocals(
     if not os.path.isdir(song_dir):
         raise Exception("Song directory does not exist!")
 
+    song_path = convert_to_stereo(song_path, song_dir, progress, percentages[:2])
+
     arg_dict = {
         "input-files": [
             {"name": os.path.basename(song_path), "hash": get_file_hash(song_path)}
@@ -391,11 +412,11 @@ def separate_vocals(
     }
 
     vocals_path_base = get_unique_base_path(
-        song_dir, "1_Vocals", arg_dict, progress, 0.075
+        song_dir, "1_Vocals", arg_dict, progress, percentages[2]
     )
 
     instrumentals_path_base = get_unique_base_path(
-        song_dir, "1_Instrumental", arg_dict, progress, 0.075
+        song_dir, "1_Instrumental", arg_dict, progress, percentages[2]
     )
 
     vocals_path = f"{vocals_path_base}.wav"
@@ -411,7 +432,7 @@ def separate_vocals(
     ):
         display_progress(
             "[~] Separating vocals from instrumentals...",
-            percentages[0],
+            percentages[3],
             progress,
         )
         run_mdx(
@@ -432,10 +453,10 @@ def separate_main_vocals(
     vocals_path,
     song_dir,
     progress=None,
-    percentages=[0.0],
+    percentages=[i / 4 for i in range(4)],
 ):
-    if len(percentages) != 1:
-        raise ValueError("Percentages must be a list of length 1.")
+    if len(percentages) != 4:
+        raise ValueError("Percentages must be a list of length 4.")
 
     if not vocals_path:
         raise Exception("Vocals missing!")
@@ -445,6 +466,8 @@ def separate_main_vocals(
         raise Exception("Song directory missing!")
     if not os.path.isdir(song_dir):
         raise Exception("song directory does not exist!")
+
+    vocals_path = convert_to_stereo(vocals_path, song_dir, progress, percentages[:2])
 
     arg_dict = {
         "input-files": [
@@ -456,11 +479,11 @@ def separate_main_vocals(
     }
 
     main_vocals_path_base = get_unique_base_path(
-        song_dir, "2_Vocals_Main", arg_dict, progress, 0.15
+        song_dir, "2_Vocals_Main", arg_dict, progress, percentages[2]
     )
 
     backup_vocals_path_base = get_unique_base_path(
-        song_dir, "2_Vocals_Backup", arg_dict, progress, 0.15
+        song_dir, "2_Vocals_Backup", arg_dict, progress, percentages[2]
     )
 
     main_vocals_path = f"{main_vocals_path_base}.wav"
@@ -476,7 +499,7 @@ def separate_main_vocals(
     ):
         display_progress(
             "[~] Separating main vocals from backup vocals...",
-            percentages[0],
+            percentages[3],
             progress,
         )
         run_mdx(
@@ -493,9 +516,11 @@ def separate_main_vocals(
     return main_vocals_path, backup_vocals_path
 
 
-def dereverb_main_vocals(main_vocals_path, song_dir, progress=None, percentages=[0.0]):
-    if len(percentages) != 1:
-        raise ValueError("Percentages must be a list of length 1.")
+def dereverb_main_vocals(
+    main_vocals_path, song_dir, progress=None, percentages=[i / 4 for i in range(4)]
+):
+    if len(percentages) != 4:
+        raise ValueError("Percentages must be a list of length 4.")
 
     if not main_vocals_path:
         raise Exception("Vocals missing!")
@@ -505,6 +530,10 @@ def dereverb_main_vocals(main_vocals_path, song_dir, progress=None, percentages=
         raise Exception("Song directory missing!")
     if not os.path.isdir(song_dir):
         raise Exception("song directory does not exist!")
+
+    main_vocals_path = convert_to_stereo(
+        main_vocals_path, song_dir, progress, percentages[:2]
+    )
 
     arg_dict = {
         "input-files": [
@@ -516,10 +545,10 @@ def dereverb_main_vocals(main_vocals_path, song_dir, progress=None, percentages=
     }
 
     main_vocals_dereverb_path_base = get_unique_base_path(
-        song_dir, "3_Vocals_Main_DeReverb", arg_dict, progress, 0.25
+        song_dir, "3_Vocals_Main_DeReverb", arg_dict, progress, percentages[2]
     )
     main_vocals_reverb_path_base = get_unique_base_path(
-        song_dir, "3_Vocals_Main_Reverb", arg_dict, progress, 0.25
+        song_dir, "3_Vocals_Main_Reverb", arg_dict, progress, percentages[2]
     )
 
     main_vocals_dereverb_path = f"{main_vocals_dereverb_path_base}.wav"
@@ -536,7 +565,7 @@ def dereverb_main_vocals(main_vocals_path, song_dir, progress=None, percentages=
     ):
         display_progress(
             "[~] De-reverbing main vocals...",
-            percentages[0],
+            percentages[3],
             progress,
         )
         run_mdx(
@@ -566,10 +595,10 @@ def convert_main_vocals(
     f0_method,
     crepe_hop_length,
     progress=None,
-    percentages=[0.0],
+    percentages=[i / 4 for i in range(4)],
 ):
-    if len(percentages) != 1:
-        raise ValueError("Percentages must be a list of length 1.")
+    if len(percentages) != 4:
+        raise ValueError("Percentages must be a list of length 4.")
     if not main_vocals_dereverb_path:
         raise Exception("Vocals missing!")
     if not os.path.isfile(main_vocals_dereverb_path):
@@ -582,6 +611,10 @@ def convert_main_vocals(
         raise Exception("Voice model missing!")
     if not os.path.isdir(os.path.join(RVC_MODELS_DIR, voice_model)):
         raise Exception("Voice model does not exist!")
+
+    main_vocals_dereverb_path = convert_to_stereo(
+        main_vocals_dereverb_path, song_dir, progress, percentages[:2]
+    )
 
     main_vocals_dereverb_path_base = os.path.basename(main_vocals_dereverb_path)
     pitch_change = pitch_change_vocals * 12 + pitch_change_all
@@ -603,14 +636,14 @@ def convert_main_vocals(
     }
 
     ai_vocals_path_base = get_unique_base_path(
-        song_dir, "4_Vocals_Converted", arg_dict, progress, 0.40
+        song_dir, "4_Vocals_Converted", arg_dict, progress, percentages[2]
     )
     ai_vocals_path = f"{ai_vocals_path_base}.wav"
     ai_vocals_json_path = f"{ai_vocals_path_base}.json"
 
     if not (os.path.exists(ai_vocals_path) and os.path.exists(ai_vocals_json_path)):
         display_progress(
-            "[~] Converting main vocals using RVC...", percentages[0], progress
+            "[~] Converting main vocals using RVC...", percentages[3], progress
         )
         voice_change(
             voice_model,
@@ -637,11 +670,11 @@ def postprocess_main_vocals(
     reverb_dry,
     reverb_damping,
     progress=None,
-    percentages=[0.0],
+    percentages=[i / 4 for i in range(4)],
 ):
-    print(ai_vocals_path)
-    if len(percentages) != 1:
-        raise ValueError("Percentages must be a list of length 1.")
+
+    if len(percentages) != 4:
+        raise ValueError("Percentages must be a list of length 4.")
     if not ai_vocals_path:
         raise Exception("Vocals missing!")
     if not os.path.isfile(ai_vocals_path):
@@ -650,6 +683,10 @@ def postprocess_main_vocals(
         raise Exception("Song directory missing!")
     if not os.path.isdir(song_dir):
         raise Exception("song directory does not exist!")
+
+    ai_vocals_path = convert_to_stereo(
+        ai_vocals_path, song_dir, progress, percentages[:2]
+    )
 
     ai_vocals_path_base = os.path.basename(ai_vocals_path)
     arg_dict = {
@@ -663,7 +700,7 @@ def postprocess_main_vocals(
     }
 
     ai_vocals_mixed_path_base = get_unique_base_path(
-        song_dir, "5_Vocals_Mixed", arg_dict, progress, 0.7
+        song_dir, "5_Vocals_Mixed", arg_dict, progress, percentages[2]
     )
 
     ai_vocals_mixed_path = f"{ai_vocals_mixed_path_base}.wav"
@@ -675,7 +712,7 @@ def postprocess_main_vocals(
     ):
         display_progress(
             "[~] Applying audio effects to converted vocals...",
-            percentages[0],
+            percentages[3],
             progress,
         )
         add_audio_effects(
@@ -696,10 +733,10 @@ def pitch_shift_background(
     song_dir,
     pitch_change_all,
     progress=None,
-    percentages=[0.0, 0.5],
+    percentages=[i / 8 for i in range(8)],
 ):
-    if len(percentages) != 2:
-        raise ValueError("Percentages must be a list of length 2.")
+    if len(percentages) != 8:
+        raise ValueError("Percentages must be a list of length 8.")
 
     if not instrumentals_path:
         raise Exception("Instrumentals missing!")
@@ -718,7 +755,12 @@ def pitch_shift_background(
     backup_vocals_shifted_path = backup_vocals_path
 
     if pitch_change_all != 0:
-
+        instrumentals_path = convert_to_stereo(
+            instrumentals_path, song_dir, progress, percentages[:2]
+        )
+        backup_vocals_path = convert_to_stereo(
+            backup_vocals_path, song_dir, progress, percentages[2:4]
+        )
         instrumentals_path_base = os.path.basename(instrumentals_path)
         instrumentals_dict = {
             "input-files": [
@@ -731,7 +773,11 @@ def pitch_shift_background(
         }
 
         instrumentals_shifted_path_base = get_unique_base_path(
-            song_dir, "6_Instrumnetal_Shifted", instrumentals_dict, progress, 0.825
+            song_dir,
+            "6_Instrumnetal_Shifted",
+            instrumentals_dict,
+            progress,
+            percentages[4],
         )
 
         instrumentals_shifted_path = f"{instrumentals_shifted_path_base}.wav"
@@ -743,7 +789,7 @@ def pitch_shift_background(
         ):
             display_progress(
                 "[~] Applying pitch shift to instrumentals",
-                percentages[0],
+                percentages[5],
                 progress,
             )
             pitch_shift(
@@ -763,7 +809,11 @@ def pitch_shift_background(
         }
 
         backup_vocals_shifted_path_base = get_unique_base_path(
-            song_dir, "6_Vocals_Backup_Shifted", backup_vocals_dict, progress, 0.865
+            song_dir,
+            "6_Vocals_Backup_Shifted",
+            backup_vocals_dict,
+            progress,
+            percentages[6],
         )
         backup_vocals_shifted_path = f"{backup_vocals_shifted_path_base}.wav"
         backup_vocals_shifted_json_path = f"{backup_vocals_shifted_path_base}.json"
@@ -773,7 +823,7 @@ def pitch_shift_background(
         ):
             display_progress(
                 "[~] Applying pitch shift to backup vocals",
-                percentages[1],
+                percentages[7],
                 progress,
             )
             pitch_shift(
@@ -793,11 +843,12 @@ def get_song_cover_name(
     display_progress("[~] Getting song cover name...", percentages[0], progress)
     orig_song_prefix = "Unknown"
     # NOTE orig_song_paths should never contain more than one element
-    orig_song_paths = (
-        glob.glob(os.path.join(song_dir, "0_*_Original*")) if song_dir else []
+    orig_song_path = (
+        next(iter(glob.glob(os.path.join(song_dir, "0_*_Original*"))), None)
+        if song_dir
+        else None
     )
-    if orig_song_paths:
-        orig_song_path = orig_song_paths[0]
+    if orig_song_path:
         orig_song_base_path = os.path.splitext(orig_song_path)[0]
         orig_song_path_without_ext = os.path.basename(orig_song_base_path)
 
@@ -842,10 +893,10 @@ def mix_w_background(
     output_name,
     keep_files,
     progress=None,
-    percentages=[0.0, 0.33, 0.66],
+    percentages=[i / 6 for i in range(6)],
 ):
-    if len(percentages) != 3:
-        raise ValueError("Percentages must be a list of length 3.")
+    if len(percentages) != 6:
+        raise ValueError("Percentages must be a list of length 6.")
     if not ai_vocals_mixed_path:
         raise Exception("Main vocals missing!")
     if not os.path.isfile(ai_vocals_mixed_path):
@@ -862,6 +913,10 @@ def mix_w_background(
         raise Exception("Song directory missing!")
     if not os.path.isdir(song_dir):
         raise Exception("song directory does not exist!")
+
+    ai_vocals_mixed_path = convert_to_stereo(
+        ai_vocals_mixed_path, song_dir, progress, percentages[:2]
+    )
 
     ai_vocals_mixed_path_base = os.path.basename(ai_vocals_mixed_path)
     backup_vocals_path_base = os.path.basename(backup_vocals_path)
@@ -891,7 +946,7 @@ def mix_w_background(
     }
 
     combined_audio_path_base = get_unique_base_path(
-        song_dir, "7_Vocals_Background_Combined", arg_dict, progress, 0.89
+        song_dir, "7_Vocals_Background_Combined", arg_dict, progress, percentages[2]
     )
     combined_audio_path = f"{combined_audio_path_base}.{output_format}"
     combined_audio_json_path = f"{combined_audio_path_base}.json"
@@ -901,7 +956,7 @@ def mix_w_background(
     ):
         display_progress(
             "[~] Combining post-processed vocals and background tracks...",
-            percentages[0],
+            percentages[3],
             progress,
         )
 
@@ -922,7 +977,7 @@ def mix_w_background(
 
     if not output_name:
         output_name = get_song_cover_name(
-            ai_vocals_mixed_path, song_dir, None, progress, percentages[1]
+            ai_vocals_mixed_path, song_dir, None, progress, percentages[4:5]
         )
 
     ai_cover_path = os.path.join(
@@ -934,7 +989,7 @@ def mix_w_background(
     if not keep_files:
         display_progress(
             "[~] Removing intermediate audio files...",
-            percentages[2],
+            percentages[5],
             progress,
         )
         shutil.rmtree(song_dir)
@@ -967,17 +1022,16 @@ def run_pipeline(
     progress=None,
 ):
     display_progress("[~] Starting song cover generation pipeline...", 0, progress)
-    orig_song_path, song_dir = retrieve_song(
-        song_input, progress, [0 / 13, 1 / 13, 2 / 13]
-    )
+    percentages = [i / 38 for i in range(38)]
+    orig_song_path, song_dir = retrieve_song(song_input, progress, percentages[:4])
     vocals_path, instrumentals_path = separate_vocals(
-        orig_song_path, song_dir, progress, [3 / 13]
+        orig_song_path, song_dir, progress, percentages[4:8]
     )
     main_vocals_path, backup_vocals_path = separate_main_vocals(
-        vocals_path, song_dir, progress, [4 / 13]
+        vocals_path, song_dir, progress, percentages[8:12]
     )
     main_vocals_dereverb_path, reverb_path = dereverb_main_vocals(
-        main_vocals_path, song_dir, progress, [5 / 13]
+        main_vocals_path, song_dir, progress, percentages[12:16]
     )
     ai_vocals_path = convert_main_vocals(
         main_vocals_dereverb_path,
@@ -992,7 +1046,7 @@ def run_pipeline(
         f0_method,
         crepe_hop_length,
         progress,
-        [6 / 13],
+        percentages[16:20],
     )
     ai_vocals_mixed_path = postprocess_main_vocals(
         ai_vocals_path,
@@ -1002,7 +1056,7 @@ def run_pipeline(
         reverb_dry,
         reverb_damping,
         progress,
-        [7 / 13],
+        percentages[20:24],
     )
     instrumentals_shifted_path, backup_vocals_shifted_path = pitch_shift_background(
         instrumentals_path,
@@ -1010,7 +1064,7 @@ def run_pipeline(
         song_dir,
         pitch_change_all,
         progress,
-        [8 / 13, 9 / 13],
+        percentages[24:32],
     )
 
     ai_cover_path = mix_w_background(
@@ -1026,7 +1080,7 @@ def run_pipeline(
         output_name,
         keep_files,
         progress,
-        [10 / 13, 11 / 13, 12 / 13],
+        percentages[32:],
     )
     if keep_files and return_files:
         return (

@@ -8,6 +8,7 @@ MDXNET_MODELS_DIR = os.path.join(BASE_DIR, "mdxnet_models")
 RVC_MODELS_DIR = os.path.join(BASE_DIR, "rvc_models")
 SONGS_DIR = os.path.join(BASE_DIR, "songs")
 TEMP_AUDIO_DIR = os.path.join(SONGS_DIR, "temp")
+GRADIO_TEMP_DIR = os.path.join(BASE_DIR, "gradio_temp")
 
 
 def display_progress(message, percent=None, progress=None):

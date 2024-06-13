@@ -1,5 +1,6 @@
 # MDX Models
 
+gradio_temp
 songs
 mdxnet_models/*.onnx
 

@@ -8,6 +8,7 @@ import asyncio
 from functools import partial
 from dataclasses import dataclass
 from typing import Callable, Literal, Optional
+from common import GRADIO_TEMP_DIR
 
 
 from manage_voice_models import (
@@ -36,6 +37,8 @@ from generate_song_cover import (
     mix_w_background,
     run_pipeline,
 )
+
+os.environ["GRADIO_TEMP_DIR"] = GRADIO_TEMP_DIR
 
 if os.name == "nt":
     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
@@ -1537,32 +1540,39 @@ with gr.Blocks(title="Ultimate RVC") as app:
                 generate_buttons + [show_intermediate_files],
             )
         )
+        percentages = [i / 38 for i in range(38)]
 
         generate_btn2_event_args_list = [
             EventArgs(
                 partial(
                     duplication_harness,
                     retrieve_song,
-                    percentages=[0 / 13, 1 / 13, 2 / 13],
+                    percentages=percentages[:4],
                 ),
                 inputs=[song_input],
                 outputs=[ai_cover, original_track, current_song_dir],
             ),
             EventArgs(
-                partial(duplication_harness, separate_vocals, percentages=[3 / 13]),
+                partial(
+                    duplication_harness, separate_vocals, percentages=percentages[4:8]
+                ),
                 inputs=[original_track, current_song_dir],
                 outputs=[ai_cover, vocals_track, instrumentals_track],
             ),
             EventArgs(
                 partial(
-                    duplication_harness, separate_main_vocals, percentages=[4 / 13]
+                    duplication_harness,
+                    separate_main_vocals,
+                    percentages=percentages[8:12],
                 ),
                 inputs=[vocals_track, current_song_dir],
                 outputs=[ai_cover, main_vocals_track, backup_vocals_track],
             ),
             EventArgs(
                 partial(
-                    duplication_harness, dereverb_main_vocals, percentages=[5 / 13]
+                    duplication_harness,
+                    dereverb_main_vocals,
+                    percentages=percentages[12:16],
                 ),
                 inputs=[main_vocals_track, current_song_dir],
                 outputs=[
@@ -1572,7 +1582,11 @@ with gr.Blocks(title="Ultimate RVC") as app:
                 ],
             ),
             EventArgs(
-                partial(duplication_harness, convert_main_vocals, percentages=[6 / 13]),
+                partial(
+                    duplication_harness,
+                    convert_main_vocals,
+                    percentages=percentages[16:20],
+                ),
                 inputs=[
                     main_vocals_dereverbed_track,
                     current_song_dir,
@@ -1590,7 +1604,9 @@ with gr.Blocks(title="Ultimate RVC") as app:
             ),
             EventArgs(
                 partial(
-                    duplication_harness, postprocess_main_vocals, percentages=[7 / 13]
+                    duplication_harness,
+                    postprocess_main_vocals,
+                    percentages=percentages[20:24],
                 ),
                 inputs=[
                     ai_vocals_track,
@@ -1606,7 +1622,7 @@ with gr.Blocks(title="Ultimate RVC") as app:
                 partial(
                     duplication_harness,
                     pitch_shift_background,
-                    percentages=[8 / 13, 9 / 13],
+                    percentages=percentages[24:32],
                 ),
                 inputs=[
                     instrumentals_track,
@@ -1624,7 +1640,7 @@ with gr.Blocks(title="Ultimate RVC") as app:
                 partial(
                     exception_harness,
                     mix_w_background_harness,
-                    percentages=[10 / 13, 11 / 13, 12 / 13],
+                    percentages=percentages[32:],
                 ),
                 inputs=[
                     mixed_ai_vocals_track,

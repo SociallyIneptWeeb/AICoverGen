@@ -72,10 +72,12 @@ def get_hash(thing, size=5):
 # TODO consider increasing size to 16
 # otherwise we might have problems with hash collisions
 # when using app as CLI
-def get_file_hash(filepath, size=5):
+# TODO use dedicated file_digest function once we upgradeto python 3.11
+# for better speedups
+def get_file_hash(filepath, digest_size=5, chunk_size=655360):
     with open(filepath, "rb") as f:
-        file_hash = hashlib.blake2b(digest_size=size)
-        while chunk := f.read(8192):
+        file_hash = hashlib.blake2b(digest_size=digest_size)
+        while chunk := f.read(chunk_size):
             file_hash.update(chunk)
 
     return file_hash.hexdigest()

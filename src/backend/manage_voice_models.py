@@ -2,7 +2,6 @@ import os
 import shutil
 import urllib.request
 import zipfile
-import json
 
 from common import RVC_MODELS_DIR
 from common import display_progress, copy_files_to_new_folder, json_load

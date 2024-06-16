@@ -1,4 +1,3 @@
-import argparse
 import gc
 import os
 import glob
@@ -25,7 +24,7 @@ from common import (
     get_file_hash,
     get_rvc_model,
 )
-from mdx import run_mdx
+from backend.mdx import run_mdx
 from rvc import Config, load_hubert, get_vc, rvc_infer
 
 
@@ -73,14 +72,14 @@ def yt_download(link, song_dir):
         "postprocessors": [
             {
                 "key": "FFmpegExtractAudio",
-                "preferredcodec": "mp3",
+                "preferredcodec": "wav",
                 "preferredquality": 0,
             }
         ],
     }
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
         result = ydl.extract_info(link, download=True)
-        download_path = ydl.prepare_filename(result, outtmpl=f"{outtmpl}.mp3")
+        download_path = ydl.prepare_filename(result, outtmpl=f"{outtmpl}.wav")
 
     return download_path
 
@@ -357,7 +356,7 @@ def retrieve_song(
         raise ValueError("Percentages must be a list of length 4.")
     if not song_input:
         raise Exception(
-            "Song input missing! Please provide a valid YouTube url or local audio file."
+            "Song input missing! Please provide a valid YouTube url, local audio file or cached input song."
         )
 
     song_dir, input_type = make_song_dir(song_input, progress, percentages[:1])
@@ -389,6 +388,7 @@ def retrieve_song(
 def separate_vocals(
     song_path,
     song_dir,
+    stereofy=True,
     progress=None,
     percentages=[i / 4 for i in range(4)],
 ):
@@ -403,7 +403,11 @@ def separate_vocals(
     if not os.path.isdir(song_dir):
         raise Exception("Song directory does not exist!")
 
-    song_path = convert_to_stereo(song_path, song_dir, progress, percentages[:2])
+    song_path = (
+        convert_to_stereo(song_path, song_dir, progress, percentages[:2])
+        if stereofy
+        else song_path
+    )
 
     arg_dict = {
         "input-files": [
@@ -452,6 +456,7 @@ def separate_vocals(
 def separate_main_vocals(
     vocals_path,
     song_dir,
+    stereofy=True,
     progress=None,
     percentages=[i / 4 for i in range(4)],
 ):
@@ -467,7 +472,11 @@ def separate_main_vocals(
     if not os.path.isdir(song_dir):
         raise Exception("song directory does not exist!")
 
-    vocals_path = convert_to_stereo(vocals_path, song_dir, progress, percentages[:2])
+    vocals_path = (
+        convert_to_stereo(vocals_path, song_dir, progress, percentages[:2])
+        if stereofy
+        else vocals_path
+    )
 
     arg_dict = {
         "input-files": [
@@ -517,7 +526,11 @@ def separate_main_vocals(
 
 
 def dereverb_main_vocals(
-    main_vocals_path, song_dir, progress=None, percentages=[i / 4 for i in range(4)]
+    main_vocals_path,
+    song_dir,
+    stereofy=True,
+    progress=None,
+    percentages=[i / 4 for i in range(4)],
 ):
     if len(percentages) != 4:
         raise ValueError("Percentages must be a list of length 4.")
@@ -531,8 +544,10 @@ def dereverb_main_vocals(
     if not os.path.isdir(song_dir):
         raise Exception("song directory does not exist!")
 
-    main_vocals_path = convert_to_stereo(
-        main_vocals_path, song_dir, progress, percentages[:2]
+    main_vocals_path = (
+        convert_to_stereo(main_vocals_path, song_dir, progress, percentages[:2])
+        if stereofy
+        else main_vocals_path
     )
 
     arg_dict = {
@@ -612,17 +627,12 @@ def convert_main_vocals(
     if not os.path.isdir(os.path.join(RVC_MODELS_DIR, voice_model)):
         raise Exception("Voice model does not exist!")
 
-    main_vocals_dereverb_path = convert_to_stereo(
-        main_vocals_dereverb_path, song_dir, progress, percentages[:2]
-    )
-
-    main_vocals_dereverb_path_base = os.path.basename(main_vocals_dereverb_path)
     pitch_change = pitch_change_vocals * 12 + pitch_change_all
     hop_length_suffix = "" if f0_method != "mangio-crepe" else f"_{crepe_hop_length}"
     arg_dict = {
         "input-files": [
             {
-                "name": main_vocals_dereverb_path_base,
+                "name": os.path.basename(main_vocals_dereverb_path),
                 "hash": get_file_hash(main_vocals_dereverb_path),
             }
         ],
@@ -683,10 +693,6 @@ def postprocess_main_vocals(
         raise Exception("Song directory missing!")
     if not os.path.isdir(song_dir):
         raise Exception("song directory does not exist!")
-
-    ai_vocals_path = convert_to_stereo(
-        ai_vocals_path, song_dir, progress, percentages[:2]
-    )
 
     ai_vocals_path_base = os.path.basename(ai_vocals_path)
     arg_dict = {
@@ -755,17 +761,10 @@ def pitch_shift_background(
     backup_vocals_shifted_path = backup_vocals_path
 
     if pitch_change_all != 0:
-        instrumentals_path = convert_to_stereo(
-            instrumentals_path, song_dir, progress, percentages[:2]
-        )
-        backup_vocals_path = convert_to_stereo(
-            backup_vocals_path, song_dir, progress, percentages[2:4]
-        )
-        instrumentals_path_base = os.path.basename(instrumentals_path)
         instrumentals_dict = {
             "input-files": [
                 {
-                    "name": instrumentals_path_base,
+                    "name": os.path.basename(instrumentals_path),
                     "hash": get_file_hash(instrumentals_path),
                 }
             ],
@@ -774,7 +773,7 @@ def pitch_shift_background(
 
         instrumentals_shifted_path_base = get_unique_base_path(
             song_dir,
-            "6_Instrumnetal_Shifted",
+            "6_Instrumental_Shifted",
             instrumentals_dict,
             progress,
             percentages[4],
@@ -799,11 +798,12 @@ def pitch_shift_background(
             )
             json_dump(instrumentals_dict, instrumentals_shifted_json_path)
 
-        backup_vocals_base = os.path.basename(backup_vocals_path)
-
         backup_vocals_dict = {
             "input-files": [
-                {"name": backup_vocals_base, "hash": get_file_hash(backup_vocals_path)}
+                {
+                    "name": os.path.basename(backup_vocals_path),
+                    "hash": get_file_hash(backup_vocals_path),
+                }
             ],
             "pitch-shift": pitch_change_all,
         }
@@ -891,7 +891,7 @@ def mix_w_background(
     output_sr,
     output_format,
     output_name,
-    keep_files,
+    keep_files=True,
     progress=None,
     percentages=[i / 6 for i in range(6)],
 ):
@@ -914,30 +914,20 @@ def mix_w_background(
     if not os.path.isdir(song_dir):
         raise Exception("song directory does not exist!")
 
-    ai_vocals_mixed_path = convert_to_stereo(
-        ai_vocals_mixed_path, song_dir, progress, percentages[:2]
-    )
-
-    ai_vocals_mixed_path_base = os.path.basename(ai_vocals_mixed_path)
-    backup_vocals_path_base = os.path.basename(backup_vocals_path)
-    instrumentals_path_base = os.path.basename(instrumentals_path)
-
     arg_dict = {
         "input-files": [
             {
-                "name": ai_vocals_mixed_path_base,
+                "name": os.path.basename(ai_vocals_mixed_path),
                 "hash": get_file_hash(ai_vocals_mixed_path),
             },
             {
-                "name": backup_vocals_path_base,
+                "name": os.path.basename(backup_vocals_path),
                 "hash": get_file_hash(backup_vocals_path),
             },
             {
-                "name": instrumentals_path_base,
+                "name": os.path.basename(instrumentals_path),
                 "hash": get_file_hash(instrumentals_path),
             },
-            backup_vocals_path_base,
-            instrumentals_path_base,
         ],
         "main-gain": main_gain,
         "instrument-gain": inst_gain,
@@ -1025,13 +1015,13 @@ def run_pipeline(
     percentages = [i / 38 for i in range(38)]
     orig_song_path, song_dir = retrieve_song(song_input, progress, percentages[:4])
     vocals_path, instrumentals_path = separate_vocals(
-        orig_song_path, song_dir, progress, percentages[4:8]
+        orig_song_path, song_dir, False, progress, percentages[4:8]
     )
     main_vocals_path, backup_vocals_path = separate_main_vocals(
-        vocals_path, song_dir, progress, percentages[8:12]
+        vocals_path, song_dir, False, progress, percentages[8:12]
     )
     main_vocals_dereverb_path, reverb_path = dereverb_main_vocals(
-        main_vocals_path, song_dir, progress, percentages[12:16]
+        main_vocals_path, song_dir, False, progress, percentages[12:16]
     )
     ai_vocals_path = convert_main_vocals(
         main_vocals_dereverb_path,
@@ -1099,183 +1089,3 @@ def run_pipeline(
         )
     else:
         return ai_cover_path
-
-
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser(
-        description="Generate a cover song in the song_output/id directory.",
-        add_help=True,
-    )
-    parser.add_argument(
-        "-i",
-        "--song-input",
-        type=str,
-        required=True,
-        help="Link to a song on YouTube or the full path of a local audio file",
-    )
-    parser.add_argument(
-        "-dir",
-        "--rvc-dirname",
-        type=str,
-        required=True,
-        help="Name of the folder in the rvc_models directory containing the RVC model file and optional index file to use",
-    )
-    parser.add_argument(
-        "-pv",
-        "--pitch-change-vocals",
-        type=int,
-        required=True,
-        help="Shift the pitch of converted vocals only. Measured in octaves. Generally, use 1 for male to female and -1 for vice-versa.",
-    )
-    parser.add_argument(
-        "-pall",
-        "--pitch-change-all",
-        type=int,
-        default=0,
-        help="Shift pitch of converted vocals, backup vocals and instrumentals. Measured in semi-tones. Altering this slightly reduces sound quality",
-    )
-    parser.add_argument(
-        "-ir",
-        "--index-rate",
-        type=float,
-        default=0.5,
-        help="A decimal number e.g. 0.5, used to reduce/resolve the timbre leakage problem. If set to 1, more biased towards the timbre quality of the training dataset",
-    )
-    parser.add_argument(
-        "-fr",
-        "--filter-radius",
-        type=int,
-        default=3,
-        help="A number between 0 and 7. If >=3: apply median filtering to the harvested pitch results. The value represents the filter radius and can reduce breathiness.",
-    )
-    parser.add_argument(
-        "-rms",
-        "--rms-mix-rate",
-        type=float,
-        default=0.25,
-        help="A decimal number e.g. 0.25. Control how much to use the loudness of the input vocals (0) or a fixed loudness (1).",
-    )
-    parser.add_argument(
-        "-pro",
-        "--protect",
-        type=float,
-        default=0.33,
-        help="A decimal number e.g. 0.33. Protect voiceless consonants and breath sounds to prevent artifacts such as tearing in electronic music. Set to 0.5 to disable. Decrease the value to increase protection, but it may reduce indexing accuracy.",
-    )
-    parser.add_argument(
-        "-palgo",
-        "--pitch-detection-algo",
-        type=str,
-        default="rmvpe",
-        help="Best option is rmvpe (clarity in vocals), then mangio-crepe (smoother vocals).",
-    )
-    parser.add_argument(
-        "-hop",
-        "--crepe-hop-length",
-        type=int,
-        default=128,
-        help="If pitch detection algo is mangio-crepe, controls how often it checks for pitch changes in milliseconds. The higher the value, the faster the conversion and less risk of voice cracks, but there is less pitch accuracy. Recommended: 128.",
-    )
-    parser.add_argument(
-        "-rsize",
-        "--reverb-size",
-        type=float,
-        default=0.15,
-        help="Reverb room size between 0 and 1",
-    )
-    parser.add_argument(
-        "-rwet",
-        "--reverb-wetness",
-        type=float,
-        default=0.2,
-        help="Reverb wet level between 0 and 1",
-    )
-    parser.add_argument(
-        "-rdry",
-        "--reverb-dryness",
-        type=float,
-        default=0.8,
-        help="Reverb dry level between 0 and 1",
-    )
-    parser.add_argument(
-        "-rdamp",
-        "--reverb-damping",
-        type=float,
-        default=0.7,
-        help="Reverb damping between 0 and 1",
-    )
-    parser.add_argument(
-        "-mv",
-        "--main-vol",
-        type=int,
-        default=0,
-        help="Volume change for converted main vocals. Measured in dB. Use -3 to decrease by 3 dB and 3 to increase by 3 dB",
-    )
-    parser.add_argument(
-        "-bv",
-        "--backup-vol",
-        type=int,
-        default=0,
-        help="Volume change for backup vocals. Measured in dB",
-    )
-    parser.add_argument(
-        "-iv",
-        "--inst-vol",
-        type=int,
-        default=0,
-        help="Volume change for instrumentals. Measured in dB",
-    )
-    parser.add_argument(
-        "-osr",
-        "--output-sr",
-        type=int,
-        default=44100,
-        help="Sample rate of output audio file.",
-    )
-    parser.add_argument(
-        "-oformat",
-        "--output-format",
-        type=str,
-        default="mp3",
-        help="format of output audio file",
-    )
-    parser.add_argument(
-        "-k",
-        "--keep-files",
-        action=argparse.BooleanOptionalAction,
-        default=True,
-        help="Whether to keep all intermediate audio files",
-    )
-    args = parser.parse_args()
-
-    rvc_dirname = args.rvc_dirname
-    if not os.path.isdir(os.path.join(RVC_MODELS_DIR, rvc_dirname)):
-        raise Exception(
-            f"The folder {os.path.join(RVC_MODELS_DIR, rvc_dirname)} does not exist."
-        )
-
-    song_cover_path = run_pipeline(
-        song_input=args.song_input,
-        voice_model=rvc_dirname,
-        pitch_change_vocals=args.pitch_change_vocals,
-        pitch_change_all=args.pitch_change_all,
-        index_rate=args.index_rate,
-        filter_radius=args.filter_radius,
-        rms_mix_rate=args.rms_mix_rate,
-        protect=args.protect,
-        f0_method=args.pitch_detection_algo,
-        crepe_hop_length=args.crepe_hop_length,
-        reverb_rm_size=args.reverb_size,
-        reverb_wet=args.reverb_wetness,
-        reverb_dry=args.reverb_dryness,
-        reverb_damping=args.reverb_damping,
-        main_gain=args.main_vol,
-        backup_gain=args.backup_vol,
-        inst_gain=args.inst_vol,
-        output_sr=args.output_sr,
-        output_format=args.output_format,
-        keep_files=args.keep_files,
-        return_files=False,
-        progress=None,
-    )
-    print(f"[+] Cover generated at {song_cover_path}")

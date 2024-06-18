@@ -130,6 +130,7 @@ with gr.Blocks(title="Ultimate RVC") as app:
             cached_input_songs_dropdown2,
             *song_dir_dropdowns,
         ],
+        show_progress="hidden",
     )
 
 

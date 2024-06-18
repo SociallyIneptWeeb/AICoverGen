@@ -190,6 +190,7 @@ def render(
                     lambda x: gr.update(value=x),
                     inputs=local_file,
                     outputs=song_input,
+                    show_progress="hidden",
                 )
                 cached_input_songs_dropdown2.input(
                     lambda x: gr.update(value=x),

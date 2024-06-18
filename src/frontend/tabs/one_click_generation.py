@@ -56,7 +56,7 @@ def _mix_song_cover_harness(
     )
 
 
-def _update_audio_components(*args, **kwargs):
+def _run_pipeline_harness(*args, **kwargs):
     res = run_pipeline(*args, **kwargs)
     if isinstance(res, tuple):
         return res
@@ -130,6 +130,7 @@ def render(
                         lambda x: gr.update(value=x),
                         inputs=local_file,
                         outputs=song_input,
+                        show_progress="hidden",
                     )
                     cached_input_songs_dropdown.input(
                         lambda x: gr.update(value=x),
@@ -321,6 +322,7 @@ def render(
                     js=confirm_box_js(
                         "Are you sure you want to delete intermediate audio files for the selected songs?"
                     ),
+                    show_progress="hidden",
                 ).then(
                     partial(confirmation_harness, delete_intermediate_audio),
                     inputs=[delete_confirmation, intermediate_audio_to_delete],
@@ -334,6 +336,7 @@ def render(
                     js=confirm_box_js(
                         "Are you sure you want to delete all intermediate audio files?"
                     ),
+                    show_progress="hidden",
                 ).then(
                     partial(confirmation_harness, delete_all_intermediate_audio),
                     inputs=delete_confirmation,
@@ -356,6 +359,7 @@ def render(
                             cached_input_songs_dropdown2,
                         ]
                         + song_dir_dropdowns,
+                        show_progress="hidden",
                     )
 
         with gr.Accordion(
@@ -467,7 +471,7 @@ def render(
         )
         generate_event_args_list = [
             EventArgs(
-                partial(exception_harness, _update_audio_components),
+                partial(exception_harness, _run_pipeline_harness),
                 inputs=[
                     song_input,
                     rvc_model,

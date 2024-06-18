@@ -110,11 +110,13 @@ def render(
             partial(exception_harness, _filter_public_models_table_harness),
             inputs=[filter_tags, search_query],
             outputs=public_models_table,
+            show_progress="hidden",
         )
         filter_tags.select(
             partial(exception_harness, _filter_public_models_table_harness),
             inputs=[filter_tags, search_query],
             outputs=public_models_table,
+            show_progress="hidden",
         )
 
     # Upload tab
@@ -174,6 +176,7 @@ def render(
             inputs=dummy_deletion_checkbox,
             outputs=delete_confirmation,
             js=confirm_box_js("Are you sure you want to delete the selected models?"),
+            show_progress="hidden",
         ).then(
             partial(confirmation_harness, delete_models),
             inputs=[delete_confirmation, rvc_models_to_delete],
@@ -185,6 +188,7 @@ def render(
             inputs=dummy_deletion_checkbox,
             outputs=delete_confirmation,
             js=confirm_box_js("Are you sure you want to delete all models?"),
+            show_progress="hidden",
         ).then(
             partial(confirmation_harness, delete_all_models),
             inputs=delete_confirmation,
@@ -200,4 +204,5 @@ def render(
         click_event.success(
             partial(_update_model_lists, 3, [], [2]),
             outputs=[rvc_model, rvc_model2, rvc_models_to_delete],
+            show_progress="hidden",
         )

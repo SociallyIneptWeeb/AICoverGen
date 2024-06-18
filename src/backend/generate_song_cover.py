@@ -27,7 +27,7 @@ from backend.common import (
     get_rvc_model,
 )
 from backend.mdx import run_mdx
-from rvc import Config, load_hubert, get_vc, rvc_infer
+from vc.rvc import Config, load_hubert, get_vc, rvc_infer
 
 
 def _get_youtube_video_id(url, ignore_playlist=True):

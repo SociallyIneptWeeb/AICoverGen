@@ -14,7 +14,7 @@ from slicer2 import Slicer
 import librosa, traceback
 from scipy.io import wavfile
 import multiprocessing
-from my_utils import load_audio
+from vc.my_utils import load_audio
 import tqdm
 
 DoFormant = False

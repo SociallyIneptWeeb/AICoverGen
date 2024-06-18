@@ -5,16 +5,16 @@ import torch
 from fairseq import checkpoint_utils
 from scipy.io import wavfile
 
-from infer_pack.models import (
+from vc.infer_pack.models import (
     SynthesizerTrnMs256NSFsid,
     SynthesizerTrnMs256NSFsid_nono,
     SynthesizerTrnMs768NSFsid,
     SynthesizerTrnMs768NSFsid_nono,
 )
-from my_utils import load_audio
-from vc_infer_pipeline import VC
+from vc.my_utils import load_audio
+from vc.vc_infer_pipeline import VC
 
-BASE_DIR = Path(__file__).resolve().parent.parent
+SRC_DIR = Path(__file__).resolve().parent.parent
 
 
 class Config:
@@ -40,16 +40,16 @@ class Config:
                 print("16 series/10 series P40 forced single precision")
                 self.is_half = False
                 for config_file in ["32k.json", "40k.json", "48k.json"]:
-                    with open(BASE_DIR / "src" / "configs" / config_file, "r") as f:
+                    with open(SRC_DIR / "vc" / "configs" / config_file, "r") as f:
                         strr = f.read().replace("true", "false")
-                    with open(BASE_DIR / "src" / "configs" / config_file, "w") as f:
+                    with open(SRC_DIR / "vc" / "configs" / config_file, "w") as f:
                         f.write(strr)
                 with open(
-                    BASE_DIR / "src" / "trainset_preprocess_pipeline_print.py", "r"
+                    SRC_DIR / "vc" / "trainset_preprocess_pipeline_print.py", "r"
                 ) as f:
                     strr = f.read().replace("3.7", "3.0")
                 with open(
-                    BASE_DIR / "src" / "trainset_preprocess_pipeline_print.py", "w"
+                    SRC_DIR / "vc" / "trainset_preprocess_pipeline_print.py", "w"
                 ) as f:
                     f.write(strr)
             else:
@@ -63,11 +63,11 @@ class Config:
             )
             if self.gpu_mem <= 4:
                 with open(
-                    BASE_DIR / "src" / "trainset_preprocess_pipeline_print.py", "r"
+                    SRC_DIR / "vc" / "trainset_preprocess_pipeline_print.py", "r"
                 ) as f:
                     strr = f.read().replace("3.7", "3.0")
                 with open(
-                    BASE_DIR / "src" / "trainset_preprocess_pipeline_print.py", "w"
+                    SRC_DIR / "vc" / "trainset_preprocess_pipeline_print.py", "w"
                 ) as f:
                     f.write(strr)
         elif torch.backends.mps.is_available():

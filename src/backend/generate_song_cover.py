@@ -249,7 +249,7 @@ def delete_intermediate_audio(song_inputs, progress=None, percentages=[0.0]):
         if not os.path.isdir(song_input):
             raise Exception(f"Song directory '{song_input}' does not exist.")
 
-        if not PurePath(song_input).is_relative_to(TEMP_AUDIO_DIR):
+        if not PurePath(song_input).parent == PurePath(TEMP_AUDIO_DIR):
             raise Exception(
                 f"Song directory '{song_input}' is not located in the temporary audio directory."
             )
@@ -313,8 +313,9 @@ def convert_to_stereo(song_path, song_dir, progress=None, percentages=[0.0, 0.5]
 def make_song_dir(song_input, progress=None, percentages=[0.0]):
     if len(percentages) != 1:
         raise ValueError("Percentages must be a list of length 1.")
+    # if song directory
     if os.path.isdir(song_input):
-        if not PurePath(song_input).is_relative_to(TEMP_AUDIO_DIR):
+        if not PurePath(song_input).parent == PurePath(TEMP_AUDIO_DIR):
             raise Exception("Song directory not located in temporary audio directory.")
         display_progress(
             "[~] Using existing song directory...", percentages[0], progress
@@ -694,10 +695,12 @@ def postprocess_main_vocals(
     if not os.path.isdir(song_dir):
         raise Exception("song directory does not exist!")
 
-    ai_vocals_path_base = os.path.basename(ai_vocals_path)
     arg_dict = {
         "input-files": [
-            {"name": ai_vocals_path_base, "hash": get_file_hash(ai_vocals_path)}
+            {
+                "name": os.path.basename(ai_vocals_path),
+                "hash": get_file_hash(ai_vocals_path),
+            }
         ],
         "reverb-room-size": reverb_rm_size,
         "reverb-wet": reverb_wet,
@@ -743,7 +746,6 @@ def pitch_shift_background(
 ):
     if len(percentages) != 8:
         raise ValueError("Percentages must be a list of length 8.")
-
     if not instrumentals_path:
         raise Exception("Instrumentals missing!")
     if not os.path.isfile(instrumentals_path):
@@ -886,11 +888,11 @@ def mix_w_background(
     backup_vocals_path,
     song_dir,
     main_gain,
-    backup_gain,
     inst_gain,
+    backup_gain,
     output_sr,
     output_format,
-    output_name,
+    output_name=None,
     keep_files=True,
     progress=None,
     percentages=[i / 6 for i in range(6)],
@@ -921,12 +923,12 @@ def mix_w_background(
                 "hash": get_file_hash(ai_vocals_mixed_path),
             },
             {
-                "name": os.path.basename(backup_vocals_path),
-                "hash": get_file_hash(backup_vocals_path),
-            },
-            {
                 "name": os.path.basename(instrumentals_path),
                 "hash": get_file_hash(instrumentals_path),
+            },
+            {
+                "name": os.path.basename(backup_vocals_path),
+                "hash": get_file_hash(backup_vocals_path),
             },
         ],
         "main-gain": main_gain,
@@ -965,15 +967,10 @@ def mix_w_background(
         )
         json_dump(arg_dict, combined_audio_json_path)
 
-    if not output_name:
-        output_name = get_song_cover_name(
-            ai_vocals_mixed_path, song_dir, None, progress, percentages[4:5]
-        )
-
-    ai_cover_path = os.path.join(
-        SONGS_DIR,
-        f"{output_name}.{output_format}",
+    output_name = output_name or get_song_cover_name(
+        ai_vocals_mixed_path, song_dir, None, progress, percentages[4:5]
     )
+    ai_cover_path = os.path.join(SONGS_DIR, f"{output_name}.{output_format}")
     shutil.copyfile(combined_audio_path, ai_cover_path)
 
     if not keep_files:
@@ -1002,8 +999,8 @@ def run_pipeline(
     reverb_dry=0.8,
     reverb_damping=0.7,
     main_gain=0,
-    backup_gain=0,
     inst_gain=0,
+    backup_gain=0,
     output_sr=44100,
     output_format="mp3",
     output_name=None,
@@ -1063,8 +1060,8 @@ def run_pipeline(
         backup_vocals_shifted_path or backup_vocals_path,
         song_dir,
         main_gain,
-        backup_gain,
         inst_gain,
+        backup_gain,
         output_sr,
         output_format,
         output_name,

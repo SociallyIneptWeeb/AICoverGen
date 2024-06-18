@@ -1,6 +1,8 @@
+from functools import partial
+
 import gradio as gr
 
-from functools import partial
+
 from frontend.common import (
     exception_harness,
     confirmation_harness,
@@ -20,6 +22,12 @@ from backend.manage_voice_models import (
 )
 
 
+def update_model_lists(num_components, value=None, value_indices=[]):
+    return update_dropdowns(
+        get_current_models, num_components, value=value, value_indices=value_indices
+    )
+
+
 def filter_public_models_table_harness(tags, query, progress):
     models_table = filter_public_models_table(tags, query, progress)
     return gr.DataFrame(value=models_table)
@@ -28,12 +36,6 @@ def filter_public_models_table_harness(tags, query, progress):
 def pub_dl_autofill(pub_models, event: gr.SelectData):
     return gr.Text(value=pub_models.loc[event.index[0], "URL"]), gr.Text(
         value=pub_models.loc[event.index[0], "Model Name"]
-    )
-
-
-def update_model_lists(num_components, value=None, value_indices=[]):
-    return update_dropdowns(
-        get_current_models, num_components, value=value, value_indices=value_indices
     )
 
 

@@ -1,5 +1,7 @@
-import gradio as gr
 from functools import partial
+
+import gradio as gr
+
 from frontend.common import (
     EventArgs,
     setup_consecutive_event_listeners_with_toggled_interactivity,
@@ -110,17 +112,6 @@ def render(
             shifted_backup_vocals_track_input,
         ) = input_tracks
 
-        steps = [
-            "Step 0: Song retrieval",
-            "Step 1: vocals/instrumentals separation",
-            "Step 2: main vocals/ backup vocals separation",
-            "Step 3: vocal cleanup",
-            "Step 4: vocal conversion",
-            "Step 5: post-processing of vocals",
-            "Step 6: pitch shift of background",
-            "Step 7: song mixing",
-        ]
-
         transfer_defaults = [
             ["Step 1: input song"],
             ["Step 2: vocals"],
@@ -161,7 +152,7 @@ def render(
 
         clear_btns = [gr.Button(value="Reset settings", render=False) for _ in range(8)]
 
-        with gr.Accordion(steps[0], open=True):
+        with gr.Accordion("Step 0: Song retrieval", open=True):
             gr.Markdown("")
             gr.Markdown("**Inputs**")
             with gr.Row():
@@ -255,7 +246,7 @@ def render(
                 retrieve_song_event_args_list,
                 generate_buttons,
             )
-        with gr.Accordion(steps[1], open=False):
+        with gr.Accordion("Step 1: vocals/instrumentals separation", open=False):
             gr.Markdown("")
             gr.Markdown("**Inputs**")
             original_track_input.render()
@@ -305,7 +296,7 @@ def render(
                 generate_buttons,
             )
 
-        with gr.Accordion(steps[2], open=False):
+        with gr.Accordion("Step 2: main vocals/ backup vocals separation", open=False):
             gr.Markdown("")
             gr.Markdown("**Inputs**")
             vocals_track_input.render()
@@ -355,7 +346,7 @@ def render(
                 generate_buttons,
             )
 
-        with gr.Accordion(steps[3], open=False):
+        with gr.Accordion("Step 3: vocal cleanup", open=False):
             gr.Markdown("")
             gr.Markdown("**Inputs**")
             main_vocals_track_input.render()
@@ -403,7 +394,7 @@ def render(
                 dereverb_main_vocals_event_args_list,
                 generate_buttons,
             )
-        with gr.Accordion(steps[4], open=False):
+        with gr.Accordion("Step 4: vocal conversion", open=False):
             gr.Markdown("")
             gr.Markdown("**Inputs**")
             dereverbed_vocals_track_input.render()
@@ -418,8 +409,6 @@ def render(
                     label="Pitch shift (octaves)",
                     info="Shift pitch of converted vocals by number of octaves. Generally, use 1 for male-to-female conversions and -1 for vice-versa.",
                 )
-                # TODO when changing this component the component in the step 6 accordion should be changed accordingly
-                # alternatively, consider making this a component
                 pitch_change_semitones = gr.Slider(
                     -12,
                     12,
@@ -545,7 +534,7 @@ def render(
                 convert_main_vocals_event_args_list,
                 generate_buttons,
             )
-        with gr.Accordion(steps[5], open=False):
+        with gr.Accordion("Step 5: post-processing of vocals", open=False):
             gr.Markdown("")
             gr.Markdown("**Inputs**")
             converted_vocals_track_input.render()
@@ -632,15 +621,13 @@ def render(
                 postprocess_main_vocals_event_args_list,
                 generate_buttons,
             )
-        with gr.Accordion(steps[6], open=False):
+        with gr.Accordion("Step 6: pitch shift of background", open=False):
             gr.Markdown("")
             gr.Markdown("**Inputs**")
             with gr.Row():
                 instrumentals_track_input.render()
                 backup_vocals_track_input.render()
             song_dir_dropdowns[5].render()
-            # TODO changing this should change the pitch_change_semitones in the step 4 accordion
-            # alternatively, consider making this a global component
             pitch_change_semitones2 = gr.Slider(
                 -12,
                 12,
@@ -686,7 +673,7 @@ def render(
                         shifted_instrumentals_track_output,
                         shifted_backup_vocals_track_output,
                     ],
-                ),
+                )
             ] + [
                 EventArgs(
                     partial(transfer, len(input_tracks)),
@@ -709,7 +696,7 @@ def render(
                 pitch_shift_background_event_args_list,
                 generate_buttons,
             )
-        with gr.Accordion(steps[7], open=False):
+        with gr.Accordion("Step 7: song mixing", open=False):
             gr.Markdown("")
             gr.Markdown("**Inputs**")
             with gr.Row():
@@ -773,8 +760,8 @@ def render(
                 ],
                 outputs=[
                     main_gain2,
-                    backup_gain2,
                     inst_gain2,
+                    backup_gain2,
                     output_sr2,
                     output_format2,
                     transfer_output_track_dropdowns[11],
@@ -791,8 +778,8 @@ def render(
                         shifted_backup_vocals_track_input,
                         song_dir_dropdowns[6],
                         main_gain2,
-                        backup_gain2,
                         inst_gain2,
+                        backup_gain2,
                         output_sr2,
                         output_format2,
                         output_name2,

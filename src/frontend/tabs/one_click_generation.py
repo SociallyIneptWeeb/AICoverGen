@@ -1,6 +1,6 @@
-import gradio as gr
-
 from functools import partial
+
+import gradio as gr
 
 from frontend.common import (
     EventArgs,
@@ -115,7 +115,6 @@ def render(
                     )
                     local_file = gr.Audio(
                         label="Song input",
-                        sources="upload",
                         type="filepath",
                         visible=False,
                     )
@@ -483,8 +482,8 @@ def render(
                     reverb_dry,
                     reverb_damping,
                     main_gain,
-                    backup_gain,
                     inst_gain,
+                    backup_gain,
                     output_sr,
                     output_format,
                     output_name,
@@ -633,8 +632,8 @@ def render(
                     backup_vocals_shifted_track,
                     current_song_dir,
                     main_gain,
-                    backup_gain,
                     inst_gain,
+                    backup_gain,
                     output_sr,
                     output_format,
                     output_name,
@@ -695,8 +694,8 @@ def render(
                 reverb_dry,
                 reverb_damping,
                 main_gain,
-                backup_gain,
                 inst_gain,
+                backup_gain,
                 output_sr,
                 output_format,
                 keep_files,

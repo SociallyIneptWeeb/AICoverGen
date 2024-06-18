@@ -1,9 +1,10 @@
+from typing import Callable, Literal, Optional
+from dataclasses import dataclass
+from functools import partial
+
 import gradio as gr
 from gradio.components.base import Component
 
-from functools import partial
-from dataclasses import dataclass
-from typing import Callable, Literal, Optional
 
 from backend.generate_song_cover import (
     get_named_song_dirs,
@@ -60,13 +61,11 @@ def confirm_box_js(msg):
 
 
 def update_dropdowns(fn, num_components, value=None, value_indices=[], **kwargs):
-    if len(value_indices) > num_components:
-        raise ValueError(
-            "Number of components to update value for exceeds number of components."
-        )
+    if len(value_indices) != len(set(value_indices)):
+        raise ValueError("Value indices must be unique.")
     if value_indices and max(value_indices) >= num_components:
         raise ValueError(
-            "Index of component to update value for exceeds number of components."
+            "Index of a component to update value for exceeds number of components."
         )
     updated_choices = fn(**kwargs)
     update_args = [{"choices": updated_choices} for _ in range(num_components)]

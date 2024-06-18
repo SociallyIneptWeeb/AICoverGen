@@ -10,8 +10,8 @@ from common import GRADIO_TEMP_DIR
 from backend.generate_song_cover import get_named_song_dirs
 from backend.manage_voice_models import get_current_models
 
-from frontend.tabs.multi_step_generation import render as render_multi_step_tab
 from frontend.tabs.one_click_generation import render as render_one_click_tab
+from frontend.tabs.multi_step_generation import render as render_multi_step_tab
 from frontend.tabs.manage_models import render as render_manage_models_tab
 
 
@@ -64,7 +64,6 @@ with gr.Blocks(title="Ultimate RVC") as app:
     intermediate_audio_to_delete = gr.Dropdown(
         cached_input_songs,
         label="Songs with intermediate audio files",
-        filterable=True,
         multiselect=True,
         info="Select one or more songs to delete their asssociated intermediate audio files.",
         render=False,

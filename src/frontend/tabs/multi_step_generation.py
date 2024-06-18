@@ -16,11 +16,11 @@ from backend.generate_song_cover import (
     retrieve_song,
     separate_vocals,
     separate_main_vocals,
-    dereverb_main_vocals,
-    convert_main_vocals,
-    postprocess_main_vocals,
+    dereverb_vocals,
+    convert_vocals,
+    postprocess_vocals,
     pitch_shift_background,
-    mix_w_background,
+    mix_song_cover,
 )
 
 
@@ -44,9 +44,9 @@ def render(
             retrieve_song_btn,
             separate_vocals_btn,
             separate_main_vocals_btn,
-            dereverb_main_vocals_btn,
-            convert_main_vocals_btn,
-            postprocess_main_vocals_btn,
+            dereverb_vocals_btn,
+            convert_vocals_btn,
+            postprocess_vocals_btn,
             pitch_shift_background_btn,
             mix_btn,
             _,
@@ -79,8 +79,8 @@ def render(
                 "Reverb",
                 "Converted vocals",
                 "Post-processed vocals",
-                "Pitch shifted instrumentals",
-                "Pitch shifted backup vocals",
+                "Pitch-shifted instrumentals",
+                "Pitch-shifted backup vocals",
                 "Song cover",
             ]
         ]
@@ -152,7 +152,7 @@ def render(
 
         clear_btns = [gr.Button(value="Reset settings", render=False) for _ in range(8)]
 
-        with gr.Accordion("Step 0: Song retrieval", open=True):
+        with gr.Accordion("Step 0: song retrieval", open=True):
             gr.Markdown("")
             gr.Markdown("**Inputs**")
             with gr.Row():
@@ -368,10 +368,10 @@ def render(
                 outputs=transfer_output_track_dropdowns[5:7],
                 show_progress="hidden",
             )
-            dereverb_main_vocals_btn.render()
-            dereverb_main_vocals_event_args_list = [
+            dereverb_vocals_btn.render()
+            dereverb_vocals_event_args_list = [
                 EventArgs(
-                    partial(exception_harness, dereverb_main_vocals),
+                    partial(exception_harness, dereverb_vocals),
                     inputs=[main_vocals_track_input, song_dir_dropdowns[2]],
                     outputs=[dereverbed_vocals_track_output, reverb_track_output],
                 )
@@ -390,8 +390,8 @@ def render(
             ]
 
             setup_consecutive_event_listeners_with_toggled_interactivity(
-                dereverb_main_vocals_btn,
-                dereverb_main_vocals_event_args_list,
+                dereverb_vocals_btn,
+                dereverb_vocals_event_args_list,
                 generate_buttons,
             )
         with gr.Accordion("Step 4: vocal conversion", open=False):
@@ -499,10 +499,10 @@ def render(
                 ],
                 show_progress="hidden",
             )
-            convert_main_vocals_btn.render()
-            convert_main_vocals_event_args_list = [
+            convert_vocals_btn.render()
+            convert_vocals_event_args_list = [
                 EventArgs(
-                    partial(exception_harness, convert_main_vocals),
+                    partial(exception_harness, convert_vocals),
                     inputs=[
                         dereverbed_vocals_track_input,
                         song_dir_dropdowns[3],
@@ -530,8 +530,8 @@ def render(
                 ),
             ]
             setup_consecutive_event_listeners_with_toggled_interactivity(
-                convert_main_vocals_btn,
-                convert_main_vocals_event_args_list,
+                convert_vocals_btn,
+                convert_vocals_event_args_list,
                 generate_buttons,
             )
         with gr.Accordion("Step 5: post-processing of vocals", open=False):
@@ -591,10 +591,10 @@ def render(
                 ],
                 show_progress="hidden",
             )
-            postprocess_main_vocals_btn.render()
-            postprocess_main_vocals_event_args_list = [
+            postprocess_vocals_btn.render()
+            postprocess_vocals_event_args_list = [
                 EventArgs(
-                    partial(exception_harness, postprocess_main_vocals),
+                    partial(exception_harness, postprocess_vocals),
                     inputs=[
                         converted_vocals_track_input,
                         song_dir_dropdowns[4],
@@ -617,11 +617,11 @@ def render(
                 ),
             ]
             setup_consecutive_event_listeners_with_toggled_interactivity(
-                postprocess_main_vocals_btn,
-                postprocess_main_vocals_event_args_list,
+                postprocess_vocals_btn,
+                postprocess_vocals_event_args_list,
                 generate_buttons,
             )
-        with gr.Accordion("Step 6: pitch shift of background", open=False):
+        with gr.Accordion("Step 6: pitch shift of background tracks", open=False):
             gr.Markdown("")
             gr.Markdown("**Inputs**")
             with gr.Row():
@@ -771,7 +771,7 @@ def render(
             mix_btn.render()
             mix_btn_event_args_list = [
                 EventArgs(
-                    partial(exception_harness, mix_w_background),
+                    partial(exception_harness, mix_song_cover),
                     inputs=[
                         postprocessed_vocals_track_input,
                         shifted_instrumentals_track_input,

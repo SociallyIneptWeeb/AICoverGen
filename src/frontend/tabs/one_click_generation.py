@@ -20,11 +20,11 @@ from backend.generate_song_cover import (
     retrieve_song,
     separate_vocals,
     separate_main_vocals,
-    dereverb_main_vocals,
-    convert_main_vocals,
-    postprocess_main_vocals,
+    dereverb_vocals,
+    convert_vocals,
+    postprocess_vocals,
     pitch_shift_background,
-    mix_w_background,
+    mix_song_cover,
     run_pipeline,
 )
 
@@ -38,7 +38,7 @@ def duplication_harness(fun, *args, **kwargs):
         return (res[0],) + res
 
 
-def mix_w_background_harness(
+def mix_song_cover_harness(
     vocals_path,
     instrumentals_path,
     backup_vocals_path,
@@ -47,7 +47,7 @@ def mix_w_background_harness(
     *args,
     **kwargs,
 ):
-    return mix_w_background(
+    return mix_song_cover(
         vocals_path,
         instrumentals_shifted_path or instrumentals_path,
         backup_vocals_shifted_path or backup_vocals_path,
@@ -249,8 +249,8 @@ def render(
             gr.Markdown("### Volume controls (dB)")
             with gr.Row():
                 main_gain = gr.Slider(-20, 20, value=0, step=1, label="Main vocals")
-                backup_gain = gr.Slider(-20, 20, value=0, step=1, label="Backup vocals")
                 inst_gain = gr.Slider(-20, 20, value=0, step=1, label="Instrumentals")
+                backup_gain = gr.Slider(-20, 20, value=0, step=1, label="Backup vocals")
         with gr.Accordion("Audio output options", open=False):
             with gr.Row():
                 output_name = gr.Text(
@@ -362,13 +362,15 @@ def render(
             "Access intermediate audio files", open=False, visible=False
         ) as intermediate_files_accordion:
 
-            with gr.Accordion("Step 0: input", open=False) as original_accordion:
+            with gr.Accordion(
+                "Step 0: song retrieval", open=False
+            ) as song_retrieval_accordion:
                 original_track = gr.Audio(
-                    label="Original song", type="filepath", interactive=False
+                    label="Input song", type="filepath", interactive=False
                 )
 
             with gr.Accordion(
-                "Step 1: instrumentals/vocals separation", open=False
+                "Step 1: vocals/instrumentals separation", open=False
             ) as vocals_separation_accordion:
                 with gr.Row():
                     vocals_track = gr.Audio(
@@ -389,7 +391,7 @@ def render(
                     )
             with gr.Accordion(
                 "Step 3: main vocals cleanup", open=False
-            ) as main_vocals_cleanup_accordion:
+            ) as vocal_cleanup_accordion:
                 with gr.Row():
                     main_vocals_dereverbed_track = gr.Audio(
                         label="De-reverbed main vocals",
@@ -401,30 +403,30 @@ def render(
                     )
             with gr.Accordion(
                 "Step 4: conversion of main vocals", open=False
-            ) as vocals_conversion_accordion:
-                ai_vocals_track = gr.Audio(
+            ) as vocal_conversion_accordion:
+                converted_vocals_track = gr.Audio(
                     label="Converted vocals", type="filepath", interactive=False
                 )
             with gr.Accordion(
                 "Step 5: post-processing of converted vocals", open=False
             ) as vocals_postprocessing_accordion:
-                mixed_ai_vocals_track = gr.Audio(
+                postprocessed_vocals_track = gr.Audio(
                     label="Post-processed vocals",
                     type="filepath",
                     interactive=False,
                 )
             with gr.Accordion(
-                "Step 6: Pitch shift of instrumentals and backup vocals",
+                "Step 6: pitch shift of background tracks",
                 open=False,
             ) as pitch_shift_accordion:
                 with gr.Row():
                     instrumentals_shifted_track = gr.Audio(
-                        label="Pitch shifted instrumentals",
+                        label="Pitch-shifted instrumentals",
                         type="filepath",
                         interactive=False,
                     )
                     backup_vocals_shifted_track = gr.Audio(
-                        label="Pitch shifted backup vocals",
+                        label="Pitch-shifted backup vocals",
                         type="filepath",
                         interactive=False,
                     )
@@ -436,17 +438,17 @@ def render(
             )
             generate_btn2.render()
             generate_btn.render()
-            ai_cover = gr.Audio(label="Song cover", scale=3)
+            song_cover_track = gr.Audio(label="Song cover", scale=3)
         show_intermediate_files.change(
             toggle_intermediate_files_accordion,
             inputs=show_intermediate_files,
             outputs=[
                 intermediate_files_accordion,
-                original_accordion,
+                song_retrieval_accordion,
                 vocals_separation_accordion,
                 main_vocals_separation_accordion,
-                main_vocals_cleanup_accordion,
-                vocals_conversion_accordion,
+                vocal_cleanup_accordion,
+                vocal_conversion_accordion,
                 vocals_postprocessing_accordion,
                 pitch_shift_accordion,
                 original_track,
@@ -456,8 +458,8 @@ def render(
                 backup_vocals_track,
                 main_vocals_dereverbed_track,
                 main_vocals_reverb_track,
-                ai_vocals_track,
-                mixed_ai_vocals_track,
+                converted_vocals_track,
+                postprocessed_vocals_track,
                 instrumentals_shifted_track,
                 backup_vocals_shifted_track,
             ],
@@ -498,11 +500,11 @@ def render(
                     backup_vocals_track,
                     main_vocals_dereverbed_track,
                     main_vocals_reverb_track,
-                    ai_vocals_track,
-                    mixed_ai_vocals_track,
+                    converted_vocals_track,
+                    postprocessed_vocals_track,
                     instrumentals_shifted_track,
                     backup_vocals_shifted_track,
-                    ai_cover,
+                    song_cover_track,
                 ],
             ),
             EventArgs(
@@ -532,14 +534,14 @@ def render(
                     percentages=percentages[:4],
                 ),
                 inputs=[song_input],
-                outputs=[ai_cover, original_track, current_song_dir],
+                outputs=[song_cover_track, original_track, current_song_dir],
             ),
             EventArgs(
                 partial(
                     duplication_harness, separate_vocals, percentages=percentages[4:8]
                 ),
                 inputs=[original_track, current_song_dir],
-                outputs=[ai_cover, vocals_track, instrumentals_track],
+                outputs=[song_cover_track, vocals_track, instrumentals_track],
             ),
             EventArgs(
                 partial(
@@ -548,17 +550,17 @@ def render(
                     percentages=percentages[8:12],
                 ),
                 inputs=[vocals_track, current_song_dir],
-                outputs=[ai_cover, main_vocals_track, backup_vocals_track],
+                outputs=[song_cover_track, main_vocals_track, backup_vocals_track],
             ),
             EventArgs(
                 partial(
                     duplication_harness,
-                    dereverb_main_vocals,
+                    dereverb_vocals,
                     percentages=percentages[12:16],
                 ),
                 inputs=[main_vocals_track, current_song_dir],
                 outputs=[
-                    ai_cover,
+                    song_cover_track,
                     main_vocals_dereverbed_track,
                     main_vocals_reverb_track,
                 ],
@@ -566,7 +568,7 @@ def render(
             EventArgs(
                 partial(
                     duplication_harness,
-                    convert_main_vocals,
+                    convert_vocals,
                     percentages=percentages[16:20],
                 ),
                 inputs=[
@@ -582,23 +584,23 @@ def render(
                     f0_method,
                     crepe_hop_length,
                 ],
-                outputs=[ai_cover, ai_vocals_track],
+                outputs=[song_cover_track, converted_vocals_track],
             ),
             EventArgs(
                 partial(
                     duplication_harness,
-                    postprocess_main_vocals,
+                    postprocess_vocals,
                     percentages=percentages[20:24],
                 ),
                 inputs=[
-                    ai_vocals_track,
+                    converted_vocals_track,
                     current_song_dir,
                     reverb_rm_size,
                     reverb_wet,
                     reverb_dry,
                     reverb_damping,
                 ],
-                outputs=[ai_cover, mixed_ai_vocals_track],
+                outputs=[song_cover_track, postprocessed_vocals_track],
             ),
             EventArgs(
                 partial(
@@ -613,7 +615,7 @@ def render(
                     pitch_change_all,
                 ],
                 outputs=[
-                    ai_cover,
+                    song_cover_track,
                     instrumentals_shifted_track,
                     backup_vocals_shifted_track,
                 ],
@@ -621,11 +623,11 @@ def render(
             EventArgs(
                 partial(
                     exception_harness,
-                    mix_w_background_harness,
+                    mix_song_cover_harness,
                     percentages=percentages[32:],
                 ),
                 inputs=[
-                    mixed_ai_vocals_track,
+                    postprocessed_vocals_track,
                     instrumentals_track,
                     backup_vocals_track,
                     instrumentals_shifted_track,
@@ -639,7 +641,7 @@ def render(
                     output_name,
                     keep_files,
                 ],
-                outputs=[ai_cover],
+                outputs=[song_cover_track],
             ),
             EventArgs(
                 partial(update_cached_input_songs, 3 + len(song_dir_dropdowns)),

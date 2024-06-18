@@ -197,7 +197,7 @@ def add_audio_effects(
                 o.write(effected)
 
 
-def combine_audio(
+def mix_audio(
     audio_paths,
     output_path,
     main_gain,
@@ -528,8 +528,8 @@ def separate_main_vocals(
     return main_vocals_path, backup_vocals_path
 
 
-def dereverb_main_vocals(
-    main_vocals_path,
+def dereverb_vocals(
+    vocals_path,
     song_dir,
     stereofy=True,
     progress=None,
@@ -538,51 +538,51 @@ def dereverb_main_vocals(
     if len(percentages) != 4:
         raise ValueError("Percentages must be a list of length 4.")
 
-    if not main_vocals_path:
+    if not vocals_path:
         raise Exception("Vocals missing!")
-    if not os.path.isfile(main_vocals_path):
+    if not os.path.isfile(vocals_path):
         raise Exception("Vocals do not exist!")
     if not song_dir:
         raise Exception("Song directory missing!")
     if not os.path.isdir(song_dir):
         raise Exception("song directory does not exist!")
 
-    main_vocals_path = (
-        convert_to_stereo(main_vocals_path, song_dir, progress, percentages[:2])
+    vocals_path = (
+        convert_to_stereo(vocals_path, song_dir, progress, percentages[:2])
         if stereofy
-        else main_vocals_path
+        else vocals_path
     )
 
     arg_dict = {
         "input-files": [
             {
-                "name": os.path.basename(main_vocals_path),
-                "hash": get_file_hash(main_vocals_path),
+                "name": os.path.basename(vocals_path),
+                "hash": get_file_hash(vocals_path),
             }
         ],
     }
 
-    main_vocals_dereverb_path_base = get_unique_base_path(
-        song_dir, "3_Vocals_Main_DeReverb", arg_dict, progress, percentages[2]
+    vocals_dereverb_path_base = get_unique_base_path(
+        song_dir, "3_Vocals_DeReverb", arg_dict, progress, percentages[2]
     )
-    main_vocals_reverb_path_base = get_unique_base_path(
-        song_dir, "3_Vocals_Main_Reverb", arg_dict, progress, percentages[2]
+    vocals_reverb_path_base = get_unique_base_path(
+        song_dir, "3_Vocals_Reverb", arg_dict, progress, percentages[2]
     )
 
-    main_vocals_dereverb_path = f"{main_vocals_dereverb_path_base}.wav"
-    main_vocals_dereverb_json_path = f"{main_vocals_dereverb_path_base}.json"
+    vocals_dereverb_path = f"{vocals_dereverb_path_base}.wav"
+    vocals_dereverb_json_path = f"{vocals_dereverb_path_base}.json"
 
-    main_vocals_reverb_path = f"{main_vocals_reverb_path_base}.wav"
-    main_vocals_reverb_json_path = f"{main_vocals_reverb_path_base}.json"
+    vocals_reverb_path = f"{vocals_reverb_path_base}.wav"
+    vocals_reverb_json_path = f"{vocals_reverb_path_base}.json"
 
     if not (
-        os.path.exists(main_vocals_dereverb_path)
-        and os.path.exists(main_vocals_dereverb_json_path)
-        and os.path.exists(main_vocals_reverb_path)
-        and os.path.exists(main_vocals_reverb_json_path)
+        os.path.exists(vocals_dereverb_path)
+        and os.path.exists(vocals_dereverb_json_path)
+        and os.path.exists(vocals_reverb_path)
+        and os.path.exists(vocals_reverb_json_path)
     ):
         display_progress(
-            "[~] De-reverbing main vocals...",
+            "[~] De-reverbing vocals...",
             percentages[3],
             progress,
         )
@@ -590,22 +590,22 @@ def dereverb_main_vocals(
             MDXNET_MODELS_DIR,
             song_dir,
             "Reverb_HQ_By_FoxJoy.onnx",
-            main_vocals_path,
-            suffix=main_vocals_reverb_path_base,
-            invert_suffix=main_vocals_dereverb_path_base,
+            vocals_path,
+            suffix=vocals_reverb_path_base,
+            invert_suffix=vocals_dereverb_path_base,
             denoise=True,
         )
-        json_dump(arg_dict, main_vocals_dereverb_json_path)
-        json_dump(arg_dict, main_vocals_reverb_json_path)
-    return main_vocals_dereverb_path, main_vocals_reverb_path
+        json_dump(arg_dict, vocals_dereverb_json_path)
+        json_dump(arg_dict, vocals_reverb_json_path)
+    return vocals_dereverb_path, vocals_reverb_path
 
 
-def convert_main_vocals(
-    main_vocals_dereverb_path,
+def convert_vocals(
+    vocals_path,
     song_dir,
     voice_model,
-    pitch_change_vocals,
-    pitch_change_all,
+    pitch_change_octaves,
+    pitch_change_semi_tones,
     index_rate,
     filter_radius,
     rms_mix_rate,
@@ -617,9 +617,9 @@ def convert_main_vocals(
 ):
     if len(percentages) != 4:
         raise ValueError("Percentages must be a list of length 4.")
-    if not main_vocals_dereverb_path:
+    if not vocals_path:
         raise Exception("Vocals missing!")
-    if not os.path.isfile(main_vocals_dereverb_path):
+    if not os.path.isfile(vocals_path):
         raise Exception("Vocals do not exist!")
     if not song_dir:
         raise Exception("Song directory missing!")
@@ -630,13 +630,13 @@ def convert_main_vocals(
     if not os.path.isdir(os.path.join(RVC_MODELS_DIR, voice_model)):
         raise Exception("Voice model does not exist!")
 
-    pitch_change = pitch_change_vocals * 12 + pitch_change_all
+    pitch_change = pitch_change_octaves * 12 + pitch_change_semi_tones
     hop_length_suffix = "" if f0_method != "mangio-crepe" else f"_{crepe_hop_length}"
     arg_dict = {
         "input-files": [
             {
-                "name": os.path.basename(main_vocals_dereverb_path),
-                "hash": get_file_hash(main_vocals_dereverb_path),
+                "name": os.path.basename(vocals_path),
+                "hash": get_file_hash(vocals_path),
             }
         ],
         "voice-model": voice_model,
@@ -648,20 +648,21 @@ def convert_main_vocals(
         "f0-method": f"{f0_method}{hop_length_suffix}",
     }
 
-    ai_vocals_path_base = get_unique_base_path(
+    converted_vocals_path_base = get_unique_base_path(
         song_dir, "4_Vocals_Converted", arg_dict, progress, percentages[2]
     )
-    ai_vocals_path = f"{ai_vocals_path_base}.wav"
-    ai_vocals_json_path = f"{ai_vocals_path_base}.json"
+    converted_vocals_path = f"{converted_vocals_path_base}.wav"
+    converted_vocals_json_path = f"{converted_vocals_path_base}.json"
 
-    if not (os.path.exists(ai_vocals_path) and os.path.exists(ai_vocals_json_path)):
-        display_progress(
-            "[~] Converting main vocals using RVC...", percentages[3], progress
-        )
+    if not (
+        os.path.exists(converted_vocals_path)
+        and os.path.exists(converted_vocals_json_path)
+    ):
+        display_progress("[~] Converting vocals using RVC...", percentages[3], progress)
         voice_change(
             voice_model,
-            main_vocals_dereverb_path,
-            ai_vocals_path,
+            vocals_path,
+            converted_vocals_path,
             pitch_change,
             f0_method,
             index_rate,
@@ -671,12 +672,12 @@ def convert_main_vocals(
             crepe_hop_length,
             44100,
         )
-        json_dump(arg_dict, ai_vocals_json_path)
-    return ai_vocals_path
+        json_dump(arg_dict, converted_vocals_json_path)
+    return converted_vocals_path
 
 
-def postprocess_main_vocals(
-    ai_vocals_path,
+def postprocess_vocals(
+    vocals_path,
     song_dir,
     reverb_rm_size,
     reverb_wet,
@@ -688,9 +689,9 @@ def postprocess_main_vocals(
 
     if len(percentages) != 4:
         raise ValueError("Percentages must be a list of length 4.")
-    if not ai_vocals_path:
+    if not vocals_path:
         raise Exception("Vocals missing!")
-    if not os.path.isfile(ai_vocals_path):
+    if not os.path.isfile(vocals_path):
         raise Exception("Vocals do not exist!")
     if not song_dir:
         raise Exception("Song directory missing!")
@@ -700,8 +701,8 @@ def postprocess_main_vocals(
     arg_dict = {
         "input-files": [
             {
-                "name": os.path.basename(ai_vocals_path),
-                "hash": get_file_hash(ai_vocals_path),
+                "name": os.path.basename(vocals_path),
+                "hash": get_file_hash(vocals_path),
             }
         ],
         "reverb-room-size": reverb_rm_size,
@@ -710,39 +711,38 @@ def postprocess_main_vocals(
         "reverb-damping": reverb_damping,
     }
 
-    ai_vocals_mixed_path_base = get_unique_base_path(
-        song_dir, "5_Vocals_Mixed", arg_dict, progress, percentages[2]
+    vocals_mixed_path_base = get_unique_base_path(
+        song_dir, "5_Vocals_Postprocessed", arg_dict, progress, percentages[2]
     )
 
-    ai_vocals_mixed_path = f"{ai_vocals_mixed_path_base}.wav"
-    ai_vocals_mixed_json_path = f"{ai_vocals_mixed_path_base}.json"
+    vocals_mixed_path = f"{vocals_mixed_path_base}.wav"
+    vocals_mixed_json_path = f"{vocals_mixed_path_base}.json"
 
     if not (
-        os.path.exists(ai_vocals_mixed_path)
-        and os.path.exists(ai_vocals_mixed_json_path)
+        os.path.exists(vocals_mixed_path) and os.path.exists(vocals_mixed_json_path)
     ):
         display_progress(
-            "[~] Applying audio effects to converted vocals...",
+            "[~] Applying audio effects to vocals...",
             percentages[3],
             progress,
         )
         add_audio_effects(
-            ai_vocals_path,
-            ai_vocals_mixed_path,
+            vocals_path,
+            vocals_mixed_path,
             reverb_rm_size,
             reverb_wet,
             reverb_dry,
             reverb_damping,
         )
-        json_dump(arg_dict, ai_vocals_mixed_json_path)
-    return ai_vocals_mixed_path
+        json_dump(arg_dict, vocals_mixed_json_path)
+    return vocals_mixed_path
 
 
 def pitch_shift_background(
     instrumentals_path,
     backup_vocals_path,
     song_dir,
-    pitch_change_all,
+    pitch_change,
     progress=None,
     percentages=[i / 8 for i in range(8)],
 ):
@@ -764,7 +764,7 @@ def pitch_shift_background(
     instrumentals_shifted_path = instrumentals_path
     backup_vocals_shifted_path = backup_vocals_path
 
-    if pitch_change_all != 0:
+    if pitch_change != 0:
         instrumentals_dict = {
             "input-files": [
                 {
@@ -772,7 +772,7 @@ def pitch_shift_background(
                     "hash": get_file_hash(instrumentals_path),
                 }
             ],
-            "pitch-shift": pitch_change_all,
+            "pitch-shift": pitch_change,
         }
 
         instrumentals_shifted_path_base = get_unique_base_path(
@@ -798,7 +798,7 @@ def pitch_shift_background(
             pitch_shift(
                 instrumentals_path,
                 instrumentals_shifted_path,
-                pitch_change_all,
+                pitch_change,
             )
             json_dump(instrumentals_dict, instrumentals_shifted_json_path)
 
@@ -809,7 +809,7 @@ def pitch_shift_background(
                     "hash": get_file_hash(backup_vocals_path),
                 }
             ],
-            "pitch-shift": pitch_change_all,
+            "pitch-shift": pitch_change,
         }
 
         backup_vocals_shifted_path_base = get_unique_base_path(
@@ -833,7 +833,7 @@ def pitch_shift_background(
             pitch_shift(
                 backup_vocals_path,
                 backup_vocals_shifted_path,
-                pitch_change_all,
+                pitch_change,
             )
             json_dump(backup_vocals_dict, backup_vocals_shifted_json_path)
     return instrumentals_shifted_path, backup_vocals_shifted_path
@@ -884,8 +884,8 @@ def get_song_cover_name(
     return f"{orig_song_prefix} ({voice_model} Ver)"
 
 
-def mix_w_background(
-    ai_vocals_mixed_path,
+def mix_song_cover(
+    main_vocals_path,
     instrumentals_path,
     backup_vocals_path,
     song_dir,
@@ -901,9 +901,9 @@ def mix_w_background(
 ):
     if len(percentages) != 6:
         raise ValueError("Percentages must be a list of length 6.")
-    if not ai_vocals_mixed_path:
+    if not main_vocals_path:
         raise Exception("Main vocals missing!")
-    if not os.path.isfile(ai_vocals_mixed_path):
+    if not os.path.isfile(main_vocals_path):
         raise Exception("Main vocals do not exist!")
     if not instrumentals_path:
         raise Exception("Instrumentals missing!")
@@ -921,8 +921,8 @@ def mix_w_background(
     arg_dict = {
         "input-files": [
             {
-                "name": os.path.basename(ai_vocals_mixed_path),
-                "hash": get_file_hash(ai_vocals_mixed_path),
+                "name": os.path.basename(main_vocals_path),
+                "hash": get_file_hash(main_vocals_path),
             },
             {
                 "name": os.path.basename(instrumentals_path),
@@ -935,54 +935,52 @@ def mix_w_background(
         ],
         "main-gain": main_gain,
         "instrument-gain": inst_gain,
-        "background-gain": backup_gain,
+        "backup-gain": backup_gain,
         "sample-rate": output_sr,
     }
 
-    combined_audio_path_base = get_unique_base_path(
-        song_dir, "7_Vocals_Background_Combined", arg_dict, progress, percentages[2]
+    mixdown_path_base = get_unique_base_path(
+        song_dir, "7_Mixdown", arg_dict, progress, percentages[2]
     )
-    combined_audio_path = f"{combined_audio_path_base}.{output_format}"
-    combined_audio_json_path = f"{combined_audio_path_base}.json"
+    mixdown_path = f"{mixdown_path_base}.{output_format}"
+    mixdown_json_path = f"{mixdown_path_base}.json"
 
-    if not (
-        os.path.exists(combined_audio_path) and os.path.exists(combined_audio_json_path)
-    ):
+    if not (os.path.exists(mixdown_path) and os.path.exists(mixdown_json_path)):
         display_progress(
-            "[~] Combining post-processed vocals and background tracks...",
+            "[~] Mixing main vocals, instrumentals, and backup vocals...",
             percentages[3],
             progress,
         )
 
-        combine_audio(
+        mix_audio(
             [
-                ai_vocals_mixed_path,
+                main_vocals_path,
                 backup_vocals_path,
                 instrumentals_path,
             ],
-            combined_audio_path,
+            mixdown_path,
             main_gain,
             backup_gain,
             inst_gain,
             output_format,
             output_sr,
         )
-        json_dump(arg_dict, combined_audio_json_path)
+        json_dump(arg_dict, mixdown_json_path)
 
     output_name = output_name or get_song_cover_name(
-        ai_vocals_mixed_path, song_dir, None, progress, percentages[4:5]
+        main_vocals_path, song_dir, None, progress, percentages[4:5]
     )
-    ai_cover_path = os.path.join(SONGS_DIR, f"{output_name}.{output_format}")
-    shutil.copyfile(combined_audio_path, ai_cover_path)
+    song_cover_path = os.path.join(SONGS_DIR, f"{output_name}.{output_format}")
+    shutil.copyfile(mixdown_path, song_cover_path)
 
     if not keep_files:
         display_progress(
-            "[~] Removing intermediate audio files...",
+            f"[~] Removing intermediate audio files in directory for song...",
             percentages[5],
             progress,
         )
         shutil.rmtree(song_dir)
-    return ai_cover_path
+    return song_cover_path
 
 
 def run_pipeline(
@@ -1019,11 +1017,11 @@ def run_pipeline(
     main_vocals_path, backup_vocals_path = separate_main_vocals(
         vocals_path, song_dir, False, progress, percentages[8:12]
     )
-    main_vocals_dereverb_path, reverb_path = dereverb_main_vocals(
+    vocals_dereverb_path, reverb_path = dereverb_vocals(
         main_vocals_path, song_dir, False, progress, percentages[12:16]
     )
-    ai_vocals_path = convert_main_vocals(
-        main_vocals_dereverb_path,
+    converted_vocals_path = convert_vocals(
+        vocals_dereverb_path,
         song_dir,
         voice_model,
         pitch_change_vocals,
@@ -1037,8 +1035,8 @@ def run_pipeline(
         progress,
         percentages[16:20],
     )
-    ai_vocals_mixed_path = postprocess_main_vocals(
-        ai_vocals_path,
+    vocals_mixed_path = postprocess_vocals(
+        converted_vocals_path,
         song_dir,
         reverb_rm_size,
         reverb_wet,
@@ -1056,8 +1054,8 @@ def run_pipeline(
         percentages[24:32],
     )
 
-    ai_cover_path = mix_w_background(
-        ai_vocals_mixed_path,
+    song_cover_path = mix_song_cover(
+        vocals_mixed_path,
         instrumentals_shifted_path or instrumentals_path,
         backup_vocals_shifted_path or backup_vocals_path,
         song_dir,
@@ -1078,13 +1076,13 @@ def run_pipeline(
             instrumentals_path,
             main_vocals_path,
             backup_vocals_path,
-            main_vocals_dereverb_path,
+            vocals_dereverb_path,
             reverb_path,
-            ai_vocals_path,
-            ai_vocals_mixed_path,
+            converted_vocals_path,
+            vocals_mixed_path,
             instrumentals_shifted_path,
             backup_vocals_shifted_path,
-            ai_cover_path,
+            song_cover_path,
         )
     else:
-        return ai_cover_path
+        return song_cover_path

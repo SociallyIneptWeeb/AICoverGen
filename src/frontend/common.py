@@ -11,7 +11,7 @@ from backend.generate_song_cover import (
     get_song_cover_name,
 )
 
-progress_bar = gr.Progress()
+PROGRESS_BAR = gr.Progress()
 
 
 @dataclass
@@ -41,7 +41,7 @@ def setup_consecutive_event_listeners(
 
 
 def exception_harness(fun, *args, **kwargs):
-    new_kwargs = kwargs | {"progress": progress_bar}
+    new_kwargs = kwargs | {"progress": PROGRESS_BAR}
     try:
         return fun(*args, **new_kwargs)
     except Exception as e:
@@ -89,7 +89,7 @@ def toggle_visible_component(num_components, visible_index):
     return tuple(gr.update(**update_arg) for update_arg in update_args)
 
 
-def toggle_component_interactivity(num_components, interactive):
+def _toggle_component_interactivity(num_components, interactive):
     return tuple(gr.update(interactive=interactive) for _ in range(num_components))
 
 
@@ -121,13 +121,13 @@ def setup_consecutive_event_listeners_with_toggled_interactivity(
         raise ValueError("Event args list must not be empty.")
 
     disable_event_args = EventArgs(
-        partial(toggle_component_interactivity, len(toggled_components), False),
+        partial(_toggle_component_interactivity, len(toggled_components), False),
         outputs=toggled_components,
         name="click",
         show_progress="hidden",
     )
     enable_event_args = EventArgs(
-        partial(toggle_component_interactivity, len(toggled_components), True),
+        partial(_toggle_component_interactivity, len(toggled_components), True),
         outputs=toggled_components,
         name="then",
         show_progress="hidden",

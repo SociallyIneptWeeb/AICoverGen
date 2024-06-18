@@ -30,7 +30,7 @@ from backend.mdx import run_mdx
 from rvc import Config, load_hubert, get_vc, rvc_infer
 
 
-def get_youtube_video_id(url, ignore_playlist=True):
+def _get_youtube_video_id(url, ignore_playlist=True):
     """
     Examples:
     http://youtu.be/SA2iWivDJiE
@@ -62,7 +62,7 @@ def get_youtube_video_id(url, ignore_playlist=True):
     return None
 
 
-def yt_download(link, song_dir):
+def _yt_download(link, song_dir):
     outtmpl = os.path.join(song_dir, "0_%(title)s_Original")
     ydl_opts = {
         "quiet": True,
@@ -86,13 +86,13 @@ def yt_download(link, song_dir):
     return download_path
 
 
-def get_cached_input_paths():
+def _get_cached_input_paths():
     # TODO if we later add .json file for input then we need to exclude those here
     input_paths_pattern = os.path.join(TEMP_AUDIO_DIR, "*", "0_*_Original*")
     return glob.glob(input_paths_pattern)
 
 
-def pitch_shift(audio_path, output_path, n_semi_tones):
+def _pitch_shift(audio_path, output_path, n_semi_tones):
     y, sr = sf.read(audio_path)
     tfm = sox.Transformer()
     tfm.pitch(n_semi_tones)
@@ -103,7 +103,7 @@ def pitch_shift(audio_path, output_path, n_semi_tones):
 # TODO consider increasing size to 16
 # otherwise we might have problems with hash collisions
 # when using app as CLI
-def get_unique_base_path(song_dir, prefix, arg_dict, progress, percent, hash_size=5):
+def _get_unique_base_path(song_dir, prefix, arg_dict, progress, percent, hash_size=5):
     dict_hash = get_hash(arg_dict, size=hash_size)
     while True:
         base_path = os.path.join(song_dir, f"{prefix}_{dict_hash}")
@@ -118,7 +118,7 @@ def get_unique_base_path(song_dir, prefix, arg_dict, progress, percent, hash_siz
             return base_path
 
 
-def voice_change(
+def _voice_change(
     voice_model,
     vocals_path,
     output_path,
@@ -165,7 +165,7 @@ def voice_change(
     gc.collect()
 
 
-def add_audio_effects(
+def _add_audio_effects(
     audio_path,
     output_path,
     reverb_rm_size,
@@ -197,7 +197,7 @@ def add_audio_effects(
                 o.write(effected)
 
 
-def mix_audio(
+def _mix_audio(
     audio_paths,
     output_path,
     main_gain,
@@ -221,7 +221,7 @@ def mix_audio(
 
 
 def get_named_song_dirs():
-    input_paths = get_cached_input_paths()
+    input_paths = _get_cached_input_paths()
     named_song_dirs = []
 
     for path in input_paths:
@@ -292,7 +292,7 @@ def convert_to_stereo(song_path, song_dir, progress=None, percentages=[0.0, 0.5]
                 {"name": os.path.basename(song_path), "hash": get_file_hash(song_path)}
             ],
         }
-        stereo_path_base = get_unique_base_path(
+        stereo_path_base = _get_unique_base_path(
             song_dir, "0_Stereo", arg_dict, progress, percentages[0]
         )
         stereo_path = f"{stereo_path_base}.wav"
@@ -329,7 +329,7 @@ def make_song_dir(song_input, progress=None, percentages=[0.0]):
     # if youtube url
     if urlparse(song_input).scheme == "https":
         input_type = "yt"
-        song_id = get_youtube_video_id(song_input)
+        song_id = _get_youtube_video_id(song_input)
         if song_id is None:
             raise Exception("Invalid YouTube url!")
     # local audio file
@@ -375,7 +375,7 @@ def retrieve_song(
                 progress,
             )
             song_link = song_input.split("&")[0]
-            orig_song_path = yt_download(song_link, song_dir)
+            orig_song_path = _yt_download(song_link, song_dir)
         else:
             display_progress("[~] Copying song...", percentages[1], progress)
             song_input_base = os.path.basename(song_input)
@@ -418,11 +418,11 @@ def separate_vocals(
         ],
     }
 
-    vocals_path_base = get_unique_base_path(
+    vocals_path_base = _get_unique_base_path(
         song_dir, "1_Vocals", arg_dict, progress, percentages[2]
     )
 
-    instrumentals_path_base = get_unique_base_path(
+    instrumentals_path_base = _get_unique_base_path(
         song_dir, "1_Instrumental", arg_dict, progress, percentages[2]
     )
 
@@ -490,11 +490,11 @@ def separate_main_vocals(
         ],
     }
 
-    main_vocals_path_base = get_unique_base_path(
+    main_vocals_path_base = _get_unique_base_path(
         song_dir, "2_Vocals_Main", arg_dict, progress, percentages[2]
     )
 
-    backup_vocals_path_base = get_unique_base_path(
+    backup_vocals_path_base = _get_unique_base_path(
         song_dir, "2_Vocals_Backup", arg_dict, progress, percentages[2]
     )
 
@@ -562,10 +562,10 @@ def dereverb_vocals(
         ],
     }
 
-    vocals_dereverb_path_base = get_unique_base_path(
+    vocals_dereverb_path_base = _get_unique_base_path(
         song_dir, "3_Vocals_DeReverb", arg_dict, progress, percentages[2]
     )
-    vocals_reverb_path_base = get_unique_base_path(
+    vocals_reverb_path_base = _get_unique_base_path(
         song_dir, "3_Vocals_Reverb", arg_dict, progress, percentages[2]
     )
 
@@ -648,7 +648,7 @@ def convert_vocals(
         "f0-method": f"{f0_method}{hop_length_suffix}",
     }
 
-    converted_vocals_path_base = get_unique_base_path(
+    converted_vocals_path_base = _get_unique_base_path(
         song_dir, "4_Vocals_Converted", arg_dict, progress, percentages[2]
     )
     converted_vocals_path = f"{converted_vocals_path_base}.wav"
@@ -659,7 +659,7 @@ def convert_vocals(
         and os.path.exists(converted_vocals_json_path)
     ):
         display_progress("[~] Converting vocals using RVC...", percentages[3], progress)
-        voice_change(
+        _voice_change(
             voice_model,
             vocals_path,
             converted_vocals_path,
@@ -711,7 +711,7 @@ def postprocess_vocals(
         "reverb-damping": reverb_damping,
     }
 
-    vocals_mixed_path_base = get_unique_base_path(
+    vocals_mixed_path_base = _get_unique_base_path(
         song_dir, "5_Vocals_Postprocessed", arg_dict, progress, percentages[2]
     )
 
@@ -726,7 +726,7 @@ def postprocess_vocals(
             percentages[3],
             progress,
         )
-        add_audio_effects(
+        _add_audio_effects(
             vocals_path,
             vocals_mixed_path,
             reverb_rm_size,
@@ -775,7 +775,7 @@ def pitch_shift_background(
             "pitch-shift": pitch_change,
         }
 
-        instrumentals_shifted_path_base = get_unique_base_path(
+        instrumentals_shifted_path_base = _get_unique_base_path(
             song_dir,
             "6_Instrumental_Shifted",
             instrumentals_dict,
@@ -795,7 +795,7 @@ def pitch_shift_background(
                 percentages[5],
                 progress,
             )
-            pitch_shift(
+            _pitch_shift(
                 instrumentals_path,
                 instrumentals_shifted_path,
                 pitch_change,
@@ -812,7 +812,7 @@ def pitch_shift_background(
             "pitch-shift": pitch_change,
         }
 
-        backup_vocals_shifted_path_base = get_unique_base_path(
+        backup_vocals_shifted_path_base = _get_unique_base_path(
             song_dir,
             "6_Vocals_Backup_Shifted",
             backup_vocals_dict,
@@ -830,7 +830,7 @@ def pitch_shift_background(
                 percentages[7],
                 progress,
             )
-            pitch_shift(
+            _pitch_shift(
                 backup_vocals_path,
                 backup_vocals_shifted_path,
                 pitch_change,
@@ -939,7 +939,7 @@ def mix_song_cover(
         "sample-rate": output_sr,
     }
 
-    mixdown_path_base = get_unique_base_path(
+    mixdown_path_base = _get_unique_base_path(
         song_dir, "7_Mixdown", arg_dict, progress, percentages[2]
     )
     mixdown_path = f"{mixdown_path_base}.{output_format}"
@@ -952,7 +952,7 @@ def mix_song_cover(
             progress,
         )
 
-        mix_audio(
+        _mix_audio(
             [
                 main_vocals_path,
                 backup_vocals_path,

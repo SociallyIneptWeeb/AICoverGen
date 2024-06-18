@@ -29,7 +29,7 @@ from backend.generate_song_cover import (
 )
 
 
-def duplication_harness(fun, *args, **kwargs):
+def _duplication_harness(fun, *args, **kwargs):
 
     res = exception_harness(fun, *args, **kwargs)
     if not isinstance(res, tuple):
@@ -38,7 +38,7 @@ def duplication_harness(fun, *args, **kwargs):
         return (res[0],) + res
 
 
-def mix_song_cover_harness(
+def _mix_song_cover_harness(
     vocals_path,
     instrumentals_path,
     backup_vocals_path,
@@ -56,7 +56,7 @@ def mix_song_cover_harness(
     )
 
 
-def update_audio_components(*args, **kwargs):
+def _update_audio_components(*args, **kwargs):
     res = run_pipeline(*args, **kwargs)
     if isinstance(res, tuple):
         return res
@@ -64,7 +64,7 @@ def update_audio_components(*args, **kwargs):
         return (None,) * 11 + (res,)
 
 
-def toggle_intermediate_files_accordion(visible):
+def _toggle_intermediate_files_accordion(visible):
     audio_components = (None,) * 11
     accordions = (gr.update(open=False),) * 7
     return (gr.update(visible=visible, open=False),) + accordions + audio_components
@@ -440,7 +440,7 @@ def render(
             generate_btn.render()
             song_cover_track = gr.Audio(label="Song cover", scale=3)
         show_intermediate_files.change(
-            toggle_intermediate_files_accordion,
+            _toggle_intermediate_files_accordion,
             inputs=show_intermediate_files,
             outputs=[
                 intermediate_files_accordion,
@@ -467,7 +467,7 @@ def render(
         )
         generate_event_args_list = [
             EventArgs(
-                partial(exception_harness, update_audio_components),
+                partial(exception_harness, _update_audio_components),
                 inputs=[
                     song_input,
                     rvc_model,
@@ -529,7 +529,7 @@ def render(
         generate_btn2_event_args_list = [
             EventArgs(
                 partial(
-                    duplication_harness,
+                    _duplication_harness,
                     retrieve_song,
                     percentages=percentages[:4],
                 ),
@@ -538,14 +538,14 @@ def render(
             ),
             EventArgs(
                 partial(
-                    duplication_harness, separate_vocals, percentages=percentages[4:8]
+                    _duplication_harness, separate_vocals, percentages=percentages[4:8]
                 ),
                 inputs=[original_track, current_song_dir],
                 outputs=[song_cover_track, vocals_track, instrumentals_track],
             ),
             EventArgs(
                 partial(
-                    duplication_harness,
+                    _duplication_harness,
                     separate_main_vocals,
                     percentages=percentages[8:12],
                 ),
@@ -554,7 +554,7 @@ def render(
             ),
             EventArgs(
                 partial(
-                    duplication_harness,
+                    _duplication_harness,
                     dereverb_vocals,
                     percentages=percentages[12:16],
                 ),
@@ -567,7 +567,7 @@ def render(
             ),
             EventArgs(
                 partial(
-                    duplication_harness,
+                    _duplication_harness,
                     convert_vocals,
                     percentages=percentages[16:20],
                 ),
@@ -588,7 +588,7 @@ def render(
             ),
             EventArgs(
                 partial(
-                    duplication_harness,
+                    _duplication_harness,
                     postprocess_vocals,
                     percentages=percentages[20:24],
                 ),
@@ -604,7 +604,7 @@ def render(
             ),
             EventArgs(
                 partial(
-                    duplication_harness,
+                    _duplication_harness,
                     pitch_shift_background,
                     percentages=percentages[24:32],
                 ),
@@ -623,7 +623,7 @@ def render(
             EventArgs(
                 partial(
                     exception_harness,
-                    mix_song_cover_harness,
+                    _mix_song_cover_harness,
                     percentages=percentages[32:],
                 ),
                 inputs=[

@@ -60,7 +60,7 @@ def filter_public_models_table(tags, query, progress=None, percentages=[0.0]):
     return load_public_models_table(filter_fns, progress, percentages)
 
 
-def extract_model_zip(extraction_folder, zip_name, remove_zip):
+def _extract_model_zip(extraction_folder, zip_name, remove_zip):
     try:
         os.makedirs(extraction_folder)
         with zipfile.ZipFile(zip_name, "r") as zip_ref:
@@ -138,7 +138,7 @@ def download_online_model(url, dir_name, progress=None, percentages=[0.0, 0.5]):
 
     display_progress(f"[~] Extracting zip file...", percentages[1], progress)
 
-    extract_model_zip(extraction_folder, zip_name, remove_zip=True)
+    _extract_model_zip(extraction_folder, zip_name, remove_zip=True)
     return f"[+] Model with name '{dir_name}' successfully downloaded!"
 
 
@@ -165,7 +165,7 @@ def upload_local_model(input_paths, dir_name, progress=None, percentages=[0.0]):
         # NOTE a .pth file is actually itself a zip file
         elif zipfile.is_zipfile(input_name):
             display_progress("[~] Extracting zip file...", percentages[0], progress)
-            extract_model_zip(output_folder, input_name, remove_zip=False)
+            _extract_model_zip(output_folder, input_name, remove_zip=False)
         else:
             raise Exception(
                 "Only a .pth file or a .zip file can be uploaded by itself!"

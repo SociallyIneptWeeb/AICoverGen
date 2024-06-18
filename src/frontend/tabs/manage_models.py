@@ -22,18 +22,18 @@ from backend.manage_voice_models import (
 )
 
 
-def update_model_lists(num_components, value=None, value_indices=[]):
+def _update_model_lists(num_components, value=None, value_indices=[]):
     return update_dropdowns(
         get_current_models, num_components, value=value, value_indices=value_indices
     )
 
 
-def filter_public_models_table_harness(tags, query, progress):
+def _filter_public_models_table_harness(tags, query, progress):
     models_table = filter_public_models_table(tags, query, progress)
     return gr.DataFrame(value=models_table)
 
 
-def pub_dl_autofill(pub_models, event: gr.SelectData):
+def _pub_dl_autofill(pub_models, event: gr.SelectData):
     return gr.Text(value=pub_models.loc[event.index[0], "URL"]), gr.Text(
         value=pub_models.loc[event.index[0], "Model Name"]
     )
@@ -101,18 +101,18 @@ def render(
         )
 
         public_models_table.select(
-            pub_dl_autofill,
+            _pub_dl_autofill,
             inputs=public_models_table,
             outputs=[model_zip_link, model_name],
             show_progress="hidden",
         )
         search_query.change(
-            partial(exception_harness, filter_public_models_table_harness),
+            partial(exception_harness, _filter_public_models_table_harness),
             inputs=[filter_tags, search_query],
             outputs=public_models_table,
         )
         filter_tags.select(
-            partial(exception_harness, filter_public_models_table_harness),
+            partial(exception_harness, _filter_public_models_table_harness),
             inputs=[filter_tags, search_query],
             outputs=public_models_table,
         )
@@ -198,6 +198,6 @@ def render(
         delete_all_models_btn_click,
     ]:
         click_event.success(
-            partial(update_model_lists, 3, [], [2]),
+            partial(_update_model_lists, 3, [], [2]),
             outputs=[rvc_model, rvc_model2, rvc_models_to_delete],
         )

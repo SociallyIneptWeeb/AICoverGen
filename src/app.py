@@ -15,7 +15,7 @@ from frontend.tabs.multi_step_generation import render as render_multi_step_tab
 from frontend.tabs.manage_models import render as render_manage_models_tab
 
 
-def refresh_dropdowns():
+def _refresh_dropdowns():
     voice_models = get_current_models()
     cached_input_songs = get_named_song_dirs()
     updated_rvc_model_dropdowns = tuple(
@@ -32,10 +32,6 @@ os.environ["GRADIO_TEMP_DIR"] = GRADIO_TEMP_DIR
 if os.name == "nt":
     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
-
-voice_models = get_current_models()
-cached_input_songs = get_named_song_dirs()
-
 with gr.Blocks(title="Ultimate RVC") as app:
 
     gr.Label("Ultimate RVC ❤️", show_label=False)
@@ -44,7 +40,6 @@ with gr.Blocks(title="Ultimate RVC") as app:
     delete_confirmation = gr.State(False)
     song_dir_dropdowns = [
         gr.Dropdown(
-            cached_input_songs,
             label="Song directory",
             info="Directory where intermediate audio files are stored and loaded from locally. When a new song is retrieved, its directory is chosen by default.",
             render=False,
@@ -53,7 +48,6 @@ with gr.Blocks(title="Ultimate RVC") as app:
     ]
     cached_input_songs_dropdown, cached_input_songs_dropdown2 = [
         gr.Dropdown(
-            cached_input_songs,
             label="Song input",
             info="Select a song from the list of cached songs.",
             visible=False,
@@ -62,17 +56,16 @@ with gr.Blocks(title="Ultimate RVC") as app:
         for _ in range(2)
     ]
     intermediate_audio_to_delete = gr.Dropdown(
-        cached_input_songs,
         label="Songs with intermediate audio files",
         multiselect=True,
         info="Select one or more songs to delete their asssociated intermediate audio files.",
         render=False,
     )
     rvc_model, rvc_model2 = [
-        gr.Dropdown(voice_models, label="Voice model", render=False) for _ in range(2)
+        gr.Dropdown(label="Voice model", render=False) for _ in range(2)
     ]
     rvc_models_to_delete = gr.Dropdown(
-        voice_models, label="Voice models", multiselect=True, render=False
+        label="Voice models", multiselect=True, render=False
     )
 
     generate_buttons = [
@@ -127,7 +120,7 @@ with gr.Blocks(title="Ultimate RVC") as app:
         )
 
     app.load(
-        refresh_dropdowns,
+        _refresh_dropdowns,
         outputs=[
             rvc_model,
             rvc_model2,

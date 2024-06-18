@@ -24,7 +24,7 @@ from backend.generate_song_cover import (
 )
 
 
-def transfer(num_components, output_indices, value):
+def _transfer(num_components, output_indices, value):
     update_args = [{} for _ in range(num_components)]
     for index in output_indices:
         update_args[index]["value"] = value
@@ -234,7 +234,7 @@ def render(
                     show_progress="hidden",
                 ),
                 EventArgs(
-                    partial(transfer, len(input_tracks)),
+                    partial(_transfer, len(input_tracks)),
                     inputs=[transfer_output_track_dropdowns[0], original_track_output],
                     outputs=input_tracks,
                     name="then",
@@ -279,7 +279,7 @@ def render(
                 )
             ] + [
                 EventArgs(
-                    partial(transfer, len(input_tracks)),
+                    partial(_transfer, len(input_tracks)),
                     inputs=[transfer_dropdown, output_track],
                     outputs=input_tracks,
                     name="then",
@@ -328,7 +328,7 @@ def render(
                 )
             ] + [
                 EventArgs(
-                    partial(transfer, len(input_tracks)),
+                    partial(_transfer, len(input_tracks)),
                     inputs=[transfer_dropdown, output_track],
                     outputs=input_tracks,
                     name="then",
@@ -377,7 +377,7 @@ def render(
                 )
             ] + [
                 EventArgs(
-                    partial(transfer, len(input_tracks)),
+                    partial(_transfer, len(input_tracks)),
                     inputs=[transfer_dropdown, output_track],
                     outputs=input_tracks,
                     name="then",
@@ -519,7 +519,7 @@ def render(
                     outputs=[converted_vocals_track_output],
                 ),
                 EventArgs(
-                    partial(transfer, len(input_tracks)),
+                    partial(_transfer, len(input_tracks)),
                     inputs=[
                         transfer_output_track_dropdowns[7],
                         converted_vocals_track_output,
@@ -606,7 +606,7 @@ def render(
                     outputs=[postprocessed_vocals_track_output],
                 ),
                 EventArgs(
-                    partial(transfer, len(input_tracks)),
+                    partial(_transfer, len(input_tracks)),
                     inputs=[
                         transfer_output_track_dropdowns[8],
                         postprocessed_vocals_track_output,
@@ -676,7 +676,7 @@ def render(
                 )
             ] + [
                 EventArgs(
-                    partial(transfer, len(input_tracks)),
+                    partial(_transfer, len(input_tracks)),
                     inputs=[dropdown, output_track],
                     outputs=input_tracks,
                     name="then",
@@ -785,7 +785,7 @@ def render(
                     outputs=[song_cover_track],
                 ),
                 EventArgs(
-                    partial(transfer, len(input_tracks)),
+                    partial(_transfer, len(input_tracks)),
                     inputs=[transfer_output_track_dropdowns[11], song_cover_track],
                     outputs=input_tracks,
                     name="then",

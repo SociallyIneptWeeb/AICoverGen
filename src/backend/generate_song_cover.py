@@ -15,8 +15,10 @@ from pedalboard import Pedalboard, Reverb, Compressor, HighpassFilter
 from pedalboard.io import AudioFile
 from pydub import AudioSegment, utils as pydub_utils
 
-from common import MDXNET_MODELS_DIR, RVC_MODELS_DIR, SONGS_DIR, TEMP_AUDIO_DIR
-from common import (
+from common import MDXNET_MODELS_DIR, RVC_MODELS_DIR
+from backend.common import (
+    SONGS_DIR,
+    TEMP_AUDIO_DIR,
     display_progress,
     json_dump,
     json_load,

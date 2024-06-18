@@ -4,7 +4,7 @@ import urllib.request
 import zipfile
 
 from common import RVC_MODELS_DIR
-from common import display_progress, copy_files_to_new_folder, json_load
+from backend.common import display_progress, copy_files_to_new_folder, json_load
 
 
 public_models = json_load(os.path.join(RVC_MODELS_DIR, "public_models.json"))

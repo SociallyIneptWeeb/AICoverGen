@@ -312,7 +312,7 @@ def convert_to_stereo(song_path, song_dir, progress=None, percentages=[0.0, 0.5]
     return stereo_path
 
 
-def make_song_dir(song_input, progress=None, percentages=[0.0]):
+def _make_song_dir(song_input, progress=None, percentages=[0.0]):
     if len(percentages) != 1:
         raise ValueError("Percentages must be a list of length 1.")
     # if song directory
@@ -362,7 +362,7 @@ def retrieve_song(
             "Song input missing! Please provide a valid YouTube url, local audio file or cached input song."
         )
 
-    song_dir, input_type = make_song_dir(song_input, progress, percentages[:1])
+    song_dir, input_type = _make_song_dir(song_input, progress, percentages[:1])
     orig_song_path = next(
         iter(glob.glob(os.path.join(song_dir, "0_*_Original*"))), None
     )
@@ -604,14 +604,14 @@ def convert_vocals(
     vocals_path,
     song_dir,
     voice_model,
-    pitch_change_octaves,
-    pitch_change_semi_tones,
-    index_rate,
-    filter_radius,
-    rms_mix_rate,
-    protect,
-    f0_method,
-    crepe_hop_length,
+    pitch_change_octaves=0,
+    pitch_change_semi_tones=0,
+    index_rate=0.5,
+    filter_radius=3,
+    rms_mix_rate=0.25,
+    protect=0.33,
+    f0_method="rmvpe",
+    crepe_hop_length=128,
     progress=None,
     percentages=[i / 4 for i in range(4)],
 ):
@@ -679,10 +679,10 @@ def convert_vocals(
 def postprocess_vocals(
     vocals_path,
     song_dir,
-    reverb_rm_size,
-    reverb_wet,
-    reverb_dry,
-    reverb_damping,
+    reverb_rm_size=0.15,
+    reverb_wet=0.2,
+    reverb_dry=0.8,
+    reverb_damping=0.7,
     progress=None,
     percentages=[i / 4 for i in range(4)],
 ):
@@ -742,7 +742,7 @@ def pitch_shift_background(
     instrumentals_path,
     backup_vocals_path,
     song_dir,
-    pitch_change,
+    pitch_change=0,
     progress=None,
     percentages=[i / 8 for i in range(8)],
 ):
@@ -889,11 +889,11 @@ def mix_song_cover(
     instrumentals_path,
     backup_vocals_path,
     song_dir,
-    main_gain,
-    inst_gain,
-    backup_gain,
-    output_sr,
-    output_format,
+    main_gain=0,
+    inst_gain=0,
+    backup_gain=0,
+    output_sr=44100,
+    output_format="mp3",
     output_name=None,
     keep_files=True,
     progress=None,

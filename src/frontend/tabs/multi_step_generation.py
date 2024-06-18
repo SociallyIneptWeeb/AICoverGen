@@ -36,7 +36,7 @@ def render(
     song_dir_dropdowns,
     cached_input_songs_dropdown,
     cached_input_songs_dropdown2,
-    rvc_model2,
+    rvc_model,
     intermediate_audio_to_delete,
 ):
     with gr.Tab("Multi-step generation"):
@@ -52,7 +52,7 @@ def render(
             _,
             _,
         ) = generate_buttons
-        current_song_dir2 = gr.State(None)
+        current_song_dir = gr.State(None)
 
         (
             original_track_output,
@@ -157,7 +157,7 @@ def render(
             gr.Markdown("**Inputs**")
             with gr.Row():
                 with gr.Column():
-                    song_input_type_dropdown2 = gr.Dropdown(
+                    song_input_type_dropdown = gr.Dropdown(
                         [
                             "YouTube link/local path",
                             "Local file/microphone",
@@ -168,33 +168,33 @@ def render(
                         type="index",
                     )
                 with gr.Column():
-                    song_input2 = gr.Text(
+                    song_input = gr.Text(
                         label="Song input",
                         info="Link to a song on YouTube or the full path of a local audio file.",
                     )
-                    local_file2 = gr.Audio(
+                    local_file = gr.Audio(
                         label="Song input",
                         type="filepath",
                         visible=False,
                     )
                     cached_input_songs_dropdown2.render()
 
-                song_input_type_dropdown2.input(
+                song_input_type_dropdown.input(
                     partial(toggle_visible_component, 3),
-                    inputs=song_input_type_dropdown2,
-                    outputs=[song_input2, local_file2, cached_input_songs_dropdown2],
+                    inputs=song_input_type_dropdown,
+                    outputs=[song_input, local_file, cached_input_songs_dropdown2],
                     show_progress="hidden",
                 )
 
-                local_file2.change(
+                local_file.change(
                     lambda x: gr.update(value=x),
-                    inputs=local_file2,
-                    outputs=song_input2,
+                    inputs=local_file,
+                    outputs=song_input,
                 )
                 cached_input_songs_dropdown2.input(
                     lambda x: gr.update(value=x),
                     inputs=cached_input_songs_dropdown2,
-                    outputs=song_input2,
+                    outputs=song_input,
                     show_progress="hidden",
                 )
             gr.Markdown("**Outputs**")
@@ -212,8 +212,8 @@ def render(
             retrieve_song_event_args_list = [
                 EventArgs(
                     partial(exception_harness, retrieve_song),
-                    inputs=song_input2,
-                    outputs=[original_track_output, current_song_dir2],
+                    inputs=song_input,
+                    outputs=[original_track_output, current_song_dir],
                 ),
                 EventArgs(
                     partial(
@@ -221,7 +221,7 @@ def render(
                         len(song_dir_dropdowns) + 3,
                         value_indices=range(len(song_dir_dropdowns) + 1),
                     ),
-                    inputs=current_song_dir2,
+                    inputs=current_song_dir,
                     outputs=(
                         song_dir_dropdowns
                         + [
@@ -400,7 +400,7 @@ def render(
             dereverbed_vocals_track_input.render()
             song_dir_dropdowns[3].render()
             with gr.Row():
-                rvc_model2.render()
+                rvc_model.render()
                 pitch_change_octaves = gr.Slider(
                     -3,
                     3,
@@ -418,14 +418,14 @@ def render(
                     info="Shift pitch of converted vocals by number of semi-tones. Altering this slightly reduces sound quality.",
                 )
             with gr.Row():
-                index_rate2 = gr.Slider(
+                index_rate = gr.Slider(
                     0,
                     1,
                     value=0.5,
                     label="Index rate",
                     info="Controls how much of the accent in the voice model to keep in the converted vocals",
                 )
-                filter_radius2 = gr.Slider(
+                filter_radius = gr.Slider(
                     0,
                     7,
                     value=3,
@@ -433,14 +433,14 @@ def render(
                     label="Filter radius",
                     info="If >=3: apply median filtering to the harvested pitch results. Can reduce breathiness",
                 )
-                rms_mix_rate2 = gr.Slider(
+                rms_mix_rate = gr.Slider(
                     0,
                     1,
                     value=0.25,
                     label="RMS mix rate",
                     info="Control how much to mimic the loudness (0) of the input vocals or a fixed loudness (1)",
                 )
-                protect2 = gr.Slider(
+                protect = gr.Slider(
                     0,
                     0.5,
                     value=0.33,
@@ -448,13 +448,13 @@ def render(
                     info="Protect voiceless consonants and breath sounds. Set to 0.5 to disable.",
                 )
                 with gr.Column():
-                    f0_method2 = gr.Dropdown(
+                    f0_method = gr.Dropdown(
                         ["rmvpe", "mangio-crepe"],
                         value="rmvpe",
                         label="Pitch detection algorithm",
                         info="Best option is rmvpe (clarity in vocals), then mangio-crepe (smoother vocals)",
                     )
-                    crepe_hop_length2 = gr.Slider(
+                    crepe_hop_length = gr.Slider(
                         32,
                         320,
                         value=128,
@@ -463,10 +463,10 @@ def render(
                         label="Crepe hop length",
                         info="Lower values leads to longer conversions and higher risk of voice cracks, but better pitch accuracy.",
                     )
-                    f0_method2.change(
+                    f0_method.change(
                         show_hop_slider,
-                        inputs=f0_method2,
-                        outputs=crepe_hop_length2,
+                        inputs=f0_method,
+                        outputs=crepe_hop_length,
                         show_progress="hidden",
                     )
 
@@ -489,12 +489,12 @@ def render(
                 outputs=[
                     pitch_change_octaves,
                     pitch_change_semitones,
-                    index_rate2,
-                    filter_radius2,
-                    rms_mix_rate2,
-                    protect2,
-                    f0_method2,
-                    crepe_hop_length2,
+                    index_rate,
+                    filter_radius,
+                    rms_mix_rate,
+                    protect,
+                    f0_method,
+                    crepe_hop_length,
                     transfer_output_track_dropdowns[7],
                 ],
                 show_progress="hidden",
@@ -506,15 +506,15 @@ def render(
                     inputs=[
                         dereverbed_vocals_track_input,
                         song_dir_dropdowns[3],
-                        rvc_model2,
+                        rvc_model,
                         pitch_change_octaves,
                         pitch_change_semitones,
-                        index_rate2,
-                        filter_radius2,
-                        rms_mix_rate2,
-                        protect2,
-                        f0_method2,
-                        crepe_hop_length2,
+                        index_rate,
+                        filter_radius,
+                        rms_mix_rate,
+                        protect,
+                        f0_method,
+                        crepe_hop_length,
                     ],
                     outputs=[converted_vocals_track_output],
                 ),
@@ -540,28 +540,28 @@ def render(
             converted_vocals_track_input.render()
             song_dir_dropdowns[4].render()
             with gr.Row():
-                reverb_rm_size2 = gr.Slider(
+                reverb_rm_size = gr.Slider(
                     0,
                     1,
                     value=0.15,
                     label="Room size",
                     info="The larger the room, the longer the reverb time",
                 )
-                reverb_wet2 = gr.Slider(
+                reverb_wet = gr.Slider(
                     0,
                     1,
                     value=0.2,
                     label="Wetness level",
                     info="Loudness level of converted vocals with reverb",
                 )
-                reverb_dry2 = gr.Slider(
+                reverb_dry = gr.Slider(
                     0,
                     1,
                     value=0.8,
                     label="Dryness level",
                     info="Loudness level of converted vocals without reverb",
                 )
-                reverb_damping2 = gr.Slider(
+                reverb_damping = gr.Slider(
                     0,
                     1,
                     value=0.7,
@@ -583,10 +583,10 @@ def render(
                     gr.Dropdown(value=transfer_defaults[8]),
                 ],
                 outputs=[
-                    reverb_rm_size2,
-                    reverb_wet2,
-                    reverb_dry2,
-                    reverb_damping2,
+                    reverb_rm_size,
+                    reverb_wet,
+                    reverb_dry,
+                    reverb_damping,
                     transfer_output_track_dropdowns[8],
                 ],
                 show_progress="hidden",
@@ -598,10 +598,10 @@ def render(
                     inputs=[
                         converted_vocals_track_input,
                         song_dir_dropdowns[4],
-                        reverb_rm_size2,
-                        reverb_wet2,
-                        reverb_dry2,
-                        reverb_damping2,
+                        reverb_rm_size,
+                        reverb_wet,
+                        reverb_dry,
+                        reverb_damping,
                     ],
                     outputs=[postprocessed_vocals_track_output],
                 ),
@@ -628,7 +628,7 @@ def render(
                 instrumentals_track_input.render()
                 backup_vocals_track_input.render()
             song_dir_dropdowns[5].render()
-            pitch_change_semitones2 = gr.Slider(
+            pitch_change_semitones_background = gr.Slider(
                 -12,
                 12,
                 value=0,
@@ -653,7 +653,7 @@ def render(
                     gr.Dropdown(value=transfer_defaults[10]),
                 ],
                 outputs=[
-                    pitch_change_semitones2,
+                    pitch_change_semitones_background,
                     transfer_output_track_dropdowns[9],
                     transfer_output_track_dropdowns[10],
                 ],
@@ -667,7 +667,7 @@ def render(
                         instrumentals_track_input,
                         backup_vocals_track_input,
                         song_dir_dropdowns[5],
-                        pitch_change_semitones2,
+                        pitch_change_semitones_background,
                     ],
                     outputs=[
                         shifted_instrumentals_track_output,
@@ -705,22 +705,20 @@ def render(
                 shifted_backup_vocals_track_input.render()
             song_dir_dropdowns[6].render()
             with gr.Row():
-                main_gain2 = gr.Slider(-20, 20, value=0, step=1, label="Main vocals")
-                inst_gain2 = gr.Slider(-20, 20, value=0, step=1, label="Instrumentals")
-                backup_gain2 = gr.Slider(
-                    -20, 20, value=0, step=1, label="Backup vocals"
-                )
+                main_gain = gr.Slider(-20, 20, value=0, step=1, label="Main vocals")
+                inst_gain = gr.Slider(-20, 20, value=0, step=1, label="Instrumentals")
+                backup_gain = gr.Slider(-20, 20, value=0, step=1, label="Backup vocals")
             with gr.Row():
-                output_name2 = gr.Text(
+                output_name = gr.Text(
                     label="Output file name",
                     placeholder="Ultimate RVC song cover",
                 )
-                output_sr2 = gr.Dropdown(
+                output_sr = gr.Dropdown(
                     choices=[16000, 44100, 48000, 96000, 192000],
                     value=44100,
                     label="Output sample rate",
                 )
-                output_format2 = gr.Dropdown(
+                output_format = gr.Dropdown(
                     [
                         "mp3",
                         "wav",
@@ -735,13 +733,13 @@ def render(
                 postprocessed_vocals_track_input.change(
                     get_song_cover_name_harness,
                     inputs=[postprocessed_vocals_track_input, song_dir_dropdowns[6]],
-                    outputs=output_name2,
+                    outputs=output_name,
                     show_progress="hidden",
                 )
                 song_dir_dropdowns[6].change(
                     get_song_cover_name_harness,
                     inputs=[postprocessed_vocals_track_input, song_dir_dropdowns[6]],
-                    outputs=output_name2,
+                    outputs=output_name,
                     show_progress="hidden",
                 )
 
@@ -759,11 +757,11 @@ def render(
                     gr.Dropdown(value=transfer_defaults[11]),
                 ],
                 outputs=[
-                    main_gain2,
-                    inst_gain2,
-                    backup_gain2,
-                    output_sr2,
-                    output_format2,
+                    main_gain,
+                    inst_gain,
+                    backup_gain,
+                    output_sr,
+                    output_format,
                     transfer_output_track_dropdowns[11],
                 ],
                 show_progress="hidden",
@@ -777,12 +775,12 @@ def render(
                         shifted_instrumentals_track_input,
                         shifted_backup_vocals_track_input,
                         song_dir_dropdowns[6],
-                        main_gain2,
-                        inst_gain2,
-                        backup_gain2,
-                        output_sr2,
-                        output_format2,
-                        output_name2,
+                        main_gain,
+                        inst_gain,
+                        backup_gain,
+                        output_sr,
+                        output_format,
+                        output_name,
                     ],
                     outputs=[song_cover_track],
                 ),

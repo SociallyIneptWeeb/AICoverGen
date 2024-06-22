@@ -135,6 +135,22 @@ def render(
             ["Step 7: backup vocals"],
             [],
         ]
+
+        (
+            original_track_transfer_default,
+            vocals_track_transfer_default,
+            instrumentals_track_transfer_default,
+            main_vocals_track_transfer_default,
+            backup_vocals_track_transfer_default,
+            dereverbed_vocals_track_transfer_default,
+            reverb_track_transfer_default,
+            converted_vocals_track_transfer_default,
+            postprocessed_vocals_track_transfer_default,
+            shifted_instrumentals_track_transfer_default,
+            shifted_backup_vocals_track_transfer_default,
+            song_cover_track_transfer_default,
+        ) = transfer_defaults
+
         transfer_output_track_dropdowns = [
             gr.Dropdown(
                 [
@@ -159,7 +175,32 @@ def render(
             for value in transfer_defaults
         ]
 
+        (
+            original_track_transfer_dropdown,
+            vocals_track_transfer_dropdown,
+            instrumentals_track_transfer_dropdown,
+            main_vocals_track_transfer_dropdown,
+            backup_vocals_track_transfer_dropdown,
+            dereverbed_vocals_track_transfer_dropdown,
+            reverb_track_transfer_dropdown,
+            converted_vocals_track_transfer_dropdown,
+            postprocessed_vocals_track_transfer_dropdown,
+            shifted_instrumentals_track_transfer_dropdown,
+            shifted_backup_vocals_track_transfer_dropdown,
+            song_cover_track_transfer_dropdown,
+        ) = transfer_output_track_dropdowns
+
         clear_btns = [gr.Button(value="Reset settings", render=False) for _ in range(8)]
+        (
+            retrieve_song_clear_btn,
+            separate_vocals_clear_btn,
+            separate_main_vocals_clear_btn,
+            dereverb_vocals_clear_btn,
+            convert_vocals_clear_btn,
+            postprocess_vocals_clear_btn,
+            pitch_shift_background_clear_btn,
+            mix_clear_btn,
+        ) = clear_btns
 
         with gr.Accordion("Step 0: song retrieval", open=True):
             gr.Markdown("")
@@ -209,11 +250,11 @@ def render(
                 )
             gr.Markdown("**Outputs**")
             original_track_output.render()
-            transfer_output_track_dropdowns[0].render()
-            clear_btns[0].render()
-            clear_btns[0].click(
-                lambda: gr.Dropdown(value=transfer_defaults[0]),
-                outputs=[transfer_output_track_dropdowns[0]],
+            original_track_transfer_dropdown.render()
+            retrieve_song_clear_btn.render()
+            retrieve_song_clear_btn.click(
+                lambda: gr.Dropdown(value=original_track_transfer_default),
+                outputs=[original_track_transfer_dropdown],
                 show_progress="hidden",
             )
 
@@ -245,7 +286,7 @@ def render(
                 ),
                 EventArgs(
                     partial(_transfer, len(input_tracks)),
-                    inputs=[transfer_output_track_dropdowns[0], original_track_output],
+                    inputs=[original_track_transfer_dropdown, original_track_output],
                     outputs=input_tracks,
                     name="then",
                     show_progress="hidden",
@@ -265,18 +306,25 @@ def render(
             with gr.Row():
                 with gr.Column():
                     vocals_track_output.render()
-                    transfer_output_track_dropdowns[1].render()
+                    vocals_track_transfer_dropdown.render()
 
                 with gr.Column():
                     instrumentals_track_output.render()
-                    transfer_output_track_dropdowns[2].render()
+                    instrumentals_track_transfer_dropdown.render()
 
-            clear_btns[1].render()
-            clear_btns[1].click(
+            separate_vocals_clear_btn.render()
+            separate_vocals_clear_btn.click(
                 lambda: tuple(
-                    gr.Dropdown(value=value) for value in transfer_defaults[1:3]
+                    gr.Dropdown(value=value)
+                    for value in [
+                        vocals_track_transfer_default,
+                        instrumentals_track_transfer_default,
+                    ]
                 ),
-                outputs=transfer_output_track_dropdowns[1:3],
+                outputs=[
+                    vocals_track_transfer_dropdown,
+                    instrumentals_track_transfer_dropdown,
+                ],
                 show_progress="hidden",
             )
             separate_vocals_btn.render()
@@ -296,7 +344,10 @@ def render(
                     show_progress="hidden",
                 )
                 for transfer_dropdown, output_track in zip(
-                    transfer_output_track_dropdowns[1:3],
+                    [
+                        vocals_track_transfer_dropdown,
+                        instrumentals_track_transfer_dropdown,
+                    ],
                     [vocals_track_output, instrumentals_track_output],
                 )
             ]
@@ -315,17 +366,24 @@ def render(
             with gr.Row():
                 with gr.Column():
                     main_vocals_track_output.render()
-                    transfer_output_track_dropdowns[3].render()
+                    main_vocals_track_transfer_dropdown.render()
                 with gr.Column():
                     backup_vocals_track_output.render()
-                    transfer_output_track_dropdowns[4].render()
+                    backup_vocals_track_transfer_dropdown.render()
 
-            clear_btns[2].render()
-            clear_btns[2].click(
+            separate_main_vocals_clear_btn.render()
+            separate_main_vocals_clear_btn.click(
                 lambda: tuple(
-                    gr.Dropdown(value=value) for value in transfer_defaults[3:5]
+                    gr.Dropdown(value=value)
+                    for value in [
+                        main_vocals_track_transfer_default,
+                        backup_vocals_track_transfer_default,
+                    ]
                 ),
-                outputs=transfer_output_track_dropdowns[3:5],
+                outputs=[
+                    main_vocals_track_transfer_dropdown,
+                    backup_vocals_track_transfer_dropdown,
+                ],
                 show_progress="hidden",
             )
             separate_main_vocals_btn.render()
@@ -345,7 +403,10 @@ def render(
                     show_progress="hidden",
                 )
                 for transfer_dropdown, output_track in zip(
-                    transfer_output_track_dropdowns[3:5],
+                    [
+                        main_vocals_track_transfer_dropdown,
+                        backup_vocals_track_transfer_dropdown,
+                    ],
                     [main_vocals_track_output, backup_vocals_track_output],
                 )
             ]
@@ -365,17 +426,24 @@ def render(
             with gr.Row():
                 with gr.Column():
                     dereverbed_vocals_track_output.render()
-                    transfer_output_track_dropdowns[5].render()
+                    dereverbed_vocals_track_transfer_dropdown.render()
                 with gr.Column():
                     reverb_track_output.render()
-                    transfer_output_track_dropdowns[6].render()
+                    reverb_track_transfer_dropdown.render()
 
-            clear_btns[3].render()
-            clear_btns[3].click(
+            dereverb_vocals_clear_btn.render()
+            dereverb_vocals_clear_btn.click(
                 lambda: tuple(
-                    gr.Dropdown(value=value) for value in transfer_defaults[5:7]
+                    gr.Dropdown(value=value)
+                    for value in [
+                        dereverbed_vocals_track_transfer_default,
+                        reverb_track_transfer_default,
+                    ]
                 ),
-                outputs=transfer_output_track_dropdowns[5:7],
+                outputs=[
+                    dereverbed_vocals_track_transfer_dropdown,
+                    reverb_track_transfer_dropdown,
+                ],
                 show_progress="hidden",
             )
             dereverb_vocals_btn.render()
@@ -394,7 +462,10 @@ def render(
                     show_progress="hidden",
                 )
                 for transfer_dropdown, output_track in zip(
-                    transfer_output_track_dropdowns[5:7],
+                    [
+                        dereverbed_vocals_track_transfer_dropdown,
+                        reverb_track_transfer_dropdown,
+                    ],
                     [dereverbed_vocals_track_output, reverb_track_output],
                 )
             ]
@@ -482,9 +553,9 @@ def render(
 
             gr.Markdown("**Outputs**")
             converted_vocals_track_output.render()
-            transfer_output_track_dropdowns[7].render()
-            clear_btns[4].render()
-            clear_btns[4].click(
+            converted_vocals_track_transfer_dropdown.render()
+            convert_vocals_clear_btn.render()
+            convert_vocals_clear_btn.click(
                 lambda: [
                     0,
                     0,
@@ -494,7 +565,7 @@ def render(
                     0.33,
                     "rmvpe",
                     128,
-                    gr.Dropdown(value=transfer_defaults[7]),
+                    gr.Dropdown(value=converted_vocals_track_transfer_default),
                 ],
                 outputs=[
                     pitch_change_octaves,
@@ -505,7 +576,7 @@ def render(
                     protect,
                     f0_method,
                     crepe_hop_length,
-                    transfer_output_track_dropdowns[7],
+                    converted_vocals_track_transfer_dropdown,
                 ],
                 show_progress="hidden",
             )
@@ -531,7 +602,7 @@ def render(
                 EventArgs(
                     partial(_transfer, len(input_tracks)),
                     inputs=[
-                        transfer_output_track_dropdowns[7],
+                        converted_vocals_track_transfer_dropdown,
                         converted_vocals_track_output,
                     ],
                     outputs=input_tracks,
@@ -581,23 +652,23 @@ def render(
             gr.Markdown("**Outputs**")
 
             postprocessed_vocals_track_output.render()
-            transfer_output_track_dropdowns[8].render()
+            postprocessed_vocals_track_transfer_dropdown.render()
 
-            clear_btns[5].render()
-            clear_btns[5].click(
+            postprocess_vocals_clear_btn.render()
+            postprocess_vocals_clear_btn.click(
                 lambda: [
                     0.15,
                     0.2,
                     0.8,
                     0.7,
-                    gr.Dropdown(value=transfer_defaults[8]),
+                    gr.Dropdown(value=postprocessed_vocals_track_transfer_default),
                 ],
                 outputs=[
                     reverb_rm_size,
                     reverb_wet,
                     reverb_dry,
                     reverb_damping,
-                    transfer_output_track_dropdowns[8],
+                    postprocessed_vocals_track_transfer_dropdown,
                 ],
                 show_progress="hidden",
             )
@@ -618,7 +689,7 @@ def render(
                 EventArgs(
                     partial(_transfer, len(input_tracks)),
                     inputs=[
-                        transfer_output_track_dropdowns[8],
+                        postprocessed_vocals_track_transfer_dropdown,
                         postprocessed_vocals_track_output,
                     ],
                     outputs=input_tracks,
@@ -650,22 +721,22 @@ def render(
             with gr.Row():
                 with gr.Column():
                     shifted_instrumentals_track_output.render()
-                    transfer_output_track_dropdowns[9].render()
+                    shifted_instrumentals_track_transfer_dropdown.render()
                 with gr.Column():
                     shifted_backup_vocals_track_output.render()
-                    transfer_output_track_dropdowns[10].render()
+                    shifted_backup_vocals_track_transfer_dropdown.render()
 
-            clear_btns[6].render()
-            clear_btns[6].click(
+            pitch_shift_background_clear_btn.render()
+            pitch_shift_background_clear_btn.click(
                 lambda: [
                     0,
-                    gr.Dropdown(value=transfer_defaults[9]),
-                    gr.Dropdown(value=transfer_defaults[10]),
+                    gr.Dropdown(value=shifted_instrumentals_track_transfer_default),
+                    gr.Dropdown(value=shifted_backup_vocals_track_transfer_default),
                 ],
                 outputs=[
                     pitch_change_semitones_background,
-                    transfer_output_track_dropdowns[9],
-                    transfer_output_track_dropdowns[10],
+                    shifted_instrumentals_track_transfer_dropdown,
+                    shifted_backup_vocals_track_transfer_dropdown,
                 ],
                 show_progress="hidden",
             )
@@ -693,7 +764,10 @@ def render(
                     show_progress="hidden",
                 )
                 for dropdown, output_track in zip(
-                    transfer_output_track_dropdowns[9:11],
+                    [
+                        shifted_instrumentals_track_transfer_dropdown,
+                        shifted_backup_vocals_track_transfer_dropdown,
+                    ],
                     [
                         shifted_instrumentals_track_output,
                         shifted_backup_vocals_track_output,
@@ -746,7 +820,7 @@ def render(
                     outputs=output_name,
                     show_progress="hidden",
                 )
-                song_dir_dropdowns[6].change(
+                mix_dir.change(
                     get_song_cover_name_harness,
                     inputs=[postprocessed_vocals_track_input, mix_dir],
                     outputs=output_name,
@@ -755,16 +829,16 @@ def render(
 
             gr.Markdown("**Outputs**")
             song_cover_track.render()
-            transfer_output_track_dropdowns[11].render()
-            clear_btns[7].render()
-            clear_btns[7].click(
+            song_cover_track_transfer_dropdown.render()
+            mix_clear_btn.render()
+            mix_clear_btn.click(
                 lambda: [
                     0,
                     0,
                     0,
                     44100,
                     "mp3",
-                    gr.Dropdown(value=transfer_defaults[11]),
+                    gr.Dropdown(value=song_cover_track_transfer_default),
                 ],
                 outputs=[
                     main_gain,
@@ -772,7 +846,7 @@ def render(
                     backup_gain,
                     output_sr,
                     output_format,
-                    transfer_output_track_dropdowns[11],
+                    song_cover_track_transfer_dropdown,
                 ],
                 show_progress="hidden",
             )
@@ -796,7 +870,7 @@ def render(
                 ),
                 EventArgs(
                     partial(_transfer, len(input_tracks)),
-                    inputs=[transfer_output_track_dropdowns[11], song_cover_track],
+                    inputs=[song_cover_track_transfer_dropdown, song_cover_track],
                     outputs=input_tracks,
                     name="then",
                     show_progress="hidden",

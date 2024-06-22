@@ -175,7 +175,7 @@ def render(
             lambda x: x,
             inputs=dummy_deletion_checkbox,
             outputs=delete_confirmation,
-            js=confirm_box_js("Are you sure you want to delete the selected models?"),
+            js=confirm_box_js("Are you sure you want to delete the selected modelss?"),
             show_progress="hidden",
         ).then(
             partial(confirmation_harness, delete_models),

@@ -528,21 +528,21 @@ def render(
             generate_event_args_list,
             generate_buttons + [show_intermediate_files],
         )
-        percentages = [i / 38 for i in range(38)]
+        percentages = [i / 16 for i in range(16)]
 
         generate_btn2_event_args_list = [
             EventArgs(
                 partial(
                     _duplication_harness,
                     retrieve_song,
-                    percentages=percentages[:4],
+                    percentages=percentages[:3],
                 ),
                 inputs=[song_input],
                 outputs=[song_cover_track, original_track, current_song_dir],
             ),
             EventArgs(
                 partial(
-                    _duplication_harness, separate_vocals, percentages=percentages[4:8]
+                    _duplication_harness, separate_vocals, percentages=percentages[3:5]
                 ),
                 inputs=[original_track, current_song_dir],
                 outputs=[song_cover_track, vocals_track, instrumentals_track],
@@ -551,7 +551,7 @@ def render(
                 partial(
                     _duplication_harness,
                     separate_main_vocals,
-                    percentages=percentages[8:12],
+                    percentages=percentages[5:7],
                 ),
                 inputs=[vocals_track, current_song_dir],
                 outputs=[song_cover_track, main_vocals_track, backup_vocals_track],
@@ -560,7 +560,7 @@ def render(
                 partial(
                     _duplication_harness,
                     dereverb_vocals,
-                    percentages=percentages[12:16],
+                    percentages=percentages[7:9],
                 ),
                 inputs=[main_vocals_track, current_song_dir],
                 outputs=[
@@ -573,7 +573,7 @@ def render(
                 partial(
                     _duplication_harness,
                     convert_vocals,
-                    percentages=percentages[16:20],
+                    percentage=percentages[9],
                 ),
                 inputs=[
                     main_vocals_dereverbed_track,
@@ -594,7 +594,7 @@ def render(
                 partial(
                     _duplication_harness,
                     postprocess_vocals,
-                    percentages=percentages[20:24],
+                    percentage=percentages[10],
                 ),
                 inputs=[
                     converted_vocals_track,
@@ -610,7 +610,7 @@ def render(
                 partial(
                     _duplication_harness,
                     pitch_shift_background,
-                    percentages=percentages[24:32],
+                    percentages=percentages[11:13],
                 ),
                 inputs=[
                     instrumentals_track,
@@ -628,7 +628,7 @@ def render(
                 partial(
                     exception_harness,
                     _mix_song_cover_harness,
-                    percentages=percentages[32:],
+                    percentages=percentages[13:16],
                 ),
                 inputs=[
                     postprocessed_vocals_track,

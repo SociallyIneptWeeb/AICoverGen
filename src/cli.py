@@ -12,7 +12,7 @@ if __name__ == "__main__":
         "--song-input",
         type=str,
         required=True,
-        help="Link to a song on YouTube or the full path of a local audio file",
+        help="Link to a song on YouTube, the full path of a local audio file or a cached input song",
     )
     parser.add_argument(
         "-dir",
@@ -145,7 +145,7 @@ if __name__ == "__main__":
         "--keep-files",
         action=argparse.BooleanOptionalAction,
         default=True,
-        help="Whether to keep all intermediate audio files",
+        help="Whether to keep song directory with intermediate audio files generated during song cover generation.",
     )
     args = parser.parse_args()
 

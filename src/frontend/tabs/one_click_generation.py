@@ -292,7 +292,7 @@ def render(
                 keep_files = gr.Checkbox(
                     label="Keep intermediate audio files",
                     value=True,
-                    info="Keep intermediate audio files generated during song cover generation. Leave unchecked to save space.",
+                    info="Keep song directory with intermediate audio files generated during song cover generation. Leave unchecked to save space.",
                 )
                 show_intermediate_files = gr.Checkbox(
                     label="Show intermediate audio files",

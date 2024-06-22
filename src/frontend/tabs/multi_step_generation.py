@@ -52,6 +52,15 @@ def render(
             _,
             _,
         ) = generate_buttons
+        (
+            separate_vocals_dir,
+            separate_main_vocals_dir,
+            dereverb_vocals_dir,
+            convert_vocals_dir,
+            postprocess_vocals_dir,
+            pitch_shift_background_dir,
+            mix_dir,
+        ) = song_dir_dropdowns
         current_song_dir = gr.State(None)
 
         (
@@ -251,7 +260,7 @@ def render(
             gr.Markdown("")
             gr.Markdown("**Inputs**")
             original_track_input.render()
-            song_dir_dropdowns[0].render()
+            separate_vocals_dir.render()
             gr.Markdown("**Outputs**")
             with gr.Row():
                 with gr.Column():
@@ -275,7 +284,7 @@ def render(
             separate_vocals_event_args_list = [
                 EventArgs(
                     partial(exception_harness, separate_vocals),
-                    inputs=[original_track_input, song_dir_dropdowns[0]],
+                    inputs=[original_track_input, separate_vocals_dir],
                     outputs=[vocals_track_output, instrumentals_track_output],
                 )
             ] + [
@@ -301,7 +310,7 @@ def render(
             gr.Markdown("")
             gr.Markdown("**Inputs**")
             vocals_track_input.render()
-            song_dir_dropdowns[1].render()
+            separate_main_vocals_dir.render()
             gr.Markdown("**Outputs**")
             with gr.Row():
                 with gr.Column():
@@ -324,7 +333,7 @@ def render(
             separate_main_vocals_event_args_list = [
                 EventArgs(
                     partial(exception_harness, separate_main_vocals),
-                    inputs=[vocals_track_input, song_dir_dropdowns[1]],
+                    inputs=[vocals_track_input, separate_main_vocals_dir],
                     outputs=[main_vocals_track_output, backup_vocals_track_output],
                 )
             ] + [
@@ -351,7 +360,7 @@ def render(
             gr.Markdown("")
             gr.Markdown("**Inputs**")
             main_vocals_track_input.render()
-            song_dir_dropdowns[2].render()
+            dereverb_vocals_dir.render()
             gr.Markdown("**Outputs**")
             with gr.Row():
                 with gr.Column():
@@ -373,7 +382,7 @@ def render(
             dereverb_vocals_event_args_list = [
                 EventArgs(
                     partial(exception_harness, dereverb_vocals),
-                    inputs=[main_vocals_track_input, song_dir_dropdowns[2]],
+                    inputs=[main_vocals_track_input, dereverb_vocals_dir],
                     outputs=[dereverbed_vocals_track_output, reverb_track_output],
                 )
             ] + [
@@ -399,7 +408,7 @@ def render(
             gr.Markdown("")
             gr.Markdown("**Inputs**")
             dereverbed_vocals_track_input.render()
-            song_dir_dropdowns[3].render()
+            convert_vocals_dir.render()
             with gr.Row():
                 rvc_model.render()
                 pitch_change_octaves = gr.Slider(
@@ -506,7 +515,7 @@ def render(
                     partial(exception_harness, convert_vocals),
                     inputs=[
                         dereverbed_vocals_track_input,
-                        song_dir_dropdowns[3],
+                        convert_vocals_dir,
                         rvc_model,
                         pitch_change_octaves,
                         pitch_change_semitones,
@@ -539,7 +548,7 @@ def render(
             gr.Markdown("")
             gr.Markdown("**Inputs**")
             converted_vocals_track_input.render()
-            song_dir_dropdowns[4].render()
+            postprocess_vocals_dir.render()
             with gr.Row():
                 reverb_rm_size = gr.Slider(
                     0,
@@ -598,7 +607,7 @@ def render(
                     partial(exception_harness, postprocess_vocals),
                     inputs=[
                         converted_vocals_track_input,
-                        song_dir_dropdowns[4],
+                        postprocess_vocals_dir,
                         reverb_rm_size,
                         reverb_wet,
                         reverb_dry,
@@ -628,7 +637,7 @@ def render(
             with gr.Row():
                 instrumentals_track_input.render()
                 backup_vocals_track_input.render()
-            song_dir_dropdowns[5].render()
+            pitch_shift_background_dir.render()
             pitch_change_semitones_background = gr.Slider(
                 -12,
                 12,
@@ -667,7 +676,7 @@ def render(
                     inputs=[
                         instrumentals_track_input,
                         backup_vocals_track_input,
-                        song_dir_dropdowns[5],
+                        pitch_shift_background_dir,
                         pitch_change_semitones_background,
                     ],
                     outputs=[
@@ -704,7 +713,7 @@ def render(
                 postprocessed_vocals_track_input.render()
                 shifted_instrumentals_track_input.render()
                 shifted_backup_vocals_track_input.render()
-            song_dir_dropdowns[6].render()
+            mix_dir.render()
             with gr.Row():
                 main_gain = gr.Slider(-20, 20, value=0, step=1, label="Main vocals")
                 inst_gain = gr.Slider(-20, 20, value=0, step=1, label="Instrumentals")
@@ -733,13 +742,13 @@ def render(
                 )
                 postprocessed_vocals_track_input.change(
                     get_song_cover_name_harness,
-                    inputs=[postprocessed_vocals_track_input, song_dir_dropdowns[6]],
+                    inputs=[postprocessed_vocals_track_input, mix_dir],
                     outputs=output_name,
                     show_progress="hidden",
                 )
                 song_dir_dropdowns[6].change(
                     get_song_cover_name_harness,
-                    inputs=[postprocessed_vocals_track_input, song_dir_dropdowns[6]],
+                    inputs=[postprocessed_vocals_track_input, mix_dir],
                     outputs=output_name,
                     show_progress="hidden",
                 )
@@ -775,7 +784,7 @@ def render(
                         postprocessed_vocals_track_input,
                         shifted_instrumentals_track_input,
                         shifted_backup_vocals_track_input,
-                        song_dir_dropdowns[6],
+                        mix_dir,
                         main_gain,
                         inst_gain,
                         backup_gain,

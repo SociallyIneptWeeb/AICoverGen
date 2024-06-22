@@ -361,79 +361,88 @@ def render(
                         + song_dir_dropdowns,
                         show_progress="hidden",
                     )
-
+        intermediate_audio_accordions = [
+            gr.Accordion(label, open=False, render=False)
+            for label in [
+                "Step 0: song retrieval",
+                "Step 1: vocals/instrumentals separation",
+                "Step 2: main vocals/ backup vocals separation",
+                "Step 3: main vocals cleanup",
+                "Step 4: conversion of main vocals",
+                "Step 5: post-processing of converted vocals",
+                "Step 6: pitch shift of background tracks",
+            ]
+        ]
+        (
+            song_retrieval_accordion,
+            vocals_separation_accordion,
+            main_vocals_separation_accordion,
+            vocal_cleanup_accordion,
+            vocal_conversion_accordion,
+            vocals_postprocessing_accordion,
+            pitch_shift_accordion,
+        ) = intermediate_audio_accordions
+        (
+            original_track,
+            vocals_track,
+            instrumentals_track,
+            main_vocals_track,
+            backup_vocals_track,
+            main_vocals_dereverbed_track,
+            main_vocals_reverb_track,
+            converted_vocals_track,
+            postprocessed_vocals_track,
+            instrumentals_shifted_track,
+            backup_vocals_shifted_track,
+        ) = [
+            gr.Audio(label=label, type="filepath", interactive=False, render=False)
+            for label in [
+                "Input song",
+                "Vocals",
+                "Instrumentals",
+                "Main vocals",
+                "Backup vocals",
+                "De-reverbed main vocals",
+                "Main vocals reverb",
+                "Converted vocals",
+                "Post-processed vocals",
+                "Pitch-shifted instrumentals",
+                "Pitch-shifted backup vocals",
+            ]
+        ]
         with gr.Accordion(
             "Access intermediate audio files", open=False, visible=False
         ) as intermediate_files_accordion:
+            song_retrieval_accordion.render()
+            with song_retrieval_accordion:
+                original_track.render()
+            vocals_separation_accordion.render()
+            with vocals_separation_accordion:
+                with gr.Row():
+                    vocals_track.render()
+                    instrumentals_track.render()
+            main_vocals_separation_accordion.render()
+            with main_vocals_separation_accordion:
+                with gr.Row():
+                    main_vocals_track.render()
+                    backup_vocals_track.render()
 
-            with gr.Accordion(
-                "Step 0: song retrieval", open=False
-            ) as song_retrieval_accordion:
-                original_track = gr.Audio(
-                    label="Input song", type="filepath", interactive=False
-                )
-
-            with gr.Accordion(
-                "Step 1: vocals/instrumentals separation", open=False
-            ) as vocals_separation_accordion:
+            vocal_cleanup_accordion.render()
+            with vocal_cleanup_accordion:
                 with gr.Row():
-                    vocals_track = gr.Audio(
-                        label="Vocals", type="filepath", interactive=False
-                    )
-                    instrumentals_track = gr.Audio(
-                        label="Instrumentals", type="filepath", interactive=False
-                    )
-            with gr.Accordion(
-                "Step 2: main vocals/ backup vocals separation", open=False
-            ) as main_vocals_separation_accordion:
+                    main_vocals_dereverbed_track.render()
+                    main_vocals_reverb_track.render()
+            vocal_conversion_accordion.render()
+            with vocal_conversion_accordion:
+                converted_vocals_track.render()
+            vocals_postprocessing_accordion.render()
+            with vocals_postprocessing_accordion:
+                postprocessed_vocals_track.render()
+            pitch_shift_accordion.render()
+            with pitch_shift_accordion:
                 with gr.Row():
-                    main_vocals_track = gr.Audio(
-                        label="Main vocals", type="filepath", interactive=False
-                    )
-                    backup_vocals_track = gr.Audio(
-                        label="Backup vocals", type="filepath", interactive=False
-                    )
-            with gr.Accordion(
-                "Step 3: main vocals cleanup", open=False
-            ) as vocal_cleanup_accordion:
-                with gr.Row():
-                    main_vocals_dereverbed_track = gr.Audio(
-                        label="De-reverbed main vocals",
-                        type="filepath",
-                        interactive=False,
-                    )
-                    main_vocals_reverb_track = gr.Audio(
-                        label="Main vocals reverb", type="filepath", interactive=False
-                    )
-            with gr.Accordion(
-                "Step 4: conversion of main vocals", open=False
-            ) as vocal_conversion_accordion:
-                converted_vocals_track = gr.Audio(
-                    label="Converted vocals", type="filepath", interactive=False
-                )
-            with gr.Accordion(
-                "Step 5: post-processing of converted vocals", open=False
-            ) as vocals_postprocessing_accordion:
-                postprocessed_vocals_track = gr.Audio(
-                    label="Post-processed vocals",
-                    type="filepath",
-                    interactive=False,
-                )
-            with gr.Accordion(
-                "Step 6: pitch shift of background tracks",
-                open=False,
-            ) as pitch_shift_accordion:
-                with gr.Row():
-                    instrumentals_shifted_track = gr.Audio(
-                        label="Pitch-shifted instrumentals",
-                        type="filepath",
-                        interactive=False,
-                    )
-                    backup_vocals_shifted_track = gr.Audio(
-                        label="Pitch-shifted backup vocals",
-                        type="filepath",
-                        interactive=False,
-                    )
+                    instrumentals_shifted_track.render()
+                    backup_vocals_shifted_track.render()
 
         with gr.Row():
             clear_btn = gr.Button(

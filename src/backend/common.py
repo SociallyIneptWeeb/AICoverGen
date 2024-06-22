@@ -8,11 +8,11 @@ SONGS_DIR = os.path.join(BASE_DIR, "songs")
 TEMP_AUDIO_DIR = os.path.join(SONGS_DIR, "temp")
 
 
-def display_progress(message, percent=None, progress=None):
-    if progress is None:
+def display_progress(message, percent=None, progress_bar=None):
+    if progress_bar is None:
         print(message)
     else:
-        progress(percent, desc=message)
+        progress_bar(percent, desc=message)
 
 
 def remove_suffix_after(text: str, occurrence: str):

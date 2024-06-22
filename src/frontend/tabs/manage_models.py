@@ -28,8 +28,8 @@ def _update_model_lists(num_components, value=None, value_indices=[]):
     )
 
 
-def _filter_public_models_table_harness(tags, query, progress):
-    models_table = filter_public_models_table(tags, query, progress)
+def _filter_public_models_table_harness(tags, query, progress_bar):
+    models_table = filter_public_models_table(tags, query, progress_bar)
     return gr.DataFrame(value=models_table)
 
 

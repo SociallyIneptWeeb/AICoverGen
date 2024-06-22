@@ -173,6 +173,6 @@ if __name__ == "__main__":
         output_format=args.output_format,
         keep_files=args.keep_files,
         return_files=False,
-        progress=None,
+        progress_bar=None,
     )
     print(f"[+] Cover generated at {song_cover_path}")

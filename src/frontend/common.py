@@ -41,7 +41,7 @@ def setup_consecutive_event_listeners(
 
 
 def exception_harness(fun, *args, **kwargs):
-    new_kwargs = kwargs | {"progress": PROGRESS_BAR}
+    new_kwargs = kwargs | {"progress_bar": PROGRESS_BAR}
     try:
         return fun(*args, **new_kwargs)
     except Exception as e:

@@ -16,12 +16,14 @@ def get_current_models():
     return [item for item in models_list if item not in items_to_remove]
 
 
-def load_public_models_table(predicates, progress=None, percentages=[0.0]):
+def load_public_models_table(predicates, progress_bar=None, percentages=[0.0]):
     if len(percentages) != 1:
         raise ValueError("Percentages must be a list of length 1.")
     models_table = []
     keys = ["name", "description", "tags", "credit", "added", "url"]
-    display_progress("[~] Loading public models table ...", percentages[0], progress)
+    display_progress(
+        "[~] Loading public models table ...", percentages[0], progress_bar
+    )
     for model in public_models["voice_models"]:
         if all([predicate(model) for predicate in predicates]):
             models_table.append([model[key] for key in keys])
@@ -33,7 +35,7 @@ def load_public_model_tags():
     return list(public_models["tags"].keys())
 
 
-def filter_public_models_table(tags, query, progress=None, percentages=[0.0]):
+def filter_public_models_table(tags, query, progress_bar=None, percentages=[0.0]):
 
     tags_predicate = lambda model: all(tag in model["tags"] for tag in tags)
     query_predicate = (
@@ -57,7 +59,7 @@ def filter_public_models_table(tags, query, progress=None, percentages=[0.0]):
     else:
         filter_fns = [query_predicate]
 
-    return load_public_models_table(filter_fns, progress, percentages)
+    return load_public_models_table(filter_fns, progress_bar, percentages)
 
 
 def _extract_model_zip(extraction_folder, zip_name, remove_zip):
@@ -111,7 +113,7 @@ def _extract_model_zip(extraction_folder, zip_name, remove_zip):
             os.remove(zip_name)
 
 
-def download_online_model(url, dir_name, progress=None, percentages=[0.0, 0.5]):
+def download_online_model(url, dir_name, progress_bar=None, percentages=[0.0, 0.5]):
     if len(percentages) != 2:
         raise ValueError("Percentages must be a list of length 2.")
     if not url:
@@ -131,18 +133,18 @@ def download_online_model(url, dir_name, progress=None, percentages=[0.0, 0.5]):
     display_progress(
         f"[~] Downloading voice model with name '{dir_name}'...",
         percentages[0],
-        progress,
+        progress_bar,
     )
 
     urllib.request.urlretrieve(url, zip_name)
 
-    display_progress(f"[~] Extracting zip file...", percentages[1], progress)
+    display_progress(f"[~] Extracting zip file...", percentages[1], progress_bar)
 
     _extract_model_zip(extraction_folder, zip_name, remove_zip=True)
     return f"[+] Model with name '{dir_name}' successfully downloaded!"
 
 
-def upload_local_model(input_paths, dir_name, progress=None, percentages=[0.0]):
+def upload_local_model(input_paths, dir_name, progress_bar=None, percentages=[0.0]):
     if len(percentages) != 1:
         raise ValueError("Percentages must be a list of length 1.")
     if not input_paths:
@@ -160,11 +162,11 @@ def upload_local_model(input_paths, dir_name, progress=None, percentages=[0.0]):
     if len(input_names) == 1:
         input_name = input_names[0]
         if input_name.endswith(".pth"):
-            display_progress("[~] Copying .pth file ...", percentages[0], progress)
+            display_progress("[~] Copying .pth file ...", percentages[0], progress_bar)
             copy_files_to_new_folder(input_names, output_folder)
         # NOTE a .pth file is actually itself a zip file
         elif zipfile.is_zipfile(input_name):
-            display_progress("[~] Extracting zip file...", percentages[0], progress)
+            display_progress("[~] Extracting zip file...", percentages[0], progress_bar)
             _extract_model_zip(output_folder, input_name, remove_zip=False)
         else:
             raise Exception(
@@ -176,7 +178,7 @@ def upload_local_model(input_paths, dir_name, progress=None, percentages=[0.0]):
         index_name, pth_name = input_names_sorted
         if pth_name.endswith(".pth") and index_name.endswith(".index"):
             display_progress(
-                "[~] Copying .pth file and index file ...", percentages[0], progress
+                "[~] Copying .pth file and index file ...", percentages[0], progress_bar
             )
             copy_files_to_new_folder(input_names, output_folder)
         else:
@@ -187,12 +189,12 @@ def upload_local_model(input_paths, dir_name, progress=None, percentages=[0.0]):
     return f"[+] Model with name '{dir_name}' successfully uploaded!"
 
 
-def delete_models(model_names, progress=None, percentages=[0.0]):
+def delete_models(model_names, progress_bar=None, percentages=[0.0]):
     if len(percentages) != 1:
         raise ValueError("Percentages must be a list of length 1.")
     if not model_names:
         raise Exception("No models selected!")
-    display_progress("[~] Deleting selected models ...", percentages[0], progress)
+    display_progress("[~] Deleting selected models ...", percentages[0], progress_bar)
     for model_name in model_names:
         model_dir = os.path.join(RVC_MODELS_DIR, model_name)
         if not os.path.isdir(model_dir):
@@ -207,11 +209,11 @@ def delete_models(model_names, progress=None, percentages=[0.0]):
         return f"[+] Models with names {first_models} and {last_model} successfully deleted!"
 
 
-def delete_all_models(progress=None, percentages=[0.0]):
+def delete_all_models(progress_bar=None, percentages=[0.0]):
     if len(percentages) != 1:
         raise ValueError("Percentages must be a list of length 1.")
     all_models = get_current_models()
-    display_progress("[~] Deleting all models ...", percentages[0], progress)
+    display_progress("[~] Deleting all models ...", percentages[0], progress_bar)
     for model_name in all_models:
         model_dir = os.path.join(RVC_MODELS_DIR, model_name)
         if os.path.isdir(model_dir):

@@ -55,7 +55,7 @@ def json_dump(thing, path):
         )
 
 
-def json_load(path, encoding=None):
+def json_load(path, encoding="utf-8"):
     with open(path, encoding=encoding) as file:
         return json.load(file)
 

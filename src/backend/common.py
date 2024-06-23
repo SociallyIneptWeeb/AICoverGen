@@ -34,6 +34,10 @@ def copy_files_to_new_folder(file_paths, folder_path):
         )
 
 
+def get_path_stem(path):
+    return os.path.splitext(os.path.basename(path))[0]
+
+
 def json_dumps(thing):
     return json.dumps(
         thing,

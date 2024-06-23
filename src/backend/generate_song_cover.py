@@ -21,6 +21,7 @@ from backend.common import (
     SONGS_DIR,
     TEMP_AUDIO_DIR,
     display_progress,
+    get_path_stem,
     json_dump,
     json_load,
     get_hash,
@@ -94,8 +95,12 @@ def _yt_download(link, song_dir):
 
 def _get_cached_input_paths():
     # TODO if we later add .json file for input then we need to exclude those here
-    input_paths_pattern = os.path.join(TEMP_AUDIO_DIR, "*", "0_*_Original*")
-    return glob.glob(input_paths_pattern)
+    return glob.glob(os.path.join(TEMP_AUDIO_DIR, "*", "0_*_Original*"))
+
+
+def _get_orig_song_path(song_dir):
+    # NOTE orig_song_paths should never contain more than one element
+    return next(iter(glob.glob(os.path.join(song_dir, "0_*_Original*"))), None)
 
 
 def _pitch_shift(audio_path, output_path, n_semi_tones):
@@ -367,9 +372,7 @@ def retrieve_song(
         )
 
     song_dir, input_type = _make_song_dir(song_input, progress_bar, percentages[0])
-    orig_song_path = next(
-        iter(glob.glob(os.path.join(song_dir, "0_*_Original*"))), None
-    )
+    orig_song_path = _get_orig_song_path(song_dir)
 
     if not orig_song_path:
         if input_type == "yt":
@@ -841,47 +844,42 @@ def pitch_shift_background(
     return instrumentals_shifted_path, backup_vocals_shifted_path
 
 
+def _get_voice_model(mixed_vocals_path, song_dir):
+    voice_model = "Unknown"
+    if not (mixed_vocals_path and song_dir):
+        return voice_model
+    mixed_vocals_stem = get_path_stem(mixed_vocals_path)
+    mixed_vocals_json_path = os.path.join(song_dir, f"{mixed_vocals_stem}.json")
+    if not os.path.isfile(mixed_vocals_json_path):
+        return voice_model
+    mixed_vocals_json_dict = json_load(mixed_vocals_json_path)
+    input_files = mixed_vocals_json_dict.get("input-files")
+    input_path = input_files[0].get("name") if input_files else None
+    if not input_path:
+        return voice_model
+    input_stem = get_path_stem(input_path)
+    converted_vocals_json_path = os.path.join(song_dir, f"{input_stem}.json")
+    if not os.path.isfile(converted_vocals_json_path):
+        return voice_model
+    converted_vocals_dict = json_load(converted_vocals_json_path)
+    return converted_vocals_dict.get("voice-model", voice_model)
+
+
 def get_song_cover_name(
     mixed_vocals_path, song_dir, voice_model, progress_bar=None, percentage=0.0
 ):
     display_progress("[~] Getting song cover name...", percentage, progress_bar)
-    orig_song_prefix = "Unknown"
-    # NOTE orig_song_paths should never contain more than one element
-    orig_song_path = (
-        next(iter(glob.glob(os.path.join(song_dir, "0_*_Original*"))), None)
-        if song_dir
-        else None
+
+    orig_song_path = _get_orig_song_path(song_dir) if song_dir else None
+    orig_song_name = (
+        (get_path_stem(orig_song_path).removeprefix("0_").removesuffix("_Original"))
+        if orig_song_path
+        else "Unknown"
     )
-    if orig_song_path:
-        orig_song_base_path = os.path.splitext(orig_song_path)[0]
-        orig_song_path_without_ext = os.path.basename(orig_song_base_path)
 
-        orig_song_prefix = orig_song_path_without_ext.removeprefix("0_").removesuffix(
-            "_Original"
-        )
+    voice_model = voice_model or _get_voice_model(mixed_vocals_path, song_dir)
 
-    if not voice_model:
-        voice_model = "Unknown"
-        if mixed_vocals_path and song_dir:
-            mixed_vocals_path_no_ext = os.path.splitext(mixed_vocals_path)[0]
-            mixed_vocals_path_base = os.path.basename(mixed_vocals_path_no_ext)
-            mixed_vocals_json_path = os.path.join(
-                song_dir, f"{mixed_vocals_path_base}.json"
-            )
-            if os.path.isfile(mixed_vocals_json_path):
-                mixed_vocals_json_dict = json_load(mixed_vocals_json_path)
-                input_files = mixed_vocals_json_dict.get("input-files")
-                input_path = input_files[0].get("name") if input_files else None
-                if input_path:
-                    input_path_no_ext = os.path.splitext(input_path)[0]
-                    ai_vocals_json_path = os.path.join(
-                        song_dir, f"{input_path_no_ext}.json"
-                    )
-                    if os.path.isfile(ai_vocals_json_path):
-                        ai_vocals_dict = json_load(ai_vocals_json_path)
-                        voice_model = ai_vocals_dict.get("voice-model", voice_model)
-
-    return f"{orig_song_prefix} ({voice_model} Ver)"
+    return f"{orig_song_name} ({voice_model} Ver)"
 
 
 def mix_song_cover(

@@ -256,6 +256,7 @@ def render(
             with gr.Row():
                 output_name = gr.Text(
                     label="Output file name",
+                    info="If no name is provided, a suitable name will be generated automatically.",
                     placeholder="Ultimate RVC song cover",
                 )
                 output_sr = gr.Dropdown(
@@ -276,13 +277,13 @@ def render(
                     label="Output file format",
                 )
             rvc_model.change(
-                partial(get_song_cover_name_harness, None),
+                partial(get_song_cover_name_harness, None, update_key="placeholder"),
                 inputs=[cached_input_songs_dropdown, rvc_model],
                 outputs=output_name,
                 show_progress="hidden",
             )
             cached_input_songs_dropdown.change(
-                partial(get_song_cover_name_harness, None),
+                partial(get_song_cover_name_harness, None, update_key="placeholder"),
                 inputs=[cached_input_songs_dropdown, rvc_model],
                 outputs=output_name,
                 show_progress="hidden",

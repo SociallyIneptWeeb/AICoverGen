@@ -100,15 +100,17 @@ def show_hop_slider(pitch_detection_algo):
         return gr.update(visible=False)
 
 
-def get_song_cover_name_harness(mixed_vocals, song_dir, voice_model=None):
+def get_song_cover_name_harness(
+    mixed_vocals, song_dir, voice_model=None, update_key="value"
+):
     update_args = {}
     if mixed_vocals or song_dir or voice_model:
         name = exception_harness(
             get_song_cover_name, mixed_vocals, song_dir, voice_model
         )
-        update_args["value"] = name
+        update_args[update_key] = name
     else:
-        update_args["value"] = None
+        update_args[update_key] = None
     return gr.update(**update_args)
 
 

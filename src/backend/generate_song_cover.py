@@ -253,7 +253,7 @@ def delete_intermediate_audio(song_inputs, progress_bar=None, percentage=0.0):
 
         if not PurePath(song_input).parent == PurePath(TEMP_AUDIO_DIR):
             raise Exception(
-                f"Song directory '{song_input}' is not located in the temporary audio directory."
+                f"Song directory '{song_input}' is not located in the intermediate audio root directory."
             )
         shutil.rmtree(song_input)
     return "[+] Successfully deleted intermediate audio files for selected songs!"
@@ -314,7 +314,9 @@ def _make_song_dir(song_input, progress_bar=None, percentage=0.0):
     # if song directory
     if os.path.isdir(song_input):
         if not PurePath(song_input).parent == PurePath(TEMP_AUDIO_DIR):
-            raise Exception("Song directory not located in temporary audio directory.")
+            raise Exception(
+                "Song directory not located in intermediate audio root directory."
+            )
         display_progress(
             "[~] Using existing song directory...", percentage, progress_bar
         )

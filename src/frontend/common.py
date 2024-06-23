@@ -52,7 +52,7 @@ def confirmation_harness(fun, confirm, *args, **kwargs):
     if confirm:
         return exception_harness(fun, *args, **kwargs)
     else:
-        return gr.update()
+        raise gr.Error("Confirmation missing!")
 
 
 def confirm_box_js(msg):

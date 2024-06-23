@@ -4,6 +4,12 @@ import urllib.request
 import zipfile
 
 from common import RVC_MODELS_DIR
+from backend.exceptions import (
+    PathNotFoundError,
+    InputMissingError,
+    PathExistsError,
+    FileTypeError,
+)
 from backend.common import display_progress, copy_files_to_new_folder, json_load
 
 
@@ -80,7 +86,7 @@ def _extract_model_zip(extraction_folder, zip_name, remove_zip):
                     model_filepath = os.path.join(root, name)
 
         if not model_filepath:
-            raise Exception(
+            raise PathNotFoundError(
                 f"No .pth model file was found in the extracted zip folder."
             )
         # move model and index file to extraction folder
@@ -113,12 +119,12 @@ def download_online_model(url, dir_name, progress_bar=None, percentages=[0.0, 0.
     if len(percentages) != 2:
         raise ValueError("Percentages must be a list of length 2.")
     if not url:
-        raise Exception("Download link to model missing!")
+        raise InputMissingError("Download link to model missing!")
     if not dir_name:
-        raise Exception("Model name missing!")
+        raise InputMissingError("Model name missing!")
     extraction_folder = os.path.join(RVC_MODELS_DIR, dir_name)
     if os.path.exists(extraction_folder):
-        raise Exception(
+        raise PathExistsError(
             f'Voice model directory "{dir_name}" already exists! Choose a different name for your voice model.'
         )
     zip_name = url.split("/")[-1].split("?")[0]
@@ -142,14 +148,14 @@ def download_online_model(url, dir_name, progress_bar=None, percentages=[0.0, 0.
 
 def upload_local_model(input_paths, dir_name, progress_bar=None, percentage=0.0):
     if not input_paths:
-        raise Exception("No files selected!")
+        raise InputMissingError("No files selected!")
     if len(input_paths) > 2:
-        raise Exception("At most two files can be uploaded!")
+        raise ValueError("At most two files can be uploaded!")
     if not dir_name:
-        raise Exception("Model name missing!")
+        raise InputMissingError("Model name missing!")
     output_folder = os.path.join(RVC_MODELS_DIR, dir_name)
     if os.path.exists(output_folder):
-        raise Exception(
+        raise PathExistsError(
             f'Voice model directory "{dir_name}" already exists! Choose a different name for your voice model.'
         )
     input_names = [input_path.name for input_path in input_paths]
@@ -163,7 +169,7 @@ def upload_local_model(input_paths, dir_name, progress_bar=None, percentage=0.0)
             display_progress("[~] Extracting zip file...", percentage, progress_bar)
             _extract_model_zip(output_folder, input_name, remove_zip=False)
         else:
-            raise Exception(
+            raise FileTypeError(
                 "Only a .pth file or a .zip file can be uploaded by itself!"
             )
     else:
@@ -176,7 +182,7 @@ def upload_local_model(input_paths, dir_name, progress_bar=None, percentage=0.0)
             )
             copy_files_to_new_folder(input_names, output_folder)
         else:
-            raise Exception(
+            raise FileTypeError(
                 "Only a .pth file and an .index file can be uploaded together!"
             )
 
@@ -185,12 +191,14 @@ def upload_local_model(input_paths, dir_name, progress_bar=None, percentage=0.0)
 
 def delete_models(model_names, progress_bar=None, percentage=0.0):
     if not model_names:
-        raise Exception("No models selected!")
+        raise InputMissingError("No models selected!")
     display_progress("[~] Deleting selected models ...", percentage, progress_bar)
     for model_name in model_names:
         model_dir = os.path.join(RVC_MODELS_DIR, model_name)
         if not os.path.isdir(model_dir):
-            raise Exception(f'Voice model directory "{model_name}" does not exist!')
+            raise PathNotFoundError(
+                f'Voice model directory "{model_name}" does not exist!'
+            )
         shutil.rmtree(model_dir)
     models_names_formatted = [f"'{w}'" for w in model_names]
     if len(model_names) == 1:

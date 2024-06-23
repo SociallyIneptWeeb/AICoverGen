@@ -16,6 +16,7 @@ from pedalboard.io import AudioFile
 from pydub import AudioSegment, utils as pydub_utils
 
 from common import MDXNET_MODELS_DIR, RVC_MODELS_DIR
+
 from backend.common import (
     SONGS_DIR,
     TEMP_AUDIO_DIR,
@@ -25,6 +26,11 @@ from backend.common import (
     get_hash,
     get_file_hash,
     get_rvc_model,
+)
+from backend.exceptions import (
+    InputMissingError,
+    PathNotFoundError,
+    InvalidPathError,
 )
 from backend.mdx import run_mdx
 from vc.rvc import Config, load_hubert, get_vc, rvc_infer
@@ -239,7 +245,7 @@ def get_named_song_dirs():
 
 def delete_intermediate_audio(song_inputs, progress_bar=None, percentage=0.0):
     if not song_inputs:
-        raise Exception(
+        raise InputMissingError(
             "Song inputs missing! Please provide a non-empty list of song directories"
         )
     display_progress(
@@ -249,10 +255,10 @@ def delete_intermediate_audio(song_inputs, progress_bar=None, percentage=0.0):
     )
     for song_input in song_inputs:
         if not os.path.isdir(song_input):
-            raise Exception(f"Song directory '{song_input}' does not exist.")
+            raise PathNotFoundError(f"Song directory '{song_input}' does not exist.")
 
         if not PurePath(song_input).parent == PurePath(TEMP_AUDIO_DIR):
-            raise Exception(
+            raise InvalidPathError(
                 f"Song directory '{song_input}' is not located in the intermediate audio root directory."
             )
         shutil.rmtree(song_input)
@@ -273,13 +279,13 @@ def delete_all_intermediate_audio(progress_bar=None, percentages=[0.0]):
 
 def convert_to_stereo(song_path, song_dir, progress_bar=None, percentage=0.0):
     if not song_path:
-        raise Exception("Input song missing!")
+        raise InputMissingError("Input song missing!")
     if not os.path.isfile(song_path):
-        raise Exception("Input song does not exist!")
+        raise PathNotFoundError("Input song does not exist!")
     if not song_dir:
-        raise Exception("Song directory missing!")
+        raise InputMissingError("Song directory missing!")
     if not os.path.isdir(song_dir):
-        raise Exception("Song directory does not exist!")
+        raise PathNotFoundError("Song directory does not exist!")
 
     stereo_path = song_path
 
@@ -314,7 +320,7 @@ def _make_song_dir(song_input, progress_bar=None, percentage=0.0):
     # if song directory
     if os.path.isdir(song_input):
         if not PurePath(song_input).parent == PurePath(TEMP_AUDIO_DIR):
-            raise Exception(
+            raise InvalidPathError(
                 "Song directory not located in intermediate audio root directory."
             )
         display_progress(
@@ -329,7 +335,7 @@ def _make_song_dir(song_input, progress_bar=None, percentage=0.0):
         input_type = "yt"
         song_id = _get_youtube_video_id(song_input)
         if song_id is None:
-            raise Exception("Invalid YouTube url!")
+            raise InvalidPathError("Invalid YouTube url!")
     # local audio file
     else:
         input_type = "local"
@@ -339,7 +345,7 @@ def _make_song_dir(song_input, progress_bar=None, percentage=0.0):
         if os.path.isfile(song_input):
             song_id = get_file_hash(song_input)
         else:
-            raise Exception(f"File {song_input} does not exist.")
+            raise PathNotFoundError(f"File {song_input} does not exist.")
 
     song_dir = os.path.join(TEMP_AUDIO_DIR, song_id)
 
@@ -356,7 +362,7 @@ def retrieve_song(
     if len(percentages) != 3:
         raise ValueError("Percentages must be a list of length 3.")
     if not song_input:
-        raise Exception(
+        raise InputMissingError(
             "Song input missing! Please provide a valid YouTube url, local audio file or cached input song."
         )
 
@@ -398,13 +404,13 @@ def separate_vocals(
     if len(percentages) != 2:
         raise ValueError("Percentages must be a list of length 2.")
     if not song_path:
-        raise Exception("Input song missing!")
+        raise InputMissingError("Input song missing!")
     if not os.path.isfile(song_path):
-        raise Exception("Input song does not exist!")
+        raise PathNotFoundError("Input song does not exist!")
     if not song_dir:
-        raise Exception("Song directory missing!")
+        raise InputMissingError("Song directory missing!")
     if not os.path.isdir(song_dir):
-        raise Exception("Song directory does not exist!")
+        raise PathNotFoundError("Song directory does not exist!")
 
     song_path = (
         convert_to_stereo(song_path, song_dir, progress_bar, percentages[0])
@@ -467,13 +473,13 @@ def separate_main_vocals(
         raise ValueError("Percentages must be a list of length 2.")
 
     if not vocals_path:
-        raise Exception("Vocals missing!")
+        raise InputMissingError("Vocals missing!")
     if not os.path.isfile(vocals_path):
-        raise Exception("Vocals do not exist!")
+        raise PathNotFoundError("Vocals do not exist!")
     if not song_dir:
-        raise Exception("Song directory missing!")
+        raise InputMissingError("Song directory missing!")
     if not os.path.isdir(song_dir):
-        raise Exception("song directory does not exist!")
+        raise PathNotFoundError("song directory does not exist!")
 
     vocals_path = (
         convert_to_stereo(vocals_path, song_dir, progress_bar, percentages[0])
@@ -539,13 +545,13 @@ def dereverb_vocals(
         raise ValueError("Percentages must be a list of length 2.")
 
     if not vocals_path:
-        raise Exception("Vocals missing!")
+        raise InputMissingError("Vocals missing!")
     if not os.path.isfile(vocals_path):
-        raise Exception("Vocals do not exist!")
+        raise PathNotFoundError("Vocals do not exist!")
     if not song_dir:
-        raise Exception("Song directory missing!")
+        raise InputMissingError("Song directory missing!")
     if not os.path.isdir(song_dir):
-        raise Exception("song directory does not exist!")
+        raise PathNotFoundError("song directory does not exist!")
 
     vocals_path = (
         convert_to_stereo(vocals_path, song_dir, progress_bar, percentages[0])
@@ -616,17 +622,17 @@ def convert_vocals(
     percentage=0.0,
 ):
     if not vocals_path:
-        raise Exception("Vocals missing!")
+        raise InputMissingError("Vocals missing!")
     if not os.path.isfile(vocals_path):
-        raise Exception("Vocals do not exist!")
+        raise PathNotFoundError("Vocals do not exist!")
     if not song_dir:
-        raise Exception("Song directory missing!")
+        raise InputMissingError("Song directory missing!")
     if not os.path.isdir(song_dir):
-        raise Exception("song directory does not exist!")
+        raise PathNotFoundError("song directory does not exist!")
     if not voice_model:
-        raise Exception("Voice model missing!")
+        raise InputMissingError("Voice model missing!")
     if not os.path.isdir(os.path.join(RVC_MODELS_DIR, voice_model)):
-        raise Exception("Voice model does not exist!")
+        raise PathNotFoundError("Voice model does not exist!")
 
     pitch_change = pitch_change_octaves * 12 + pitch_change_semi_tones
     hop_length_suffix = "" if f0_method != "mangio-crepe" else f"_{crepe_hop_length}"
@@ -686,13 +692,13 @@ def postprocess_vocals(
 ):
 
     if not vocals_path:
-        raise Exception("Vocals missing!")
+        raise InputMissingError("Vocals missing!")
     if not os.path.isfile(vocals_path):
-        raise Exception("Vocals do not exist!")
+        raise PathNotFoundError("Vocals do not exist!")
     if not song_dir:
-        raise Exception("Song directory missing!")
+        raise InputMissingError("Song directory missing!")
     if not os.path.isdir(song_dir):
-        raise Exception("song directory does not exist!")
+        raise PathNotFoundError("song directory does not exist!")
 
     arg_dict = {
         "input-files": [
@@ -745,17 +751,17 @@ def pitch_shift_background(
     if len(percentages) != 2:
         raise ValueError("Percentages must be a list of length 2.")
     if not instrumentals_path:
-        raise Exception("Instrumentals missing!")
+        raise InputMissingError("Instrumentals missing!")
     if not os.path.isfile(instrumentals_path):
-        raise Exception("Instrumentals do not exist!")
+        raise PathNotFoundError("Instrumentals do not exist!")
     if not backup_vocals_path:
-        raise Exception("Backup vocals missing!")
+        raise InputMissingError("Backup vocals missing!")
     if not os.path.isfile(backup_vocals_path):
-        raise Exception("Backup vocals do not exist!")
+        raise PathNotFoundError("Backup vocals do not exist!")
     if not song_dir:
-        raise Exception("Song directory missing!")
+        raise InputMissingError("Song directory missing!")
     if not os.path.isdir(song_dir):
-        raise Exception("song directory does not exist!")
+        raise PathNotFoundError("song directory does not exist!")
 
     instrumentals_shifted_path = instrumentals_path
     backup_vocals_shifted_path = backup_vocals_path
@@ -896,21 +902,21 @@ def mix_song_cover(
     if len(percentages) != 3:
         raise ValueError("Percentages must be a list of length 3.")
     if not main_vocals_path:
-        raise Exception("Main vocals missing!")
+        raise InputMissingError("Main vocals missing!")
     if not os.path.isfile(main_vocals_path):
-        raise Exception("Main vocals do not exist!")
+        raise PathNotFoundError("Main vocals do not exist!")
     if not instrumentals_path:
-        raise Exception("Instrumentals missing!")
+        raise InputMissingError("Instrumentals missing!")
     if not os.path.isfile(instrumentals_path):
-        raise Exception("Instrumentals do not exist!")
+        raise PathNotFoundError("Instrumentals do not exist!")
     if not backup_vocals_path:
-        raise Exception("Backup vocals missing!")
+        raise InputMissingError("Backup vocals missing!")
     if not os.path.isfile(backup_vocals_path):
-        raise Exception("Backup vocals do not exist!")
+        raise PathNotFoundError("Backup vocals do not exist!")
     if not song_dir:
-        raise Exception("Song directory missing!")
+        raise InputMissingError("Song directory missing!")
     if not os.path.isdir(song_dir):
-        raise Exception("song directory does not exist!")
+        raise PathNotFoundError("song directory does not exist!")
 
     arg_dict = {
         "input-files": [

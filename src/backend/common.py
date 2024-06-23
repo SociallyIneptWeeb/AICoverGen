@@ -3,6 +3,7 @@ import shutil
 import json
 import hashlib
 from common import BASE_DIR, RVC_MODELS_DIR
+from backend.exceptions import PathNotFoundError
 
 SONGS_DIR = os.path.join(BASE_DIR, "songs")
 TEMP_AUDIO_DIR = os.path.join(SONGS_DIR, "temp")
@@ -27,7 +28,7 @@ def copy_files_to_new_folder(file_paths, folder_path):
     os.makedirs(folder_path)
     for file_path in file_paths:
         if not os.path.exists(file_path):
-            raise Exception(f"File not found: {file_path}")
+            raise PathNotFoundError(f"File not found: {file_path}")
         shutil.copyfile(
             file_path, os.path.join(folder_path, os.path.basename(file_path))
         )
@@ -84,7 +85,9 @@ def get_rvc_model(voice_model):
     rvc_model_filename, rvc_index_filename = None, None
     model_dir = os.path.join(RVC_MODELS_DIR, voice_model)
     if not os.path.exists(model_dir):
-        raise Exception(f"Voice model directory '{voice_model}' does not exist.")
+        raise PathNotFoundError(
+            f"Voice model directory '{voice_model}' does not exist."
+        )
     for file in os.listdir(model_dir):
         ext = os.path.splitext(file)[1]
         if ext == ".pth":
@@ -93,8 +96,7 @@ def get_rvc_model(voice_model):
             rvc_index_filename = file
 
     if rvc_model_filename is None:
-        error_msg = f"No model file exists in {model_dir}."
-        raise Exception(error_msg)
+        raise PathNotFoundError(f"No model file exists in {model_dir}.")
 
     return os.path.join(model_dir, rvc_model_filename), (
         os.path.join(model_dir, rvc_index_filename) if rvc_index_filename else ""

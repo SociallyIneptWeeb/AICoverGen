@@ -2,15 +2,18 @@ import os
 import shutil
 import urllib.request
 import zipfile
-import json
 
 from common import RVC_MODELS_DIR
-from common import display_progress, copy_files_to_new_folder
+from backend.exceptions import (
+    PathNotFoundError,
+    InputMissingError,
+    PathExistsError,
+    FileTypeError,
+)
+from backend.common import display_progress, copy_files_to_new_folder, json_load
 
-with open(
-    os.path.join(RVC_MODELS_DIR, "public_models.json"), encoding="utf8"
-) as infile:
-    public_models = json.load(infile)
+
+public_models = json_load(os.path.join(RVC_MODELS_DIR, "public_models.json"))
 
 
 def get_current_models():
@@ -19,10 +22,10 @@ def get_current_models():
     return [item for item in models_list if item not in items_to_remove]
 
 
-def load_public_models_table(predicates, progress):
+def load_public_models_table(predicates, progress_bar=None, percentage=0.0):
     models_table = []
     keys = ["name", "description", "tags", "credit", "added", "url"]
-    display_progress("[~] Loading public models table ...", 0.5, progress)
+    display_progress("[~] Loading public models table ...", percentage, progress_bar)
     for model in public_models["voice_models"]:
         if all([predicate(model) for predicate in predicates]):
             models_table.append([model[key] for key in keys])
@@ -34,7 +37,7 @@ def load_public_model_tags():
     return list(public_models["tags"].keys())
 
 
-def filter_public_models_table(tags, query, progress):
+def filter_public_models_table(tags, query, progress_bar=None, percentage=0.0):
 
     tags_predicate = lambda model: all(tag in model["tags"] for tag in tags)
     query_predicate = (
@@ -58,10 +61,10 @@ def filter_public_models_table(tags, query, progress):
     else:
         filter_fns = [query_predicate]
 
-    return load_public_models_table(filter_fns, progress)
+    return load_public_models_table(filter_fns, progress_bar, percentage)
 
 
-def extract_model_zip(extraction_folder, zip_name, remove_zip):
+def _extract_model_zip(extraction_folder, zip_name, remove_zip):
     try:
         os.makedirs(extraction_folder)
         with zipfile.ZipFile(zip_name, "r") as zip_ref:
@@ -83,7 +86,7 @@ def extract_model_zip(extraction_folder, zip_name, remove_zip):
                     model_filepath = os.path.join(root, name)
 
         if not model_filepath:
-            raise Exception(
+            raise PathNotFoundError(
                 f"No .pth model file was found in the extracted zip folder."
             )
         # move model and index file to extraction folder
@@ -112,14 +115,16 @@ def extract_model_zip(extraction_folder, zip_name, remove_zip):
             os.remove(zip_name)
 
 
-def download_online_model(url, dir_name, progress):
+def download_online_model(url, dir_name, progress_bar=None, percentages=[0.0, 0.5]):
+    if len(percentages) != 2:
+        raise ValueError("Percentages must be a list of length 2.")
     if not url:
-        raise Exception("Download link to model missing!")
+        raise InputMissingError("Download link to model missing!")
     if not dir_name:
-        raise Exception("Model name missing!")
+        raise InputMissingError("Model name missing!")
     extraction_folder = os.path.join(RVC_MODELS_DIR, dir_name)
     if os.path.exists(extraction_folder):
-        raise Exception(
+        raise PathExistsError(
             f'Voice model directory "{dir_name}" already exists! Choose a different name for your voice model.'
         )
     zip_name = url.split("/")[-1].split("?")[0]
@@ -128,41 +133,43 @@ def download_online_model(url, dir_name, progress):
         url = f"https://pixeldrain.com/api/file/{zip_name}"
 
     display_progress(
-        f"[~] Downloading voice model with name '{dir_name}'...", 0, progress
+        f"[~] Downloading voice model with name '{dir_name}'...",
+        percentages[0],
+        progress_bar,
     )
 
     urllib.request.urlretrieve(url, zip_name)
 
-    display_progress(f"[~] Extracting zip file...", 0.5, progress)
+    display_progress(f"[~] Extracting zip file...", percentages[1], progress_bar)
 
-    extract_model_zip(extraction_folder, zip_name, remove_zip=True)
+    _extract_model_zip(extraction_folder, zip_name, remove_zip=True)
     return f"[+] Model with name '{dir_name}' successfully downloaded!"
 
 
-def upload_local_model(input_paths, dir_name, progress):
+def upload_local_model(input_paths, dir_name, progress_bar=None, percentage=0.0):
     if not input_paths:
-        raise Exception("No files selected!")
+        raise InputMissingError("No files selected!")
     if len(input_paths) > 2:
-        raise Exception("At most two files can be uploaded!")
+        raise ValueError("At most two files can be uploaded!")
     if not dir_name:
-        raise Exception("Model name missing!")
+        raise InputMissingError("Model name missing!")
     output_folder = os.path.join(RVC_MODELS_DIR, dir_name)
     if os.path.exists(output_folder):
-        raise Exception(
+        raise PathExistsError(
             f'Voice model directory "{dir_name}" already exists! Choose a different name for your voice model.'
         )
     input_names = [input_path.name for input_path in input_paths]
     if len(input_names) == 1:
         input_name = input_names[0]
         if input_name.endswith(".pth"):
-            display_progress("[~] Copying .pth file ...", 0.5, progress)
+            display_progress("[~] Copying .pth file ...", percentage, progress_bar)
             copy_files_to_new_folder(input_names, output_folder)
         # NOTE a .pth file is actually itself a zip file
         elif zipfile.is_zipfile(input_name):
-            display_progress("[~] Extracting zip file...", 0.5, progress)
-            extract_model_zip(output_folder, input_name, remove_zip=False)
+            display_progress("[~] Extracting zip file...", percentage, progress_bar)
+            _extract_model_zip(output_folder, input_name, remove_zip=False)
         else:
-            raise Exception(
+            raise FileTypeError(
                 "Only a .pth file or a .zip file can be uploaded by itself!"
             )
     else:
@@ -170,24 +177,29 @@ def upload_local_model(input_paths, dir_name, progress):
         input_names_sorted = sorted(input_names, key=lambda f: os.path.splitext(f)[1])
         index_name, pth_name = input_names_sorted
         if pth_name.endswith(".pth") and index_name.endswith(".index"):
-            display_progress("[~] Copying .pth file and index file ...", 0.5, progress)
+            display_progress(
+                "[~] Copying .pth file and index file ...", percentage, progress_bar
+            )
             copy_files_to_new_folder(input_names, output_folder)
         else:
-            raise Exception(
+            raise FileTypeError(
                 "Only a .pth file and an .index file can be uploaded together!"
             )
 
     return f"[+] Model with name '{dir_name}' successfully uploaded!"
 
 
-def delete_models(model_names, progress):
+def delete_models(model_names, progress_bar=None, percentage=0.0):
     if not model_names:
-        raise Exception("No models selected!")
-    display_progress("[~] Deleting selected models ...", 0.5, progress)
+        raise InputMissingError("No models selected!")
+    display_progress("[~] Deleting selected models ...", percentage, progress_bar)
     for model_name in model_names:
         model_dir = os.path.join(RVC_MODELS_DIR, model_name)
-        if os.path.isdir(model_dir):
-            shutil.rmtree(model_dir)
+        if not os.path.isdir(model_dir):
+            raise PathNotFoundError(
+                f'Voice model directory "{model_name}" does not exist!'
+            )
+        shutil.rmtree(model_dir)
     models_names_formatted = [f"'{w}'" for w in model_names]
     if len(model_names) == 1:
         return f"[+] Model with name {models_names_formatted[0]} successfully deleted!"
@@ -197,9 +209,9 @@ def delete_models(model_names, progress):
         return f"[+] Models with names {first_models} and {last_model} successfully deleted!"
 
 
-def delete_all_models(progress):
+def delete_all_models(progress_bar=None, percentage=0.0):
     all_models = get_current_models()
-    display_progress("[~] Deleting all models ...", 0.5, progress)
+    display_progress("[~] Deleting all models ...", percentage, progress_bar)
     for model_name in all_models:
         model_dir = os.path.join(RVC_MODELS_DIR, model_name)
         if os.path.isdir(model_dir):

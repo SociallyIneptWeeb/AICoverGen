@@ -1,3 +1,5 @@
+from extra_typing import DropdownValue, TransferUpdateArgs
+
 from functools import partial
 
 import gradio as gr
@@ -10,6 +12,8 @@ from frontend.common import (
     get_song_cover_name_harness,
     toggle_visible_component,
     show_hop_slider,
+    update_value,
+    PROGRESS_BAR,
 )
 
 from backend.generate_song_cover import (
@@ -24,21 +28,23 @@ from backend.generate_song_cover import (
 )
 
 
-def _transfer(num_components, output_indices, value):
-    update_args = [{} for _ in range(num_components)]
+def _transfer(
+    num_components: int, output_indices: list[int], value: str
+) -> tuple[gr.Audio, ...]:
+    update_args: list[TransferUpdateArgs] = [{} for _ in range(num_components)]
     for index in output_indices:
         update_args[index]["value"] = value
-    return tuple(gr.update(**update_arg) for update_arg in update_args)
+    return tuple(gr.Audio(**update_arg) for update_arg in update_args)
 
 
 def render(
-    generate_buttons,
-    song_dir_dropdowns,
-    cached_input_songs_dropdown,
-    cached_input_songs_dropdown2,
-    rvc_model,
-    intermediate_audio_to_delete,
-):
+    generate_buttons: list[gr.Button],
+    song_dir_dropdowns: list[gr.Dropdown],
+    cached_input_songs_dropdown: gr.Dropdown,
+    cached_input_songs_dropdown2: gr.Dropdown,
+    rvc_model: gr.Dropdown,
+    intermediate_audio_to_delete: gr.Dropdown,
+) -> None:
     with gr.Tab("Multi-step generation"):
         (
             retrieve_song_btn,
@@ -121,7 +127,7 @@ def render(
             shifted_backup_vocals_track_input,
         ) = input_tracks
 
-        transfer_defaults = [
+        transfer_defaults: list[DropdownValue] = [
             ["Step 1: input song"],
             ["Step 2: vocals"],
             ["Step 6: instrumentals"],
@@ -237,13 +243,13 @@ def render(
                 )
 
                 local_file.change(
-                    lambda x: gr.update(value=x),
+                    update_value,
                     inputs=local_file,
                     outputs=song_input,
                     show_progress="hidden",
                 )
                 cached_input_songs_dropdown2.input(
-                    lambda x: gr.update(value=x),
+                    update_value,
                     inputs=cached_input_songs_dropdown2,
                     outputs=song_input,
                     show_progress="hidden",
@@ -262,8 +268,10 @@ def render(
 
             retrieve_song_event_args_list = [
                 EventArgs(
-                    partial(exception_harness, retrieve_song),
-                    inputs=song_input,
+                    partial(
+                        exception_harness(retrieve_song), progress_bar=PROGRESS_BAR
+                    ),
+                    inputs=[song_input],
                     outputs=[original_track_output, current_song_dir],
                 ),
                 EventArgs(
@@ -272,7 +280,7 @@ def render(
                         len(song_dir_dropdowns) + 3,
                         value_indices=range(len(song_dir_dropdowns) + 1),
                     ),
-                    inputs=current_song_dir,
+                    inputs=[current_song_dir],
                     outputs=(
                         song_dir_dropdowns
                         + [
@@ -331,7 +339,9 @@ def render(
 
             separate_vocals_event_args_list = [
                 EventArgs(
-                    partial(exception_harness, separate_vocals),
+                    partial(
+                        exception_harness(separate_vocals), progress_bar=PROGRESS_BAR
+                    ),
                     inputs=[original_track_input, separate_vocals_dir],
                     outputs=[vocals_track_output, instrumentals_track_output],
                 )
@@ -390,7 +400,10 @@ def render(
 
             separate_main_vocals_event_args_list = [
                 EventArgs(
-                    partial(exception_harness, separate_main_vocals),
+                    partial(
+                        exception_harness(separate_main_vocals),
+                        progress_bar=PROGRESS_BAR,
+                    ),
                     inputs=[vocals_track_input, separate_main_vocals_dir],
                     outputs=[main_vocals_track_output, backup_vocals_track_output],
                 )
@@ -449,7 +462,9 @@ def render(
             dereverb_vocals_btn.render()
             dereverb_vocals_event_args_list = [
                 EventArgs(
-                    partial(exception_harness, dereverb_vocals),
+                    partial(
+                        exception_harness(dereverb_vocals), progress_bar=PROGRESS_BAR
+                    ),
                     inputs=[main_vocals_track_input, dereverb_vocals_dir],
                     outputs=[dereverbed_vocals_track_output, reverb_track_output],
                 )
@@ -583,7 +598,9 @@ def render(
             convert_vocals_btn.render()
             convert_vocals_event_args_list = [
                 EventArgs(
-                    partial(exception_harness, convert_vocals),
+                    partial(
+                        exception_harness(convert_vocals), progress_bar=PROGRESS_BAR
+                    ),
                     inputs=[
                         dereverbed_vocals_track_input,
                         convert_vocals_dir,
@@ -675,7 +692,10 @@ def render(
             postprocess_vocals_btn.render()
             postprocess_vocals_event_args_list = [
                 EventArgs(
-                    partial(exception_harness, postprocess_vocals),
+                    partial(
+                        exception_harness(postprocess_vocals),
+                        progress_bar=PROGRESS_BAR,
+                    ),
                     inputs=[
                         converted_vocals_track_input,
                         postprocess_vocals_dir,
@@ -743,7 +763,10 @@ def render(
             pitch_shift_background_btn.render()
             pitch_shift_background_event_args_list = [
                 EventArgs(
-                    partial(exception_harness, pitch_shift_background),
+                    partial(
+                        exception_harness(pitch_shift_background),
+                        progress_bar=PROGRESS_BAR,
+                    ),
                     inputs=[
                         instrumentals_track_input,
                         backup_vocals_track_input,
@@ -853,7 +876,9 @@ def render(
             mix_btn.render()
             mix_btn_event_args_list = [
                 EventArgs(
-                    partial(exception_harness, mix_song_cover),
+                    partial(
+                        exception_harness(mix_song_cover), progress_bar=PROGRESS_BAR
+                    ),
                     inputs=[
                         postprocessed_vocals_track_input,
                         shifted_instrumentals_track_input,

@@ -1,5 +1,8 @@
+from typing import Optional
+from extra_typing import ModelsTable, ModelsTablePredicate
 import os
 import shutil
+import gradio as gr
 import urllib.request
 import zipfile
 
@@ -12,35 +15,45 @@ from backend.exceptions import (
 )
 from backend.common import display_progress, copy_files_to_new_folder, json_load
 
+PUBLIC_MODELS = json_load(os.path.join(RVC_MODELS_DIR, "public_models.json"))
 
-public_models = json_load(os.path.join(RVC_MODELS_DIR, "public_models.json"))
 
-
-def get_current_models():
+def get_current_models() -> list[str]:
     models_list = os.listdir(RVC_MODELS_DIR)
     items_to_remove = ["hubert_base.pt", "MODELS.txt", "public_models.json", "rmvpe.pt"]
     return [item for item in models_list if item not in items_to_remove]
 
 
-def load_public_models_table(predicates, progress_bar=None, percentage=0.0):
-    models_table = []
+def load_public_models_table(
+    predicates: list[ModelsTablePredicate],
+    progress_bar: Optional[gr.Progress] = None,
+    percentage: float = 0.0,
+) -> ModelsTable:
+    models_table: ModelsTable = []
     keys = ["name", "description", "tags", "credit", "added", "url"]
     display_progress("[~] Loading public models table ...", percentage, progress_bar)
-    for model in public_models["voice_models"]:
+    for model in PUBLIC_MODELS["voice_models"]:
         if all([predicate(model) for predicate in predicates]):
             models_table.append([model[key] for key in keys])
 
     return models_table
 
 
-def load_public_model_tags():
-    return list(public_models["tags"].keys())
+def load_public_model_tags() -> list[str]:
+    return list(PUBLIC_MODELS["tags"].keys())
 
 
-def filter_public_models_table(tags, query, progress_bar=None, percentage=0.0):
+def filter_public_models_table(
+    tags: list[str],
+    query: str,
+    progress_bar: Optional[gr.Progress] = None,
+    percentage: float = 0.0,
+) -> ModelsTable:
 
-    tags_predicate = lambda model: all(tag in model["tags"] for tag in tags)
-    query_predicate = (
+    tags_predicate: ModelsTablePredicate = lambda model: all(
+        tag in model["tags"] for tag in tags
+    )
+    query_predicate: ModelsTablePredicate = (
         lambda model: query.lower()
         in f"{model['name']} {model['description']} {' '.join(model['tags'])} {model['credit']} {model['added']}".lower()
     )
@@ -64,7 +77,7 @@ def filter_public_models_table(tags, query, progress_bar=None, percentage=0.0):
     return load_public_models_table(filter_fns, progress_bar, percentage)
 
 
-def _extract_model_zip(extraction_folder, zip_name, remove_zip):
+def _extract_model_zip(extraction_folder: str, zip_name: str, remove_zip: bool) -> None:
     try:
         os.makedirs(extraction_folder)
         with zipfile.ZipFile(zip_name, "r") as zip_ref:
@@ -115,7 +128,12 @@ def _extract_model_zip(extraction_folder, zip_name, remove_zip):
             os.remove(zip_name)
 
 
-def download_online_model(url, dir_name, progress_bar=None, percentages=[0.0, 0.5]):
+def download_online_model(
+    url: str,
+    dir_name: str,
+    progress_bar: Optional[gr.Progress] = None,
+    percentages: list[float] = [0.0, 0.5],
+) -> str:
     if len(percentages) != 2:
         raise ValueError("Percentages must be a list of length 2.")
     if not url:
@@ -146,7 +164,12 @@ def download_online_model(url, dir_name, progress_bar=None, percentages=[0.0, 0.
     return f"[+] Model with name '{dir_name}' successfully downloaded!"
 
 
-def upload_local_model(input_paths, dir_name, progress_bar=None, percentage=0.0):
+def upload_local_model(
+    input_paths: list[str],
+    dir_name: str,
+    progress_bar: Optional[gr.Progress] = None,
+    percentage: float = 0.0,
+) -> str:
     if not input_paths:
         raise InputMissingError("No files selected!")
     if len(input_paths) > 2:
@@ -158,29 +181,31 @@ def upload_local_model(input_paths, dir_name, progress_bar=None, percentage=0.0)
         raise PathExistsError(
             f'Voice model directory "{dir_name}" already exists! Choose a different name for your voice model.'
         )
-    input_names = [input_path.name for input_path in input_paths]
-    if len(input_names) == 1:
-        input_name = input_names[0]
-        if input_name.endswith(".pth"):
+    if len(input_paths) == 1:
+        input_path = input_paths[0]
+        if os.path.splitext(input_path)[1] == ".pth":
             display_progress("[~] Copying .pth file ...", percentage, progress_bar)
-            copy_files_to_new_folder(input_names, output_folder)
+            copy_files_to_new_folder(input_paths, output_folder)
         # NOTE a .pth file is actually itself a zip file
-        elif zipfile.is_zipfile(input_name):
+        elif zipfile.is_zipfile(input_path):
             display_progress("[~] Extracting zip file...", percentage, progress_bar)
-            _extract_model_zip(output_folder, input_name, remove_zip=False)
+            _extract_model_zip(output_folder, input_path, remove_zip=False)
         else:
             raise FileTypeError(
                 "Only a .pth file or a .zip file can be uploaded by itself!"
             )
     else:
         # sort two input files by extension type
-        input_names_sorted = sorted(input_names, key=lambda f: os.path.splitext(f)[1])
+        input_names_sorted = sorted(input_paths, key=lambda f: os.path.splitext(f)[1])
         index_name, pth_name = input_names_sorted
-        if pth_name.endswith(".pth") and index_name.endswith(".index"):
+        if (
+            os.path.splitext(pth_name)[1] == ".pth"
+            and os.path.splitext(index_name)[1] == ".index"
+        ):
             display_progress(
                 "[~] Copying .pth file and index file ...", percentage, progress_bar
             )
-            copy_files_to_new_folder(input_names, output_folder)
+            copy_files_to_new_folder(input_paths, output_folder)
         else:
             raise FileTypeError(
                 "Only a .pth file and an .index file can be uploaded together!"
@@ -189,7 +214,11 @@ def upload_local_model(input_paths, dir_name, progress_bar=None, percentage=0.0)
     return f"[+] Model with name '{dir_name}' successfully uploaded!"
 
 
-def delete_models(model_names, progress_bar=None, percentage=0.0):
+def delete_models(
+    model_names: list[str],
+    progress_bar: Optional[gr.Progress] = None,
+    percentage: float = 0.0,
+) -> str:
     if not model_names:
         raise InputMissingError("No models selected!")
     display_progress("[~] Deleting selected models ...", percentage, progress_bar)
@@ -209,7 +238,9 @@ def delete_models(model_names, progress_bar=None, percentage=0.0):
         return f"[+] Models with names {first_models} and {last_model} successfully deleted!"
 
 
-def delete_all_models(progress_bar=None, percentage=0.0):
+def delete_all_models(
+    progress_bar: Optional[gr.Progress] = None, percentage: float = 0.0
+) -> str:
     all_models = get_current_models()
     display_progress("[~] Deleting all models ...", percentage, progress_bar)
     for model_name in all_models:

@@ -1,3 +1,6 @@
+from typing import Callable, Union, Optional
+from typing_extensions import Unpack
+from extra_typing import P, MixSongCoverHarnessArgs, RunPipelineHarnessArgs
 from functools import partial
 
 import gradio as gr
@@ -12,6 +15,9 @@ from frontend.common import (
     get_song_cover_name_harness,
     toggle_visible_component,
     show_hop_slider,
+    identity,
+    update_value,
+    PROGRESS_BAR,
 )
 
 from backend.generate_song_cover import (
@@ -29,57 +35,68 @@ from backend.generate_song_cover import (
 )
 
 
-def _duplication_harness(fun, *args, **kwargs):
+def _duplication_harness(
+    fun: Callable[P, Union[str, tuple[str, ...]]],
+) -> Callable[P, tuple[str, ...]]:
+    def _wrapped(*args: P.args, **kwargs: P.kwargs) -> tuple[str, ...]:
 
-    res = exception_harness(fun, *args, **kwargs)
-    if not isinstance(res, tuple):
-        return (res, res)
-    else:
-        return (res[0],) + res
+        res = exception_harness(fun)(*args, **kwargs)
+        if not isinstance(res, tuple):
+            return (res, res)
+        else:
+            return (res[0],) + res
+
+    return _wrapped
 
 
 def _mix_song_cover_harness(
-    vocals_path,
-    instrumentals_path,
-    backup_vocals_path,
-    instrumentals_shifted_path,
-    backup_vocals_shifted_path,
-    *args,
-    **kwargs,
-):
-    return mix_song_cover(
+    vocals_path: str,
+    instrumentals_path: str,
+    backup_vocals_path: str,
+    instrumentals_shifted_path: str,
+    backup_vocals_shifted_path: str,
+    *args: Unpack[MixSongCoverHarnessArgs],
+    percentages: list[float],
+) -> str:
+    return exception_harness(mix_song_cover)(
         vocals_path,
         instrumentals_shifted_path or instrumentals_path,
         backup_vocals_shifted_path or backup_vocals_path,
         *args,
-        **kwargs,
+        progress_bar=PROGRESS_BAR,
+        percentages=percentages,
     )
 
 
-def _run_pipeline_harness(*args, **kwargs):
-    res = run_pipeline(*args, **kwargs)
+def _run_pipeline_harness(
+    *args: Unpack[RunPipelineHarnessArgs],
+) -> tuple[Optional[str], ...]:
+
+    res = exception_harness(run_pipeline)(*args, progress_bar=PROGRESS_BAR)
     if isinstance(res, tuple):
         return res
     else:
         return (None,) * 11 + (res,)
 
 
-def _toggle_intermediate_files_accordion(visible):
-    audio_components = (None,) * 11
-    accordions = (gr.update(open=False),) * 7
-    return (gr.update(visible=visible, open=False),) + accordions + audio_components
+def _toggle_intermediate_files_accordion(
+    visible: bool,
+) -> list[Union[gr.Accordion, gr.Audio]]:
+    audio_components = list(gr.Audio(value=None) for _ in range(11))
+    accordions = list(gr.Accordion(open=False) for _ in range(7))
+    return [gr.Accordion(visible=visible, open=False)] + accordions + audio_components
 
 
 def render(
-    dummy_deletion_checkbox,
-    delete_confirmation,
-    generate_buttons,
-    song_dir_dropdowns,
-    cached_input_songs_dropdown,
-    cached_input_songs_dropdown2,
-    rvc_model,
-    intermediate_audio_to_delete,
-):
+    dummy_deletion_checkbox: gr.Checkbox,
+    delete_confirmation: gr.State,
+    generate_buttons: list[gr.Button],
+    song_dir_dropdowns: list[gr.Dropdown],
+    cached_input_songs_dropdown: gr.Dropdown,
+    cached_input_songs_dropdown2: gr.Dropdown,
+    rvc_model: gr.Dropdown,
+    intermediate_audio_to_delete: gr.Dropdown,
+) -> None:
 
     with gr.Tab("One-click generation"):
         (
@@ -127,13 +144,13 @@ def render(
                     )
 
                     local_file.change(
-                        lambda x: gr.update(value=x),
+                        update_value,
                         inputs=local_file,
                         outputs=song_input,
                         show_progress="hidden",
                     )
                     cached_input_songs_dropdown.input(
-                        lambda x: gr.update(value=x),
+                        update_value,
                         inputs=cached_input_songs_dropdown,
                         outputs=song_input,
                         show_progress="hidden",
@@ -317,7 +334,7 @@ def render(
                         )
 
                 delete_intermediate_audio_click = delete_intermediate_audio_btn.click(
-                    lambda x: x,
+                    identity,
                     inputs=dummy_deletion_checkbox,
                     outputs=delete_confirmation,
                     js=confirm_box_js(
@@ -325,13 +342,16 @@ def render(
                     ),
                     show_progress="hidden",
                 ).then(
-                    partial(confirmation_harness, delete_intermediate_audio),
+                    partial(
+                        confirmation_harness(delete_intermediate_audio),
+                        progress_bar=PROGRESS_BAR,
+                    ),
                     inputs=[delete_confirmation, intermediate_audio_to_delete],
                     outputs=intermediate_audio_delete_msg,
                 )
 
                 delete_all_intermediate_audio_click = delete_all_intermediate_audio_btn.click(
-                    lambda x: x,
+                    identity,
                     inputs=dummy_deletion_checkbox,
                     outputs=delete_confirmation,
                     js=confirm_box_js(
@@ -339,7 +359,10 @@ def render(
                     ),
                     show_progress="hidden",
                 ).then(
-                    partial(confirmation_harness, delete_all_intermediate_audio),
+                    partial(
+                        confirmation_harness(delete_all_intermediate_audio),
+                        progress_bar=PROGRESS_BAR,
+                    ),
                     inputs=delete_confirmation,
                     outputs=intermediate_audio_delete_msg,
                 )
@@ -358,8 +381,8 @@ def render(
                             intermediate_audio_to_delete,
                             cached_input_songs_dropdown,
                             cached_input_songs_dropdown2,
-                        ]
-                        + song_dir_dropdowns,
+                            *song_dir_dropdowns,
+                        ],
                         show_progress="hidden",
                     )
         intermediate_audio_accordions = [
@@ -481,7 +504,7 @@ def render(
         )
         generate_event_args_list = [
             EventArgs(
-                partial(exception_harness, _run_pipeline_harness),
+                _run_pipeline_harness,
                 inputs=[
                     song_input,
                     rvc_model,
@@ -543,8 +566,8 @@ def render(
         generate_btn2_event_args_list = [
             EventArgs(
                 partial(
-                    _duplication_harness,
-                    retrieve_song,
+                    _duplication_harness(retrieve_song),
+                    progress_bar=PROGRESS_BAR,
                     percentages=percentages[:3],
                 ),
                 inputs=[song_input],
@@ -552,15 +575,17 @@ def render(
             ),
             EventArgs(
                 partial(
-                    _duplication_harness, separate_vocals, percentages=percentages[3:5]
+                    _duplication_harness(separate_vocals),
+                    progress_bar=PROGRESS_BAR,
+                    percentages=percentages[3:5],
                 ),
                 inputs=[original_track, current_song_dir],
                 outputs=[song_cover_track, vocals_track, instrumentals_track],
             ),
             EventArgs(
                 partial(
-                    _duplication_harness,
-                    separate_main_vocals,
+                    _duplication_harness(separate_main_vocals),
+                    progress_bar=PROGRESS_BAR,
                     percentages=percentages[5:7],
                 ),
                 inputs=[vocals_track, current_song_dir],
@@ -568,8 +593,8 @@ def render(
             ),
             EventArgs(
                 partial(
-                    _duplication_harness,
-                    dereverb_vocals,
+                    _duplication_harness(dereverb_vocals),
+                    progress_bar=PROGRESS_BAR,
                     percentages=percentages[7:9],
                 ),
                 inputs=[main_vocals_track, current_song_dir],
@@ -581,8 +606,8 @@ def render(
             ),
             EventArgs(
                 partial(
-                    _duplication_harness,
-                    convert_vocals,
+                    _duplication_harness(convert_vocals),
+                    progress_bar=PROGRESS_BAR,
                     percentage=percentages[9],
                 ),
                 inputs=[
@@ -602,8 +627,8 @@ def render(
             ),
             EventArgs(
                 partial(
-                    _duplication_harness,
-                    postprocess_vocals,
+                    _duplication_harness(postprocess_vocals),
+                    progress_bar=PROGRESS_BAR,
                     percentage=percentages[10],
                 ),
                 inputs=[
@@ -618,8 +643,8 @@ def render(
             ),
             EventArgs(
                 partial(
-                    _duplication_harness,
-                    pitch_shift_background,
+                    _duplication_harness(pitch_shift_background),
+                    progress_bar=PROGRESS_BAR,
                     percentages=percentages[11:13],
                 ),
                 inputs=[
@@ -636,7 +661,6 @@ def render(
             ),
             EventArgs(
                 partial(
-                    exception_harness,
                     _mix_song_cover_harness,
                     percentages=percentages[13:16],
                 ),

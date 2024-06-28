@@ -27,6 +27,9 @@ Follow the instructions [here](https://www.hostinger.com/tutorials/how-to-instal
 
 Follow the instructions [here](https://www.tutorialexample.com/a-step-guide-to-install-sox-sound-exchange-on-windows-10-python-tutorial/) to install sox and add it to your Windows path environment.
 
+### Fairseq dependencies
+
+In order to run fairseq on Windows you might need to install C++ build tools from [Visual Studio](https://visualstudio.microsoft.com/). Windows 11 SDK and MSVC v14 should be sufficient in most cases.
 ### Clone Ultimate RVC repository
 
 Open a command line window and run these commands to clone this entire repository and install the additional dependencies required.

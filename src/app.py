@@ -1,3 +1,5 @@
+from extra_typing import DropdownChoices
+
 import os
 from argparse import ArgumentParser
 
@@ -15,14 +17,12 @@ from frontend.tabs.multi_step_generation import render as render_multi_step_tab
 from frontend.tabs.manage_models import render as render_manage_models_tab
 
 
-def _refresh_dropdowns():
-    voice_models = get_current_models()
-    cached_input_songs = get_named_song_dirs()
+def _refresh_dropdowns() -> tuple[gr.Dropdown, ...]:
     updated_rvc_model_dropdowns = tuple(
-        gr.update(choices=voice_models) for _ in range(3)
+        gr.Dropdown(choices=list(get_current_models())) for _ in range(3)
     )
     updated_song_dir_dropdowns = tuple(
-        gr.update(choices=cached_input_songs) for _ in range(10)
+        gr.Dropdown(choices=list(get_named_song_dirs())) for _ in range(10)
     )
     return updated_rvc_model_dropdowns + updated_song_dir_dropdowns
 

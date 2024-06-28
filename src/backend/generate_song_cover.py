@@ -1,3 +1,7 @@
+from typing import Optional, Union, Any
+from extra_typing import InputType, F0Method, InputAudioExt, OutputAudioExt
+import gradio as gr
+
 import gc
 import os
 import glob
@@ -11,7 +15,8 @@ from urllib.parse import urlparse, parse_qs
 import soundfile as sf
 import sox
 import yt_dlp
-from pedalboard import Pedalboard, Reverb, Compressor, HighpassFilter
+from pedalboard import Reverb, Compressor, HighpassFilter
+from pedalboard._pedalboard import Pedalboard
 from pedalboard.io import AudioFile
 from pydub import AudioSegment, utils as pydub_utils
 
@@ -37,7 +42,7 @@ from backend.mdx import run_mdx
 from vc.rvc import Config, load_hubert, get_vc, rvc_infer
 
 
-def _get_youtube_video_id(url, ignore_playlist=True):
+def _get_youtube_video_id(url: str, ignore_playlist: bool = True) -> Optional[str]:
     """
     Examples:
     http://youtu.be/SA2iWivDJiE
@@ -69,7 +74,7 @@ def _get_youtube_video_id(url, ignore_playlist=True):
     return None
 
 
-def _yt_download(link, song_dir):
+def _yt_download(link: str, song_dir: str) -> str:
     outtmpl = os.path.join(song_dir, "0_%(title)s_Original")
     ydl_opts = {
         "quiet": True,
@@ -93,17 +98,17 @@ def _yt_download(link, song_dir):
     return download_path
 
 
-def _get_cached_input_paths():
+def _get_cached_input_paths() -> list[str]:
     # TODO if we later add .json file for input then we need to exclude those here
     return glob.glob(os.path.join(TEMP_AUDIO_DIR, "*", "0_*_Original*"))
 
 
-def _get_orig_song_path(song_dir):
+def _get_orig_song_path(song_dir: str) -> Optional[str]:
     # NOTE orig_song_paths should never contain more than one element
     return next(iter(glob.glob(os.path.join(song_dir, "0_*_Original*"))), None)
 
 
-def _pitch_shift(audio_path, output_path, n_semi_tones):
+def _pitch_shift(audio_path: str, output_path: str, n_semi_tones: int) -> None:
     y, sr = sf.read(audio_path)
     tfm = sox.Transformer()
     tfm.pitch(n_semi_tones)
@@ -115,8 +120,13 @@ def _pitch_shift(audio_path, output_path, n_semi_tones):
 # otherwise we might have problems with hash collisions
 # when using app as CLI
 def _get_unique_base_path(
-    song_dir, prefix, arg_dict, progress_bar, percentage, hash_size=5
-):
+    song_dir: str,
+    prefix: str,
+    arg_dict: dict[str, Any],
+    progress_bar: Optional[gr.Progress] = None,
+    percentage: float = 0.0,
+    hash_size: int = 5,
+) -> str:
     dict_hash = get_hash(arg_dict, size=hash_size)
     while True:
         base_path = os.path.join(song_dir, f"{prefix}_{dict_hash}")
@@ -132,18 +142,18 @@ def _get_unique_base_path(
 
 
 def _voice_change(
-    voice_model,
-    vocals_path,
-    output_path,
-    pitch_change,
-    f0_method,
-    index_rate,
-    filter_radius,
-    rms_mix_rate,
-    protect,
-    crepe_hop_length,
-    output_sr,
-):
+    voice_model: str,
+    vocals_path: str,
+    output_path: str,
+    pitch_change: int,
+    f0_method: F0Method,
+    index_rate: float,
+    filter_radius: int,
+    rms_mix_rate: float,
+    protect: float,
+    crepe_hop_length: int,
+    output_sr: int,
+) -> None:
     rvc_model_path, rvc_index_path = get_rvc_model(voice_model)
     device = "cuda:0"
     config = Config(device, True)
@@ -179,13 +189,13 @@ def _voice_change(
 
 
 def _add_audio_effects(
-    audio_path,
-    output_path,
-    reverb_rm_size,
-    reverb_wet,
-    reverb_dry,
-    reverb_damping,
-):
+    audio_path: str,
+    output_path: str,
+    reverb_rm_size: float,
+    reverb_wet: float,
+    reverb_dry: float,
+    reverb_damping: float,
+) -> None:
 
     # Initialize audio effects plugins
     board = Pedalboard(
@@ -210,19 +220,23 @@ def _add_audio_effects(
                 o.write(effected)
 
 
+def _map_audio_ext(input_audio_ext: InputAudioExt) -> OutputAudioExt:
+    if input_audio_ext == "m4a":
+        return "ipod"
+    elif input_audio_ext == "aac":
+        return "ipod"
+    return input_audio_ext
+
+
 def _mix_audio(
-    audio_paths,
-    output_path,
-    main_gain,
-    backup_gain,
-    inst_gain,
-    output_format,
-    output_sr,
-):
-    if output_format == "m4a":
-        output_format = "ipod"
-    elif output_format == "aac":
-        output_format = "adts"
+    audio_paths: list[str],
+    output_path: str,
+    main_gain: int,
+    backup_gain: int,
+    inst_gain: int,
+    output_format: InputAudioExt,
+    output_sr: int,
+) -> None:
     main_vocal_audio = AudioSegment.from_wav(audio_paths[0]) + main_gain
     backup_vocal_audio = AudioSegment.from_wav(audio_paths[1]) + backup_gain
     instrumental_audio = AudioSegment.from_wav(audio_paths[2]) + inst_gain
@@ -230,12 +244,13 @@ def _mix_audio(
         instrumental_audio
     )
     combined_audio_resampled = combined_audio.set_frame_rate(output_sr)
-    combined_audio_resampled.export(output_path, format=output_format)
+    mapped_output_format = _map_audio_ext(output_format)
+    combined_audio_resampled.export(output_path, format=mapped_output_format)
 
 
-def get_named_song_dirs():
+def get_named_song_dirs() -> list[tuple[str, str]]:
     input_paths = _get_cached_input_paths()
-    named_song_dirs = []
+    named_song_dirs: list[tuple[str, str]] = []
 
     for path in input_paths:
         song_dir, song_basename = os.path.split(path)
@@ -248,7 +263,11 @@ def get_named_song_dirs():
     return sorted(named_song_dirs, key=lambda x: x[0])
 
 
-def delete_intermediate_audio(song_inputs, progress_bar=None, percentage=0.0):
+def delete_intermediate_audio(
+    song_inputs: list[str],
+    progress_bar: Optional[gr.Progress] = None,
+    percentage: float = 0.0,
+) -> str:
     if not song_inputs:
         raise InputMissingError(
             "Song inputs missing! Please provide a non-empty list of song directories"
@@ -270,7 +289,10 @@ def delete_intermediate_audio(song_inputs, progress_bar=None, percentage=0.0):
     return "[+] Successfully deleted intermediate audio files for selected songs!"
 
 
-def delete_all_intermediate_audio(progress_bar=None, percentages=[0.0]):
+def delete_all_intermediate_audio(
+    progress_bar: Optional[gr.Progress] = None,
+    percentages: list[float] = [0.0],
+) -> str:
     if len(percentages) != 1:
         raise ValueError("Percentages must be a list of length 1.")
     display_progress(
@@ -282,7 +304,12 @@ def delete_all_intermediate_audio(progress_bar=None, percentages=[0.0]):
     return "[+] All intermediate audio files successfully deleted!"
 
 
-def convert_to_stereo(song_path, song_dir, progress_bar=None, percentage=0.0):
+def convert_to_stereo(
+    song_path: str,
+    song_dir: str,
+    progress_bar: Optional[gr.Progress] = None,
+    percentage: float = 0.0,
+) -> str:
     if not song_path:
         raise InputMissingError("Input song missing!")
     if not os.path.isfile(song_path):
@@ -321,7 +348,11 @@ def convert_to_stereo(song_path, song_dir, progress_bar=None, percentage=0.0):
     return stereo_path
 
 
-def _make_song_dir(song_input, progress_bar=None, percentage=0.0):
+def _make_song_dir(
+    song_input: str,
+    progress_bar: Optional[gr.Progress] = None,
+    percentage: float = 0.0,
+) -> tuple[str, InputType]:
     # if song directory
     if os.path.isdir(song_input):
         if not PurePath(song_input).parent == PurePath(TEMP_AUDIO_DIR):
@@ -360,10 +391,10 @@ def _make_song_dir(song_input, progress_bar=None, percentage=0.0):
 
 
 def retrieve_song(
-    song_input,
-    progress_bar=None,
-    percentages=[i / 3 for i in range(3)],
-):
+    song_input: str,
+    progress_bar: Optional[gr.Progress] = None,
+    percentages: list[float] = [i / 3 for i in range(3)],
+) -> tuple[str, str]:
     if len(percentages) != 3:
         raise ValueError("Percentages must be a list of length 3.")
     if not song_input:
@@ -398,12 +429,12 @@ def retrieve_song(
 
 
 def separate_vocals(
-    song_path,
-    song_dir,
-    stereofy=True,
-    progress_bar=None,
-    percentages=[i / 2 for i in range(2)],
-):
+    song_path: str,
+    song_dir: str,
+    stereofy: bool = True,
+    progress_bar: Optional[gr.Progress] = None,
+    percentages: list[float] = [i / 2 for i in range(2)],
+) -> tuple[str, str]:
     if len(percentages) != 2:
         raise ValueError("Percentages must be a list of length 2.")
     if not song_path:
@@ -466,12 +497,12 @@ def separate_vocals(
 
 
 def separate_main_vocals(
-    vocals_path,
-    song_dir,
-    stereofy=True,
-    progress_bar=None,
-    percentages=[i / 2 for i in range(2)],
-):
+    vocals_path: str,
+    song_dir: str,
+    stereofy: bool = True,
+    progress_bar: Optional[gr.Progress] = None,
+    percentages: list[float] = [i / 2 for i in range(2)],
+) -> tuple[str, str]:
     if len(percentages) != 2:
         raise ValueError("Percentages must be a list of length 2.")
 
@@ -538,12 +569,12 @@ def separate_main_vocals(
 
 
 def dereverb_vocals(
-    vocals_path,
-    song_dir,
-    stereofy=True,
-    progress_bar=None,
-    percentages=[i / 2 for i in range(2)],
-):
+    vocals_path: str,
+    song_dir: str,
+    stereofy: bool = True,
+    progress_bar: Optional[gr.Progress] = None,
+    percentages: list[float] = [i / 2 for i in range(2)],
+) -> tuple[str, str]:
     if len(percentages) != 2:
         raise ValueError("Percentages must be a list of length 2.")
 
@@ -610,20 +641,20 @@ def dereverb_vocals(
 
 
 def convert_vocals(
-    vocals_path,
-    song_dir,
-    voice_model,
-    pitch_change_octaves=0,
-    pitch_change_semi_tones=0,
-    index_rate=0.5,
-    filter_radius=3,
-    rms_mix_rate=0.25,
-    protect=0.33,
-    f0_method="rmvpe",
-    crepe_hop_length=128,
-    progress_bar=None,
-    percentage=0.0,
-):
+    vocals_path: str,
+    song_dir: str,
+    voice_model: str,
+    pitch_change_octaves: int = 0,
+    pitch_change_semi_tones: int = 0,
+    index_rate: float = 0.5,
+    filter_radius: int = 3,
+    rms_mix_rate: float = 0.25,
+    protect: float = 0.33,
+    f0_method: F0Method = "rmvpe",
+    crepe_hop_length: int = 128,
+    progress_bar: Optional[gr.Progress] = None,
+    percentage: float = 0.0,
+) -> str:
     if not vocals_path:
         raise InputMissingError("Vocals missing!")
     if not os.path.isfile(vocals_path):
@@ -684,15 +715,15 @@ def convert_vocals(
 
 
 def postprocess_vocals(
-    vocals_path,
-    song_dir,
-    reverb_rm_size=0.15,
-    reverb_wet=0.2,
-    reverb_dry=0.8,
-    reverb_damping=0.7,
-    progress_bar=None,
-    percentage=0.0,
-):
+    vocals_path: str,
+    song_dir: str,
+    reverb_rm_size: float = 0.15,
+    reverb_wet: float = 0.2,
+    reverb_dry: float = 0.8,
+    reverb_damping: float = 0.7,
+    progress_bar: Optional[gr.Progress] = None,
+    percentage: float = 0.0,
+) -> str:
 
     if not vocals_path:
         raise InputMissingError("Vocals missing!")
@@ -744,13 +775,13 @@ def postprocess_vocals(
 
 
 def pitch_shift_background(
-    instrumentals_path,
-    backup_vocals_path,
-    song_dir,
-    pitch_change=0,
-    progress_bar=None,
-    percentages=[i / 2 for i in range(2)],
-):
+    instrumentals_path: str,
+    backup_vocals_path: str,
+    song_dir: str,
+    pitch_change: int = 0,
+    progress_bar: Optional[gr.Progress] = None,
+    percentages: list[float] = [i / 2 for i in range(2)],
+) -> tuple[str, str]:
     if len(percentages) != 2:
         raise ValueError("Percentages must be a list of length 2.")
     if not instrumentals_path:
@@ -844,7 +875,9 @@ def pitch_shift_background(
     return instrumentals_shifted_path, backup_vocals_shifted_path
 
 
-def _get_voice_model(mixed_vocals_path, song_dir):
+def _get_voice_model(
+    mixed_vocals_path: Optional[str] = None, song_dir: Optional[str] = None
+) -> str:
     voice_model = "Unknown"
     if not (mixed_vocals_path and song_dir):
         return voice_model
@@ -866,8 +899,12 @@ def _get_voice_model(mixed_vocals_path, song_dir):
 
 
 def get_song_cover_name(
-    mixed_vocals_path, song_dir, voice_model, progress_bar=None, percentage=0.0
-):
+    mixed_vocals_path: Optional[str] = None,
+    song_dir: Optional[str] = None,
+    voice_model: Optional[str] = None,
+    progress_bar: Optional[gr.Progress] = None,
+    percentage: float = 0.0,
+) -> str:
     display_progress("[~] Getting song cover name...", percentage, progress_bar)
 
     orig_song_path = _get_orig_song_path(song_dir) if song_dir else None
@@ -883,20 +920,20 @@ def get_song_cover_name(
 
 
 def mix_song_cover(
-    main_vocals_path,
-    instrumentals_path,
-    backup_vocals_path,
-    song_dir,
-    main_gain=0,
-    inst_gain=0,
-    backup_gain=0,
-    output_sr=44100,
-    output_format="mp3",
-    output_name=None,
-    keep_files=True,
-    progress_bar=None,
-    percentages=[i / 3 for i in range(3)],
-):
+    main_vocals_path: str,
+    instrumentals_path: str,
+    backup_vocals_path: str,
+    song_dir: str,
+    main_gain: int = 0,
+    inst_gain: int = 0,
+    backup_gain: int = 0,
+    output_sr: int = 44100,
+    output_format: InputAudioExt = "mp3",
+    output_name: Optional[str] = None,
+    keep_files: bool = True,
+    progress_bar: Optional[gr.Progress] = None,
+    percentages: list[float] = [i / 3 for i in range(3)],
+) -> str:
     if len(percentages) != 3:
         raise ValueError("Percentages must be a list of length 3.")
     if not main_vocals_path:
@@ -982,30 +1019,30 @@ def mix_song_cover(
 
 
 def run_pipeline(
-    song_input,
-    voice_model,
-    pitch_change_vocals=0,
-    pitch_change_all=0,
-    index_rate=0.5,
-    filter_radius=3,
-    rms_mix_rate=0.25,
-    protect=0.33,
-    f0_method="rmvpe",
-    crepe_hop_length=128,
-    reverb_rm_size=0.15,
-    reverb_wet=0.2,
-    reverb_dry=0.8,
-    reverb_damping=0.7,
-    main_gain=0,
-    inst_gain=0,
-    backup_gain=0,
-    output_sr=44100,
-    output_format="mp3",
-    output_name=None,
-    keep_files=True,
-    return_files=False,
-    progress_bar=None,
-):
+    song_input: str,
+    voice_model: str,
+    pitch_change_vocals: int = 0,
+    pitch_change_all: int = 0,
+    index_rate: float = 0.5,
+    filter_radius: int = 3,
+    rms_mix_rate: float = 0.25,
+    protect: float = 0.33,
+    f0_method: F0Method = "rmvpe",
+    crepe_hop_length: int = 128,
+    reverb_rm_size: float = 0.15,
+    reverb_wet: float = 0.2,
+    reverb_dry: float = 0.8,
+    reverb_damping: float = 0.7,
+    main_gain: int = 0,
+    inst_gain: int = 0,
+    backup_gain: int = 0,
+    output_sr: int = 44100,
+    output_format: InputAudioExt = "mp3",
+    output_name: Optional[str] = None,
+    keep_files: bool = True,
+    return_files: bool = False,
+    progress_bar: Optional[gr.Progress] = None,
+) -> Union[str, tuple[str, ...]]:
     display_progress("[~] Starting song cover generation pipeline...", 0, progress_bar)
     percentages = [i / 16 for i in range(16)]
     orig_song_path, song_dir = retrieve_song(song_input, progress_bar, percentages[:3])

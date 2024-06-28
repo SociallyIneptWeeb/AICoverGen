@@ -1,13 +1,16 @@
+from extra_typing import DropdownValue
 from functools import partial
 
 import gradio as gr
-
+import pandas as pd
 
 from frontend.common import (
     exception_harness,
     confirmation_harness,
     confirm_box_js,
     update_dropdowns,
+    identity,
+    PROGRESS_BAR,
 )
 
 from backend.manage_voice_models import (
@@ -22,30 +25,40 @@ from backend.manage_voice_models import (
 )
 
 
-def _update_model_lists(num_components, value=None, value_indices=[]):
+def _update_model_lists(
+    num_components: int,
+    value: DropdownValue = None,
+    value_indices: list[int] = [],
+) -> tuple[gr.Dropdown, ...]:
     return update_dropdowns(
         get_current_models, num_components, value=value, value_indices=value_indices
     )
 
 
-def _filter_public_models_table_harness(tags, query, progress_bar):
+def _filter_public_models_table_harness(
+    tags: list[str], query: str, progress_bar: gr.Progress
+) -> gr.Dataframe:
     models_table = filter_public_models_table(tags, query, progress_bar)
-    return gr.DataFrame(value=models_table)
+    return gr.Dataframe(value=models_table)
 
 
-def _pub_dl_autofill(pub_models, event: gr.SelectData):
-    return gr.Text(value=pub_models.loc[event.index[0], "URL"]), gr.Text(
-        value=pub_models.loc[event.index[0], "Model Name"]
-    )
+def _pub_dl_autofill(
+    pub_models: pd.DataFrame, event: gr.SelectData
+) -> tuple[gr.Textbox, gr.Textbox]:
+    event_index = event.index[0]
+    url_str = pub_models.loc[event_index, "URL"]
+    model_str = pub_models.loc[event_index, "Model Name"]
+
+    return gr.Textbox(value=url_str), gr.Textbox(value=model_str)
 
 
 def render(
-    dummy_deletion_checkbox,
-    delete_confirmation,
-    rvc_models_to_delete,
-    rvc_model,
-    rvc_model2,
-):
+    dummy_deletion_checkbox: gr.Checkbox,
+    delete_confirmation: gr.State,
+    rvc_models_to_delete: gr.Dropdown,
+    rvc_model: gr.Dropdown,
+    rvc_model2: gr.Dropdown,
+) -> None:
 
     # Download tab
     with gr.Tab("Download model"):
@@ -60,7 +73,7 @@ def render(
             filter_tags = gr.CheckboxGroup(
                 value=[],
                 label="Show voice models with tags",
-                choices=load_public_model_tags(),
+                choices=list(load_public_model_tags()),
             )
             search_query = gr.Text(label="Search")
 
@@ -95,7 +108,9 @@ def render(
             )
 
         download_button_click = download_btn.click(
-            partial(exception_harness, download_online_model),
+            partial(
+                exception_harness(download_online_model), progress_bar=PROGRESS_BAR
+            ),
             inputs=[model_zip_link, model_name],
             outputs=dl_output_message,
         )
@@ -107,13 +122,19 @@ def render(
             show_progress="hidden",
         )
         search_query.change(
-            partial(exception_harness, _filter_public_models_table_harness),
+            partial(
+                exception_harness(_filter_public_models_table_harness),
+                progress_bar=PROGRESS_BAR,
+            ),
             inputs=[filter_tags, search_query],
             outputs=public_models_table,
             show_progress="hidden",
         )
         filter_tags.select(
-            partial(exception_harness, _filter_public_models_table_harness),
+            partial(
+                exception_harness(_filter_public_models_table_harness),
+                progress_bar=PROGRESS_BAR,
+            ),
             inputs=[filter_tags, search_query],
             outputs=public_models_table,
             show_progress="hidden",
@@ -143,7 +164,9 @@ def render(
                 label="Output message", interactive=False, scale=20
             )
             model_upload_button_click = model_upload_button.click(
-                partial(exception_harness, upload_local_model),
+                partial(
+                    exception_harness(upload_local_model), progress_bar=PROGRESS_BAR
+                ),
                 inputs=[model_files, local_model_name],
                 outputs=local_upload_output_message,
             )
@@ -172,25 +195,25 @@ def render(
             # to trigger, changes coming from the js code
             # have to be routed through an identity function which takes as
             # input some dummy component of type bool.
-            lambda x: x,
+            identity,
             inputs=dummy_deletion_checkbox,
             outputs=delete_confirmation,
             js=confirm_box_js("Are you sure you want to delete the selected models?"),
             show_progress="hidden",
         ).then(
-            partial(confirmation_harness, delete_models),
+            partial(confirmation_harness(delete_models), progress_bar=PROGRESS_BAR),
             inputs=[delete_confirmation, rvc_models_to_delete],
             outputs=rvc_models_deleted_message,
         )
 
         delete_all_models_btn_click = delete_all_models_button.click(
-            lambda x: x,
+            identity,
             inputs=dummy_deletion_checkbox,
             outputs=delete_confirmation,
             js=confirm_box_js("Are you sure you want to delete all models?"),
             show_progress="hidden",
         ).then(
-            partial(confirmation_harness, delete_all_models),
+            partial(confirmation_harness(delete_all_models), progress_bar=PROGRESS_BAR),
             inputs=delete_confirmation,
             outputs=rvc_models_deleted_message,
         )

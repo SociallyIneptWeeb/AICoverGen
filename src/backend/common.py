@@ -1,3 +1,6 @@
+from typing import Optional, Any
+from extra_typing import StrOrBytesPath
+import gradio as gr
 import os
 import shutil
 import json
@@ -9,14 +12,18 @@ SONGS_DIR = os.path.join(BASE_DIR, "songs")
 TEMP_AUDIO_DIR = os.path.join(SONGS_DIR, "temp")
 
 
-def display_progress(message, percentage=None, progress_bar=None):
+def display_progress(
+    message: str,
+    percentage: Optional[float] = None,
+    progress_bar: Optional[gr.Progress] = None,
+) -> None:
     if progress_bar is None:
         print(message)
     else:
         progress_bar(percentage, desc=message)
 
 
-def remove_suffix_after(text: str, occurrence: str):
+def remove_suffix_after(text: str, occurrence: str) -> str:
     location = text.rfind(occurrence)
     if location == -1:
         return text
@@ -24,7 +31,10 @@ def remove_suffix_after(text: str, occurrence: str):
         return text[: location + len(occurrence)]
 
 
-def copy_files_to_new_folder(file_paths, folder_path):
+def copy_files_to_new_folder(
+    file_paths: list[str],
+    folder_path: str,
+) -> None:
     os.makedirs(folder_path)
     for file_path in file_paths:
         if not os.path.exists(file_path):
@@ -34,11 +44,11 @@ def copy_files_to_new_folder(file_paths, folder_path):
         )
 
 
-def get_path_stem(path):
+def get_path_stem(path: str) -> str:
     return os.path.splitext(os.path.basename(path))[0]
 
 
-def json_dumps(thing):
+def json_dumps(thing: Any) -> str:
     return json.dumps(
         thing,
         ensure_ascii=False,
@@ -48,9 +58,9 @@ def json_dumps(thing):
     )
 
 
-def json_dump(thing, path):
+def json_dump(thing: Any, path: StrOrBytesPath) -> None:
     with open(path, "w", encoding="utf-8") as file:
-        return json.dump(
+        json.dump(
             thing,
             file,
             ensure_ascii=False,
@@ -60,12 +70,12 @@ def json_dump(thing, path):
         )
 
 
-def json_load(path, encoding="utf-8"):
+def json_load(path: StrOrBytesPath, encoding: str = "utf-8") -> Any:
     with open(path, encoding=encoding) as file:
         return json.load(file)
 
 
-def get_hash(thing, size=5):
+def get_hash(thing: Any, size: int = 5) -> str:
     return hashlib.blake2b(
         json_dumps(thing).encode("utf-8"), digest_size=size
     ).hexdigest()
@@ -76,7 +86,11 @@ def get_hash(thing, size=5):
 # when using app as CLI
 # TODO use dedicated file_digest function once we upgradeto python 3.11
 # for better speedups
-def get_file_hash(filepath, digest_size=5, chunk_size=655360):
+def get_file_hash(
+    filepath: StrOrBytesPath,
+    digest_size: int = 5,
+    chunk_size: int = 655360,
+) -> str:
     with open(filepath, "rb") as f:
         file_hash = hashlib.blake2b(digest_size=digest_size)
         while chunk := f.read(chunk_size):
@@ -85,7 +99,9 @@ def get_file_hash(filepath, digest_size=5, chunk_size=655360):
     return file_hash.hexdigest()
 
 
-def get_rvc_model(voice_model):
+def get_rvc_model(
+    voice_model: str,
+) -> tuple[str, str]:
     rvc_model_filename, rvc_index_filename = None, None
     model_dir = os.path.join(RVC_MODELS_DIR, voice_model)
     if not os.path.exists(model_dir):

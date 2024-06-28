@@ -7,7 +7,7 @@ Setup Guide: TBA
 
 ![](images/webui_generate.png?raw=true)
 
-Ultimate RVC is under constant development and testing, but you can try it out right now on both local and colab!
+Ultimate RVC is under constant development and testing, but you can try it out right locally!
 
 ## Changelog
 
@@ -30,6 +30,7 @@ Follow the instructions [here](https://www.tutorialexample.com/a-step-guide-to-i
 ### Fairseq dependencies
 
 In order to run fairseq on Windows you might need to install C++ build tools from [Visual Studio](https://visualstudio.microsoft.com/). Windows 11 SDK and MSVC v14 should be sufficient in most cases.
+
 ### Clone Ultimate RVC repository
 
 Open a command line window and run these commands to clone this entire repository and install the additional dependencies required.
@@ -44,6 +45,14 @@ py -3.9 -m venv .venv
 pip install -r requirements.txt
 ```
 
+### Download required models
+
+Run the following command to download the required MDXNET vocal separation models and hubert base model.
+
+```
+python ./src/init.py
+```
+
 ## Update Ultimate RVC to latest version
 
 Install and pull any new requirements and changes by opening a command line window in the `ultimate-rvc` directory and running the following commands.
@@ -55,18 +64,9 @@ pip install -r requirements.txt
 git pull
 ```
 
-### Download required models
+## App
 
-Run the following command to download the required MDXNET vocal separation models and hubert base model.
-
-```
-python ./src/init.py
-```
-
-
-## Usage with WebUI
-
-To run the Ultimate RVC WebUI, run the following command.
+To run the Ultimate RVC web app, run the following command.
 
 ```
 python ./src/app.py
@@ -75,14 +75,14 @@ python ./src/app.py
 | Flag                                       | Description |
 |--------------------------------------------|-------------|
 | `-h`, `--help`                             | Show this help message and exit. |
-| `--share`                                  | Create a public URL. This is useful for running the web UI on Google Colab. |
-| `--listen`                                 | Make the web UI reachable from your local network. |
+| `--share`                                  | Create a public URL. This is useful for running the web app on Google Colab. |
+| `--listen`                                 | Make the web app reachable from your local network. |
 | `--listen-host LISTEN_HOST`                | The hostname that the server will use. |
 | `--listen-port LISTEN_PORT`                | The listening port that the server will use. |
 
-Once the following output message `Running on local URL:  http://127.0.0.1:7860` appears, you can click on the link to open a tab with the WebUI.
+Once the following output message `Running on local URL:  http://127.0.0.1:7860` appears, you can click on the link to open a tab with the web app.
 
-### Download RVC models via WebUI
+### Download RVC models
 
 ![](images/webui_dl_model.png?raw=true)
 
@@ -92,33 +92,33 @@ The downloaded zip file should contain the .pth model file and an optional .inde
 
 Once the 2 input fields are filled in, simply click `Download`! Once the output message says `[NAME] Model successfully downloaded!`, you should be able to use it in the `Generate song covers` tab!
 
-### Upload RVC models via WebUI
+### Upload RVC models
 
 ![](images/webui_upload_model.png?raw=true)
 
-For people who have trained RVC v2 models locally and would like to use them for AI Cover generations.
+For people who have trained RVC v2 models locally and would like to use them for AI cover generations.
 Navigate to the `Upload model` subtab under the `Manage models` tab, and follow the instructions.
 Once the output message says `[NAME] Model successfully uploaded!`, you should be able to use it in the `Generate` tab after clicking the refresh models button!
 
-### Delete RVC models via WebUI
+### Delete RVC models
 
 TBA
 
-### Running the pipeline via WebUI
+### Running the pipeline
 
 ![](images/webui-front-page?raw=true)
 
 - From the Voice model dropdown menu, select the voice model to use.
 - In the song input field, copy and paste the link to any song on YouTube, the full path to a local audio file, or select a cached input song.
 - Pitch should be set to either -12, 0, or 12 depending on the original vocals and the RVC AI modal. This ensures the voice is not *out of tune*.
-- Other advanced options for voice conversion and audio mixing can be viewed by clicking the accordion arrow to expand.
+- Other advanced options for vocal conversion, audio mixing and etc. can be viewed by clicking the  appropriate accordion arrow to expand.
 
-Once all main options are filled in, click `Generate` and the AI generated cover should appear in a less than a few minutes depending on your GPU.
+Once all options are filled in, click `Generate` and the AI generated cover should appear in a less than a few minutes depending on your GPU.
 
-### Running each step of the pipeline separetely via WebUI
+### Running each step of the pipeline separately
 TBA
 
-## Usage with CLI
+## CLI
 TBA
 
 

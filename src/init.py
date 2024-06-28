@@ -1,4 +1,5 @@
 import requests
+import os
 from common import MDXNET_MODELS_DIR, RVC_MODELS_DIR
 
 MDX_DOWNLOAD_LINK = (
@@ -10,7 +11,7 @@ RVC_DOWNLOAD_LINK = "https://huggingface.co/lj1995/VoiceConversionWebUI/resolve/
 def dl_model(link, model_name, dir_name):
     with requests.get(f"{link}{model_name}") as r:
         r.raise_for_status()
-        with open(dir_name / model_name, "wb") as f:
+        with open(os.path.join(dir_name, model_name), "wb") as f:
             for chunk in r.iter_content(chunk_size=8192):
                 f.write(chunk)
 

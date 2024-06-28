@@ -2,7 +2,7 @@ deemix
 fairseq==0.12.2
 faiss-cpu==1.7.3
 ffmpeg-python>=0.2.0
-gradio==4.31.0
+gradio==4.37.1
 lib==4.0.0
 librosa==0.9.1
 numpy==1.23.5
@@ -10,6 +10,7 @@ onnxruntime-gpu
 praat-parselmouth>=0.4.2
 pedalboard==0.7.7
 pydub==0.25.1
+pydub-stubs
 pyworld==0.3.4
 Requests==2.31.0
 scipy==1.11.1

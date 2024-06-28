@@ -106,7 +106,8 @@ TBA
 
 ### Running the pipeline
 
-![](images/webui-front-page?raw=true)
+
+![](images/webui_generate.png?raw=true)
 
 - From the Voice model dropdown menu, select the voice model to use.
 - In the song input field, copy and paste the link to any song on YouTube, the full path to a local audio file, or select a cached input song.

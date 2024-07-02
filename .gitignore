@@ -1,7 +1,11 @@
-# MDX Models
-
+# General
+dependencies
 gradio_temp
 songs
+
+# MDX Models
+
+
 mdxnet_models/*.onnx
 
 # RVC Models
@@ -11,13 +15,6 @@ rvc_models/*/*.npy
 rvc_models/hubert_base.pt
 rvc_models/rmvpe.pt
 
-# Output
-song_output/*/*.wav
-song_output/*/*.mp3
-song_output/*/*.flac
-song_output/*/*.aac
-song_output/*/*.m4a
-song_output/*/*.ogg
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

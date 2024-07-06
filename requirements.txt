@@ -23,6 +23,7 @@ sox==1.4.1
 #deemix
 
 # Machine learning
+git+https://github.com/JackismyShephard/fairseq; sys_platform == 'linux'
 fairseq==0.12.2; sys_platform == 'darwin' or sys_platform == 'win32'
 --find-links https://download.pytorch.org/whl/torch_stable.html
 torch==2.1.1+cu118 # NOTE upgraded from 2.0.1+cu118

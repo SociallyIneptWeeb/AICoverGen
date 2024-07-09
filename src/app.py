@@ -1,5 +1,3 @@
-from extra_typing import DropdownChoices
-
 import os
 from argparse import ArgumentParser
 

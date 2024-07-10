@@ -1,4 +1,5 @@
 # Ultimate RVC
+
 An autonomous pipeline to create covers with any RVC v2 trained AI voice from YouTube videos or a local audio file. For developers who may want to add a singing functionality into their AI assistant/chatbot/vtuber, or for people who want to hear their favourite characters sing their favourite song.
 
 Showcase: TBA
@@ -14,6 +15,7 @@ Ultimate RVC is under constant development and testing, but you can try it out r
 TBA
 
 ### PRO TIP: Use a GPU for faster processing
+
 While it is possible to run the Ultimate RVC web app on a CPU, it is highly recommended to use a GPU for faster processing. On an NVIDIA 3080 GPU, the AI cover generation process takes approximately 1.5 minutes, while on a CPU, it takes approximately 15 minutes. No testing has been done on AMD GPUs, so no guarantees are made for their performance.
 
 ## Setup
@@ -21,7 +23,6 @@ While it is possible to run the Ultimate RVC web app on a CPU, it is highly reco
 ### Install Git
 
 Follow the instructions [here](https://git-scm.com/book/en/v2/Getting-Started-Installing-Git) to install Git on your computer.
-
 
 ### Clone Ultimate RVC repository
 Open a terminal and run the following commands to clone this entire repository and open it locally.
@@ -34,15 +35,20 @@ cd ultimate-rvc
 
 #### Windows
 Run the following command to install the necessary dependencies on Windows:
-
 ```
 ./urvc.bat install 
 ```
-Note that this will install Visual Studio build tools in your Program Files directory and will install Miniconda in your user directory. The whole process may take upwards of 15 minutes, so grab a cup of coffee and wait.
+Note that this will install Visual Studio build tools in your Program Files directory and will install Miniconda in your user directory. 
+The whole process may take upwards of 15 minutes, so grab a cup of coffee and wait.
 
-#### Unix
+#### Linux (Debian-based)
 
-TBA
+Run the following command to install the necessary dependencies on Debian-based Linux distributions (e.g. Ubuntu):
+```
+./urvc.sh install 
+```
+The command has been tested only on Ubuntu 22.04 and 24.04 so support for other distributions is not guaranteed. 
+Also note that the command will install the CUDA 11.8 toolkit system-wide. In case you have problems, you may need to install the toolkit manually.
 
 ## Usage
 
@@ -50,15 +56,15 @@ TBA
 
 #### Windows
 
-To start the Ultimate RVC web app in your browser on Windows, run the following command:
-
 ```
 ./urvc.bat run
 ```
 
-#### Unix
-TBA 
+#### Linux (Debian-based)
 
+```
+./urvc.sh run
+```
 
 Once the following output message `Running on local URL:  http://127.0.0.1:7860` appears, you can click on the link to open a tab with the web app.
 
@@ -107,14 +113,38 @@ TBA
 ## CLI
 TBA
 
-# Update to latest version
-## Windows
-Run the following command to pull latest changes from the repository and reinstall dependencies on Windows:
+## Update to latest version
+
+Run the following command to pull latest changes from the repository and reinstall dependencies. 
+Note that the process may take upwards of 10 minutes.
+#### Windows
 
 ```
 ./urvc.bat update
 ```
-Note that the process may take upwards of 10 minutes.
+
+#### Linux (Debian-based)
+
+```
+./urvc.sh update
+```
+
+## Development mode
+
+When developing new features or debugging, it is recommended to run the app in development mode. This enables hot reloading, which means that the app will automatically reload when changes are made to the code.
+
+#### Windows
+
+```
+./urvc.bat dev
+```
+
+#### Linux (Debian-based)
+
+```
+./urvc.sh dev
+```
+
 
 ## Terms of Use
 

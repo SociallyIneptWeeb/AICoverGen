@@ -1,4 +1,4 @@
-from typing import Optional, Any
+from typing import Any
 from extra_typing import StrOrBytesPath
 import gradio as gr
 import os
@@ -14,8 +14,8 @@ TEMP_AUDIO_DIR = os.path.join(SONGS_DIR, "temp")
 
 def display_progress(
     message: str,
-    percentage: Optional[float] = None,
-    progress_bar: Optional[gr.Progress] = None,
+    percentage: float | None = None,
+    progress_bar: gr.Progress | None = None,
 ) -> None:
     if progress_bar is None:
         print(message)

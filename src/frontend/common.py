@@ -1,9 +1,7 @@
 from typing import (
     Callable,
     Literal,
-    Optional,
     Any,
-    Union,
     Sequence,
 )
 from typing_extensions import Concatenate
@@ -128,9 +126,9 @@ def show_hop_slider(
 
 
 def get_song_cover_name_harness(
-    mixed_vocals: Optional[str] = None,
-    song_dir: Optional[str] = None,
-    voice_model: Optional[str] = None,
+    mixed_vocals: str | None = None,
+    song_dir: str | None = None,
+    voice_model: str | None = None,
     update_key: SongCoverNameUpdateKey = "value",
 ) -> gr.Textbox:
     update_args: TextBoxArgs = {}
@@ -147,15 +145,15 @@ def get_song_cover_name_harness(
 @dataclass
 class EventArgs:
     fn: Callable[..., Any]
-    inputs: Optional[Sequence[Component]] = None
-    outputs: Optional[Sequence[Component]] = None
+    inputs: Sequence[Component] | None = None
+    outputs: Sequence[Component] | None = None
     name: Literal["click", "success", "then"] = "success"
     show_progress: Literal["full", "minimal", "hidden"] = "full"
 
 
 def setup_consecutive_event_listeners(
     component: Component, event_args_list: list[EventArgs]
-) -> Union[Dependency, Component]:
+) -> Dependency | Component:
     if len(event_args_list) == 0:
         raise ValueError("Event args list must not be empty.")
     dependency = component
@@ -174,7 +172,7 @@ def setup_consecutive_event_listeners_with_toggled_interactivity(
     component: Component,
     event_args_list: list[EventArgs],
     toggled_components: Sequence[Component],
-) -> Union[Dependency, Component]:
+) -> Dependency | Component:
     if len(event_args_list) == 0:
         raise ValueError("Event args list must not be empty.")
 

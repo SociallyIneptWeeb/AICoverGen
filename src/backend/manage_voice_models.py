@@ -1,4 +1,3 @@
-from typing import Optional
 from extra_typing import ModelsTable, ModelsTablePredicate
 import os
 import shutil
@@ -26,7 +25,7 @@ def get_current_models() -> list[str]:
 
 def load_public_models_table(
     predicates: list[ModelsTablePredicate],
-    progress_bar: Optional[gr.Progress] = None,
+    progress_bar: gr.Progress | None = None,
     percentage: float = 0.0,
 ) -> ModelsTable:
     models_table: ModelsTable = []
@@ -46,7 +45,7 @@ def load_public_model_tags() -> list[str]:
 def filter_public_models_table(
     tags: list[str],
     query: str,
-    progress_bar: Optional[gr.Progress] = None,
+    progress_bar: gr.Progress | None = None,
     percentage: float = 0.0,
 ) -> ModelsTable:
 
@@ -131,7 +130,7 @@ def _extract_model_zip(extraction_folder: str, zip_name: str, remove_zip: bool) 
 def download_online_model(
     url: str,
     dir_name: str,
-    progress_bar: Optional[gr.Progress] = None,
+    progress_bar: gr.Progress | None = None,
     percentages: list[float] = [0.0, 0.5],
 ) -> str:
     if len(percentages) != 2:
@@ -167,7 +166,7 @@ def download_online_model(
 def upload_local_model(
     input_paths: list[str],
     dir_name: str,
-    progress_bar: Optional[gr.Progress] = None,
+    progress_bar: gr.Progress | None = None,
     percentage: float = 0.0,
 ) -> str:
     if not input_paths:
@@ -216,7 +215,7 @@ def upload_local_model(
 
 def delete_models(
     model_names: list[str],
-    progress_bar: Optional[gr.Progress] = None,
+    progress_bar: gr.Progress | None = None,
     percentage: float = 0.0,
 ) -> str:
     if not model_names:
@@ -239,7 +238,7 @@ def delete_models(
 
 
 def delete_all_models(
-    progress_bar: Optional[gr.Progress] = None, percentage: float = 0.0
+    progress_bar: gr.Progress | None = None, percentage: float = 0.0
 ) -> str:
     all_models = get_current_models()
     display_progress("[~] Deleting all models ...", percentage, progress_bar)

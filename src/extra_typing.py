@@ -1,21 +1,17 @@
-from typing import TypeVar, Optional, Union, Callable, Any, Literal
+from typing import TypeVar, Callable, Any, Literal
 from os import PathLike
 from typing_extensions import ParamSpec, TypedDict
 
 P = ParamSpec("P")
 T = TypeVar("T")
 
-StrOrBytesPath = Union[str, bytes, PathLike[str], PathLike[bytes]]
+StrOrBytesPath = str | bytes | PathLike[str] | PathLike[bytes]
 
-InputChoices = Union[list[tuple[str, str]], list[str]]
+InputChoices = list[tuple[str, str]] | list[str]
 
-DropdownChoices = Optional[
-    list[Union[str, int, float, tuple[str, Union[str, int, float]]]]
-]
+DropdownChoices = list[str | int | float | tuple[str, str | int | float]] | None
 
-DropdownValue = Union[
-    str, int, float, list[Union[str, int, float]], Callable[..., Any], None
-]
+DropdownValue = str | int | float | list[str | int | float] | Callable[..., Any] | None
 
 InputType = Literal["yt", "local"]
 
@@ -59,17 +55,17 @@ class ComponentInteractivityUpdate(TypedDict):
 
 
 class UpdateDropdownArgs(TypedDict, total=False):
-    choices: Optional[DropdownChoices]
-    value: Optional[DropdownValue]
+    choices: DropdownChoices | None
+    value: DropdownValue | None
 
 
 class TextBoxArgs(TypedDict, total=False):
-    value: Optional[str]
-    placeholder: Optional[str]
+    value: str | None
+    placeholder: str | None
 
 
 class TransferUpdateArgs(TypedDict, total=False):
-    value: Optional[str]
+    value: str | None
 
 
 MixSongCoverHarnessArgs = tuple[str, int, int, int, int, InputAudioExt, str, bool]

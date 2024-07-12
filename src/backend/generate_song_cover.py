@@ -1,4 +1,4 @@
-from typing import Optional, Union, Any
+from typing import Any
 from extra_typing import InputType, F0Method, InputAudioExt, OutputAudioExt
 import gradio as gr
 
@@ -42,7 +42,7 @@ from backend.mdx import run_mdx
 from vc.rvc import Config, load_hubert, get_vc, rvc_infer
 
 
-def _get_youtube_video_id(url: str, ignore_playlist: bool = True) -> Optional[str]:
+def _get_youtube_video_id(url: str, ignore_playlist: bool = True) -> str | None:
     """
     Examples:
     http://youtu.be/SA2iWivDJiE
@@ -103,7 +103,7 @@ def _get_cached_input_paths() -> list[str]:
     return glob.glob(os.path.join(TEMP_AUDIO_DIR, "*", "0_*_Original*"))
 
 
-def _get_orig_song_path(song_dir: str) -> Optional[str]:
+def _get_orig_song_path(song_dir: str) -> str | None:
     # NOTE orig_song_paths should never contain more than one element
     return next(iter(glob.glob(os.path.join(song_dir, "0_*_Original*"))), None)
 
@@ -123,7 +123,7 @@ def _get_unique_base_path(
     song_dir: str,
     prefix: str,
     arg_dict: dict[str, Any],
-    progress_bar: Optional[gr.Progress] = None,
+    progress_bar: gr.Progress | None = None,
     percentage: float = 0.0,
     hash_size: int = 5,
 ) -> str:
@@ -265,7 +265,7 @@ def get_named_song_dirs() -> list[tuple[str, str]]:
 
 def delete_intermediate_audio(
     song_inputs: list[str],
-    progress_bar: Optional[gr.Progress] = None,
+    progress_bar: gr.Progress | None = None,
     percentage: float = 0.0,
 ) -> str:
     if not song_inputs:
@@ -290,7 +290,7 @@ def delete_intermediate_audio(
 
 
 def delete_all_intermediate_audio(
-    progress_bar: Optional[gr.Progress] = None,
+    progress_bar: gr.Progress | None = None,
     percentages: list[float] = [0.0],
 ) -> str:
     if len(percentages) != 1:
@@ -307,7 +307,7 @@ def delete_all_intermediate_audio(
 def convert_to_stereo(
     song_path: str,
     song_dir: str,
-    progress_bar: Optional[gr.Progress] = None,
+    progress_bar: gr.Progress | None = None,
     percentage: float = 0.0,
 ) -> str:
     if not song_path:
@@ -350,7 +350,7 @@ def convert_to_stereo(
 
 def _make_song_dir(
     song_input: str,
-    progress_bar: Optional[gr.Progress] = None,
+    progress_bar: gr.Progress | None = None,
     percentage: float = 0.0,
 ) -> tuple[str, InputType]:
     # if song directory
@@ -392,7 +392,7 @@ def _make_song_dir(
 
 def retrieve_song(
     song_input: str,
-    progress_bar: Optional[gr.Progress] = None,
+    progress_bar: gr.Progress | None = None,
     percentages: list[float] = [i / 3 for i in range(3)],
 ) -> tuple[str, str]:
     if len(percentages) != 3:
@@ -432,7 +432,7 @@ def separate_vocals(
     song_path: str,
     song_dir: str,
     stereofy: bool = True,
-    progress_bar: Optional[gr.Progress] = None,
+    progress_bar: gr.Progress | None = None,
     percentages: list[float] = [i / 2 for i in range(2)],
 ) -> tuple[str, str]:
     if len(percentages) != 2:
@@ -500,7 +500,7 @@ def separate_main_vocals(
     vocals_path: str,
     song_dir: str,
     stereofy: bool = True,
-    progress_bar: Optional[gr.Progress] = None,
+    progress_bar: gr.Progress | None = None,
     percentages: list[float] = [i / 2 for i in range(2)],
 ) -> tuple[str, str]:
     if len(percentages) != 2:
@@ -572,7 +572,7 @@ def dereverb_vocals(
     vocals_path: str,
     song_dir: str,
     stereofy: bool = True,
-    progress_bar: Optional[gr.Progress] = None,
+    progress_bar: gr.Progress | None = None,
     percentages: list[float] = [i / 2 for i in range(2)],
 ) -> tuple[str, str]:
     if len(percentages) != 2:
@@ -652,7 +652,7 @@ def convert_vocals(
     protect: float = 0.33,
     f0_method: F0Method = "rmvpe",
     crepe_hop_length: int = 128,
-    progress_bar: Optional[gr.Progress] = None,
+    progress_bar: gr.Progress | None = None,
     percentage: float = 0.0,
 ) -> str:
     if not vocals_path:
@@ -721,7 +721,7 @@ def postprocess_vocals(
     reverb_wet: float = 0.2,
     reverb_dry: float = 0.8,
     reverb_damping: float = 0.7,
-    progress_bar: Optional[gr.Progress] = None,
+    progress_bar: gr.Progress | None = None,
     percentage: float = 0.0,
 ) -> str:
 
@@ -779,7 +779,7 @@ def pitch_shift_background(
     backup_vocals_path: str,
     song_dir: str,
     pitch_change: int = 0,
-    progress_bar: Optional[gr.Progress] = None,
+    progress_bar: gr.Progress | None = None,
     percentages: list[float] = [i / 2 for i in range(2)],
 ) -> tuple[str, str]:
     if len(percentages) != 2:
@@ -876,7 +876,7 @@ def pitch_shift_background(
 
 
 def _get_voice_model(
-    mixed_vocals_path: Optional[str] = None, song_dir: Optional[str] = None
+    mixed_vocals_path: str | None = None, song_dir: str | None = None
 ) -> str:
     voice_model = "Unknown"
     if not (mixed_vocals_path and song_dir):
@@ -899,10 +899,10 @@ def _get_voice_model(
 
 
 def get_song_cover_name(
-    mixed_vocals_path: Optional[str] = None,
-    song_dir: Optional[str] = None,
-    voice_model: Optional[str] = None,
-    progress_bar: Optional[gr.Progress] = None,
+    mixed_vocals_path: str | None = None,
+    song_dir: str | None = None,
+    voice_model: str | None = None,
+    progress_bar: gr.Progress | None = None,
     percentage: float = 0.0,
 ) -> str:
     display_progress("[~] Getting song cover name...", percentage, progress_bar)
@@ -929,9 +929,9 @@ def mix_song_cover(
     backup_gain: int = 0,
     output_sr: int = 44100,
     output_format: InputAudioExt = "mp3",
-    output_name: Optional[str] = None,
+    output_name: str | None = None,
     keep_files: bool = True,
-    progress_bar: Optional[gr.Progress] = None,
+    progress_bar: gr.Progress | None = None,
     percentages: list[float] = [i / 3 for i in range(3)],
 ) -> str:
     if len(percentages) != 3:
@@ -1038,11 +1038,11 @@ def run_pipeline(
     backup_gain: int = 0,
     output_sr: int = 44100,
     output_format: InputAudioExt = "mp3",
-    output_name: Optional[str] = None,
+    output_name: str | None = None,
     keep_files: bool = True,
     return_files: bool = False,
-    progress_bar: Optional[gr.Progress] = None,
-) -> Union[str, tuple[str, ...]]:
+    progress_bar: gr.Progress | None = None,
+) -> str | tuple[str, ...]:
     display_progress("[~] Starting song cover generation pipeline...", 0, progress_bar)
     percentages = [i / 16 for i in range(16)]
     orig_song_path, song_dir = retrieve_song(song_input, progress_bar, percentages[:3])

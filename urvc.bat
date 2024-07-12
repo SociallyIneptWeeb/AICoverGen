@@ -6,7 +6,7 @@ set "ROOT=%cd%"
 set "URL_MAIN=https://huggingface.co/JackismyShephard/ultimate-rvc/resolve/main"
 
 set "DEPENDENCIES_DIR=%ROOT%\dependencies"
-set "VIRTUAL_ENV_DIR=%DEPENDENCIES_DIR%\venv"
+set "VIRTUAL_ENV_DIR=%DEPENDENCIES_DIR%\.venv"
 set "CONDA_ROOT=%UserProfile%\Miniconda3"
 set "CONDA_EXE_DIR=%CONDA_ROOT%\Scripts"
 

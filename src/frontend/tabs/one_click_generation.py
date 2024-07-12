@@ -1,4 +1,4 @@
-from typing import Callable, Union, Optional
+from typing import Callable
 from typing_extensions import Unpack
 from extra_typing import P, MixSongCoverHarnessArgs, RunPipelineHarnessArgs
 from functools import partial
@@ -36,7 +36,7 @@ from backend.generate_song_cover import (
 
 
 def _duplication_harness(
-    fun: Callable[P, Union[str, tuple[str, ...]]],
+    fun: Callable[P, str | tuple[str, ...]],
 ) -> Callable[P, tuple[str, ...]]:
     def _wrapped(*args: P.args, **kwargs: P.kwargs) -> tuple[str, ...]:
 
@@ -70,7 +70,7 @@ def _mix_song_cover_harness(
 
 def _run_pipeline_harness(
     *args: Unpack[RunPipelineHarnessArgs],
-) -> tuple[Optional[str], ...]:
+) -> tuple[str | None, ...]:
 
     res = exception_harness(run_pipeline)(*args, progress_bar=PROGRESS_BAR)
     if isinstance(res, tuple):
@@ -81,7 +81,7 @@ def _run_pipeline_harness(
 
 def _toggle_intermediate_files_accordion(
     visible: bool,
-) -> list[Union[gr.Accordion, gr.Audio]]:
+) -> list[gr.Accordion | gr.Audio]:
     audio_components = list(gr.Audio(value=None) for _ in range(11))
     accordions = list(gr.Accordion(open=False) for _ in range(7))
     return [gr.Accordion(visible=visible, open=False)] + accordions + audio_components

@@ -6,14 +6,14 @@ songs
 # MDX Models
 
 
-mdxnet_models/*.onnx
+models/mdxnet/*.onnx
 
 # RVC Models
-rvc_models/*/*.pth
-rvc_models/*/*.index
-rvc_models/*/*.npy
-rvc_models/hubert_base.pt
-rvc_models/rmvpe.pt
+models/rvc/*/*.pth
+models/rvc/*/*.index
+models/rvc/*/*.npy
+models/rvc/hubert_base.pt
+models/rvc/rmvpe.pt
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

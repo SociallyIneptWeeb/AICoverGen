@@ -5,10 +5,9 @@ import os
 import shutil
 import json
 import hashlib
-from common import BASE_DIR, RVC_MODELS_DIR
+from common import SONGS_DIR, RVC_MODELS_DIR
 from backend.exceptions import PathNotFoundError
 
-SONGS_DIR = os.path.join(BASE_DIR, "songs")
 TEMP_AUDIO_DIR = os.path.join(SONGS_DIR, "temp")
 
 

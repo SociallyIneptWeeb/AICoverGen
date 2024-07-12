@@ -19,7 +19,7 @@ if __name__ == "__main__":
         "--rvc-dirname",
         type=str,
         required=True,
-        help="Name of the folder in the rvc_models directory containing the RVC model file and optional index file to use",
+        help="Name of the folder in the models/rvc directory containing the RVC model file and optional index file to use",
     )
     parser.add_argument(
         "-pv",

@@ -14,7 +14,7 @@ import torchcrepe
 import traceback
 from scipy import signal
 from torch import Tensor
-from common import BASE_DIR
+from common import BASE_DIR, MODELS_DIR
 
 now_dir = os.path.join(BASE_DIR, "src")
 sys.path.append(now_dir)
@@ -324,7 +324,7 @@ class VC(object):
                 from vc.rmvpe import RMVPE
 
                 self.model_rmvpe = RMVPE(
-                    os.path.join(BASE_DIR, "rvc_models", "rmvpe.pt"),
+                    os.path.join(MODELS_DIR, "rvc", "rmvpe.pt"),
                     is_half=self.is_half,
                     device=self.device,
                 )

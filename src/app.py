@@ -13,6 +13,7 @@ from backend.manage_voice_models import get_current_models
 from frontend.tabs.one_click_generation import render as render_one_click_tab
 from frontend.tabs.multi_step_generation import render as render_multi_step_tab
 from frontend.tabs.manage_models import render as render_manage_models_tab
+from frontend.tabs.manage_audio import render as render_manage_audio_tab
 
 
 def _refresh_dropdowns() -> tuple[gr.Dropdown, ...]:
@@ -91,8 +92,6 @@ with gr.Blocks(title="Ultimate RVC") as app:
     # main tab
     with gr.Tab("Generate song covers"):
         render_one_click_tab(
-            dummy_deletion_checkbox,
-            delete_confirmation,
             generate_buttons,
             song_dir_dropdowns,
             cached_input_songs_dropdown,
@@ -115,6 +114,16 @@ with gr.Blocks(title="Ultimate RVC") as app:
             rvc_models_to_delete,
             rvc_model,
             rvc_model2,
+        )
+    with gr.Tab("Manage audio"):
+
+        render_manage_audio_tab(
+            dummy_deletion_checkbox,
+            delete_confirmation,
+            song_dir_dropdowns,
+            cached_input_songs_dropdown,
+            cached_input_songs_dropdown2,
+            intermediate_audio_to_delete,
         )
 
     app.load(

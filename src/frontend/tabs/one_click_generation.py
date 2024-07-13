@@ -9,20 +9,15 @@ from frontend.common import (
     EventArgs,
     setup_consecutive_event_listeners_with_toggled_interactivity,
     exception_harness,
-    confirmation_harness,
-    confirm_box_js,
     update_cached_input_songs,
     get_song_cover_name_harness,
     toggle_visible_component,
     show_hop_slider,
-    identity,
     update_value,
     PROGRESS_BAR,
 )
 
 from backend.generate_song_cover import (
-    delete_intermediate_audio,
-    delete_all_intermediate_audio,
     retrieve_song,
     separate_vocals,
     separate_main_vocals,
@@ -88,8 +83,6 @@ def _toggle_intermediate_files_accordion(
 
 
 def render(
-    dummy_deletion_checkbox: gr.Checkbox,
-    delete_confirmation: gr.State,
     generate_buttons: list[gr.Button],
     song_dir_dropdowns: list[gr.Dropdown],
     cached_input_songs_dropdown: gr.Dropdown,
@@ -317,74 +310,6 @@ def render(
                     value=False,
                     info="Show generated intermediate audio files when song cover generation completes. Leave unchecked to optimize performance.",
                 )
-            with gr.Accordion("Delete intermediate audio files", open=False):
-                with gr.Row():
-                    with gr.Column():
-                        intermediate_audio_to_delete.render()
-                        delete_intermediate_audio_btn = gr.Button(
-                            "Delete selected",
-                            variant="secondary",
-                        )
-                        delete_all_intermediate_audio_btn = gr.Button(
-                            "Delete all", variant="primary"
-                        )
-                    with gr.Row():
-                        intermediate_audio_delete_msg = gr.Text(
-                            label="Output message", interactive=False
-                        )
-
-                delete_intermediate_audio_click = delete_intermediate_audio_btn.click(
-                    identity,
-                    inputs=dummy_deletion_checkbox,
-                    outputs=delete_confirmation,
-                    js=confirm_box_js(
-                        "Are you sure you want to delete intermediate audio files for the selected songs?"
-                    ),
-                    show_progress="hidden",
-                ).then(
-                    partial(
-                        confirmation_harness(delete_intermediate_audio),
-                        progress_bar=PROGRESS_BAR,
-                    ),
-                    inputs=[delete_confirmation, intermediate_audio_to_delete],
-                    outputs=intermediate_audio_delete_msg,
-                )
-
-                delete_all_intermediate_audio_click = delete_all_intermediate_audio_btn.click(
-                    identity,
-                    inputs=dummy_deletion_checkbox,
-                    outputs=delete_confirmation,
-                    js=confirm_box_js(
-                        "Are you sure you want to delete all intermediate audio files?"
-                    ),
-                    show_progress="hidden",
-                ).then(
-                    partial(
-                        confirmation_harness(delete_all_intermediate_audio),
-                        progress_bar=PROGRESS_BAR,
-                    ),
-                    inputs=delete_confirmation,
-                    outputs=intermediate_audio_delete_msg,
-                )
-                for click_event in [
-                    delete_intermediate_audio_click,
-                    delete_all_intermediate_audio_click,
-                ]:
-                    click_event.success(
-                        partial(
-                            update_cached_input_songs,
-                            3 + len(song_dir_dropdowns),
-                            [],
-                            [0],
-                        ),
-                        outputs=[
-                            intermediate_audio_to_delete,
-                            cached_input_songs_dropdown,
-                            cached_input_songs_dropdown2,
-                            *song_dir_dropdowns,
-                        ],
-                        show_progress="hidden",
-                    )
         intermediate_audio_accordions = [
             gr.Accordion(label, open=False, render=False)
             for label in [

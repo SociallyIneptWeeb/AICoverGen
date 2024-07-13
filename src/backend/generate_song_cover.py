@@ -889,12 +889,11 @@ def mix_song_cover(
     output_sr: int = 44100,
     output_format: InputAudioExt = "mp3",
     output_name: str | None = None,
-    keep_files: bool = True,
     progress_bar: gr.Progress | None = None,
-    percentages: list[float] = [i / 3 for i in range(3)],
+    percentages: list[float] = [i / 2 for i in range(2)],
 ) -> str:
-    if len(percentages) != 3:
-        raise ValueError("Percentages must be a list of length 3.")
+    if len(percentages) != 2:
+        raise ValueError("Percentages must be a list of length 2.")
     if not main_vocals_path:
         raise InputMissingError("Main vocals missing!")
     if not os.path.isfile(main_vocals_path):
@@ -967,13 +966,6 @@ def mix_song_cover(
     song_cover_path = os.path.join(SONGS_DIR, f"{output_name}.{output_format}")
     shutil.copyfile(mixdown_path, song_cover_path)
 
-    if not keep_files:
-        display_progress(
-            f"[~] Removing intermediate audio files in directory for song...",
-            percentages[2],
-            progress_bar,
-        )
-        shutil.rmtree(song_dir)
     return song_cover_path
 
 
@@ -998,12 +990,11 @@ def run_pipeline(
     output_sr: int = 44100,
     output_format: InputAudioExt = "mp3",
     output_name: str | None = None,
-    keep_files: bool = True,
     return_files: bool = False,
     progress_bar: gr.Progress | None = None,
 ) -> str | tuple[str, ...]:
     display_progress("[~] Starting song cover generation pipeline...", 0, progress_bar)
-    percentages = [i / 16 for i in range(16)]
+    percentages = [i / 15 for i in range(15)]
     orig_song_path, song_dir = retrieve_song(song_input, progress_bar, percentages[:3])
     vocals_path, instrumentals_path = separate_vocals(
         orig_song_path, song_dir, False, progress_bar, percentages[3:5]
@@ -1059,11 +1050,10 @@ def run_pipeline(
         output_sr,
         output_format,
         output_name,
-        keep_files,
         progress_bar,
-        percentages[13:16],
+        percentages[13:15],
     )
-    if keep_files and return_files:
+    if return_files:
         return (
             orig_song_path,
             vocals_path,

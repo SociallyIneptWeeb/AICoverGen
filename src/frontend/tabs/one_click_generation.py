@@ -286,6 +286,12 @@ def render(
                     value="mp3",
                     label="Output file format",
                 )
+            with gr.Row():
+                show_intermediate_files = gr.Checkbox(
+                    label="Show intermediate audio files",
+                    value=False,
+                    info="Show generated intermediate audio files when song cover generation completes. Leave unchecked to optimize performance.",
+                )
             rvc_model.change(
                 partial(get_song_cover_name_harness, None, update_key="placeholder"),
                 inputs=[cached_input_songs_dropdown, rvc_model],
@@ -298,18 +304,7 @@ def render(
                 outputs=output_name,
                 show_progress="hidden",
             )
-        with gr.Accordion("Intermediate audio options", open=False):
-            with gr.Row():
-                keep_files = gr.Checkbox(
-                    label="Keep intermediate audio files",
-                    value=True,
-                    info="Keep song directory with intermediate audio files generated during song cover generation. Leave unchecked to save space.",
-                )
-                show_intermediate_files = gr.Checkbox(
-                    label="Show intermediate audio files",
-                    value=False,
-                    info="Show generated intermediate audio files when song cover generation completes. Leave unchecked to optimize performance.",
-                )
+
         intermediate_audio_accordions = [
             gr.Accordion(label, open=False, render=False)
             for label in [
@@ -451,7 +446,6 @@ def render(
                     output_sr,
                     output_format,
                     output_name,
-                    keep_files,
                     show_intermediate_files,
                 ],
                 outputs=[
@@ -486,7 +480,7 @@ def render(
             generate_event_args_list,
             generate_buttons + [show_intermediate_files],
         )
-        percentages = [i / 16 for i in range(16)]
+        percentages = [i / 15 for i in range(15)]
 
         generate_btn2_event_args_list = [
             EventArgs(
@@ -587,7 +581,7 @@ def render(
             EventArgs(
                 partial(
                     _mix_song_cover_harness,
-                    percentages=percentages[13:16],
+                    percentages=percentages[13:15],
                 ),
                 inputs=[
                     postprocessed_vocals_track,
@@ -602,7 +596,6 @@ def render(
                     output_sr,
                     output_format,
                     output_name,
-                    keep_files,
                 ],
                 outputs=[song_cover_track],
             ),
@@ -642,7 +635,6 @@ def render(
                 0,
                 44100,
                 "mp3",
-                True,
                 False,
             ],
             outputs=[
@@ -663,7 +655,6 @@ def render(
                 backup_gain,
                 output_sr,
                 output_format,
-                keep_files,
                 show_intermediate_files,
             ],
             show_progress="hidden",

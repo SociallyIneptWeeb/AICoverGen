@@ -171,7 +171,6 @@ if __name__ == "__main__":
         inst_gain=args.inst_vol,
         output_sr=args.output_sr,
         output_format=args.output_format,
-        keep_files=args.keep_files,
         return_files=False,
         progress_bar=None,
     )

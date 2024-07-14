@@ -9,20 +9,15 @@ from frontend.common import (
     EventArgs,
     setup_consecutive_event_listeners_with_toggled_interactivity,
     exception_harness,
-    confirmation_harness,
-    confirm_box_js,
     update_cached_input_songs,
     get_song_cover_name_harness,
     toggle_visible_component,
     show_hop_slider,
-    identity,
     update_value,
     PROGRESS_BAR,
 )
 
 from backend.generate_song_cover import (
-    delete_intermediate_audio,
-    delete_all_intermediate_audio,
     retrieve_song,
     separate_vocals,
     separate_main_vocals,
@@ -88,8 +83,6 @@ def _toggle_intermediate_files_accordion(
 
 
 def render(
-    dummy_deletion_checkbox: gr.Checkbox,
-    delete_confirmation: gr.State,
     generate_buttons: list[gr.Button],
     song_dir_dropdowns: list[gr.Dropdown],
     cached_input_songs_dropdown: gr.Dropdown,
@@ -293,6 +286,12 @@ def render(
                     value="mp3",
                     label="Output file format",
                 )
+            with gr.Row():
+                show_intermediate_files = gr.Checkbox(
+                    label="Show intermediate audio files",
+                    value=False,
+                    info="Show generated intermediate audio files when song cover generation completes. Leave unchecked to optimize performance.",
+                )
             rvc_model.change(
                 partial(get_song_cover_name_harness, None, update_key="placeholder"),
                 inputs=[cached_input_songs_dropdown, rvc_model],
@@ -305,86 +304,7 @@ def render(
                 outputs=output_name,
                 show_progress="hidden",
             )
-        with gr.Accordion("Intermediate audio options", open=False):
-            with gr.Row():
-                keep_files = gr.Checkbox(
-                    label="Keep intermediate audio files",
-                    value=True,
-                    info="Keep song directory with intermediate audio files generated during song cover generation. Leave unchecked to save space.",
-                )
-                show_intermediate_files = gr.Checkbox(
-                    label="Show intermediate audio files",
-                    value=False,
-                    info="Show generated intermediate audio files when song cover generation completes. Leave unchecked to optimize performance.",
-                )
-            with gr.Accordion("Delete intermediate audio files", open=False):
-                with gr.Row():
-                    with gr.Column():
-                        intermediate_audio_to_delete.render()
-                        delete_intermediate_audio_btn = gr.Button(
-                            "Delete selected",
-                            variant="secondary",
-                        )
-                        delete_all_intermediate_audio_btn = gr.Button(
-                            "Delete all", variant="primary"
-                        )
-                    with gr.Row():
-                        intermediate_audio_delete_msg = gr.Text(
-                            label="Output message", interactive=False
-                        )
 
-                delete_intermediate_audio_click = delete_intermediate_audio_btn.click(
-                    identity,
-                    inputs=dummy_deletion_checkbox,
-                    outputs=delete_confirmation,
-                    js=confirm_box_js(
-                        "Are you sure you want to delete intermediate audio files for the selected songs?"
-                    ),
-                    show_progress="hidden",
-                ).then(
-                    partial(
-                        confirmation_harness(delete_intermediate_audio),
-                        progress_bar=PROGRESS_BAR,
-                    ),
-                    inputs=[delete_confirmation, intermediate_audio_to_delete],
-                    outputs=intermediate_audio_delete_msg,
-                )
-
-                delete_all_intermediate_audio_click = delete_all_intermediate_audio_btn.click(
-                    identity,
-                    inputs=dummy_deletion_checkbox,
-                    outputs=delete_confirmation,
-                    js=confirm_box_js(
-                        "Are you sure you want to delete all intermediate audio files?"
-                    ),
-                    show_progress="hidden",
-                ).then(
-                    partial(
-                        confirmation_harness(delete_all_intermediate_audio),
-                        progress_bar=PROGRESS_BAR,
-                    ),
-                    inputs=delete_confirmation,
-                    outputs=intermediate_audio_delete_msg,
-                )
-                for click_event in [
-                    delete_intermediate_audio_click,
-                    delete_all_intermediate_audio_click,
-                ]:
-                    click_event.success(
-                        partial(
-                            update_cached_input_songs,
-                            3 + len(song_dir_dropdowns),
-                            [],
-                            [0],
-                        ),
-                        outputs=[
-                            intermediate_audio_to_delete,
-                            cached_input_songs_dropdown,
-                            cached_input_songs_dropdown2,
-                            *song_dir_dropdowns,
-                        ],
-                        show_progress="hidden",
-                    )
         intermediate_audio_accordions = [
             gr.Accordion(label, open=False, render=False)
             for label in [
@@ -526,7 +446,6 @@ def render(
                     output_sr,
                     output_format,
                     output_name,
-                    keep_files,
                     show_intermediate_files,
                 ],
                 outputs=[
@@ -561,7 +480,7 @@ def render(
             generate_event_args_list,
             generate_buttons + [show_intermediate_files],
         )
-        percentages = [i / 16 for i in range(16)]
+        percentages = [i / 15 for i in range(15)]
 
         generate_btn2_event_args_list = [
             EventArgs(
@@ -662,7 +581,7 @@ def render(
             EventArgs(
                 partial(
                     _mix_song_cover_harness,
-                    percentages=percentages[13:16],
+                    percentages=percentages[13:15],
                 ),
                 inputs=[
                     postprocessed_vocals_track,
@@ -677,7 +596,6 @@ def render(
                     output_sr,
                     output_format,
                     output_name,
-                    keep_files,
                 ],
                 outputs=[song_cover_track],
             ),
@@ -717,7 +635,6 @@ def render(
                 0,
                 44100,
                 "mp3",
-                True,
                 False,
             ],
             outputs=[
@@ -738,7 +655,6 @@ def render(
                 backup_gain,
                 output_sr,
                 output_format,
-                keep_files,
                 show_intermediate_files,
             ],
             show_progress="hidden",

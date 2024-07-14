@@ -68,7 +68,7 @@ class TransferUpdateArgs(TypedDict, total=False):
     value: str | None
 
 
-MixSongCoverHarnessArgs = tuple[str, int, int, int, int, InputAudioExt, str, bool]
+MixSongCoverHarnessArgs = tuple[str, int, int, int, int, InputAudioExt, str]
 
 RunPipelineHarnessArgs = tuple[
     str,
@@ -91,6 +91,5 @@ RunPipelineHarnessArgs = tuple[
     int,
     InputAudioExt,
     str,
-    bool,
     bool,
 ]

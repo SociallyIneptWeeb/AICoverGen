@@ -263,47 +263,6 @@ def get_named_song_dirs() -> list[tuple[str, str]]:
     return sorted(named_song_dirs, key=lambda x: x[0])
 
 
-def delete_intermediate_audio(
-    song_inputs: list[str],
-    progress_bar: gr.Progress | None = None,
-    percentage: float = 0.0,
-) -> str:
-    if not song_inputs:
-        raise InputMissingError(
-            "Song inputs missing! Please provide a non-empty list of song directories"
-        )
-    display_progress(
-        "[~] Deleting intermediate audio files for selected songs...",
-        percentage,
-        progress_bar,
-    )
-    for song_input in song_inputs:
-        if not os.path.isdir(song_input):
-            raise PathNotFoundError(f"Song directory '{song_input}' does not exist.")
-
-        if not PurePath(song_input).parent == PurePath(TEMP_AUDIO_DIR):
-            raise InvalidPathError(
-                f"Song directory '{song_input}' is not located in the intermediate audio root directory."
-            )
-        shutil.rmtree(song_input)
-    return "[+] Successfully deleted intermediate audio files for selected songs!"
-
-
-def delete_all_intermediate_audio(
-    progress_bar: gr.Progress | None = None,
-    percentages: list[float] = [0.0],
-) -> str:
-    if len(percentages) != 1:
-        raise ValueError("Percentages must be a list of length 1.")
-    display_progress(
-        "[~] Deleting all intermediate audio files...", percentages[0], progress_bar
-    )
-    if os.path.isdir(TEMP_AUDIO_DIR):
-        shutil.rmtree(TEMP_AUDIO_DIR)
-
-    return "[+] All intermediate audio files successfully deleted!"
-
-
 def convert_to_stereo(
     song_path: str,
     song_dir: str,
@@ -930,12 +889,11 @@ def mix_song_cover(
     output_sr: int = 44100,
     output_format: InputAudioExt = "mp3",
     output_name: str | None = None,
-    keep_files: bool = True,
     progress_bar: gr.Progress | None = None,
-    percentages: list[float] = [i / 3 for i in range(3)],
+    percentages: list[float] = [i / 2 for i in range(2)],
 ) -> str:
-    if len(percentages) != 3:
-        raise ValueError("Percentages must be a list of length 3.")
+    if len(percentages) != 2:
+        raise ValueError("Percentages must be a list of length 2.")
     if not main_vocals_path:
         raise InputMissingError("Main vocals missing!")
     if not os.path.isfile(main_vocals_path):
@@ -1008,13 +966,6 @@ def mix_song_cover(
     song_cover_path = os.path.join(SONGS_DIR, f"{output_name}.{output_format}")
     shutil.copyfile(mixdown_path, song_cover_path)
 
-    if not keep_files:
-        display_progress(
-            f"[~] Removing intermediate audio files in directory for song...",
-            percentages[2],
-            progress_bar,
-        )
-        shutil.rmtree(song_dir)
     return song_cover_path
 
 
@@ -1039,12 +990,11 @@ def run_pipeline(
     output_sr: int = 44100,
     output_format: InputAudioExt = "mp3",
     output_name: str | None = None,
-    keep_files: bool = True,
     return_files: bool = False,
     progress_bar: gr.Progress | None = None,
 ) -> str | tuple[str, ...]:
     display_progress("[~] Starting song cover generation pipeline...", 0, progress_bar)
-    percentages = [i / 16 for i in range(16)]
+    percentages = [i / 15 for i in range(15)]
     orig_song_path, song_dir = retrieve_song(song_input, progress_bar, percentages[:3])
     vocals_path, instrumentals_path = separate_vocals(
         orig_song_path, song_dir, False, progress_bar, percentages[3:5]
@@ -1100,11 +1050,10 @@ def run_pipeline(
         output_sr,
         output_format,
         output_name,
-        keep_files,
         progress_bar,
-        percentages[13:16],
+        percentages[13:15],
     )
-    if keep_files and return_files:
+    if return_files:
         return (
             orig_song_path,
             vocals_path,

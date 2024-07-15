@@ -10,6 +10,7 @@ from frontend.common import (
     setup_consecutive_event_listeners_with_toggled_interactivity,
     exception_harness,
     update_cached_input_songs,
+    update_output_audio,
     get_song_cover_name_harness,
     toggle_visible_component,
     show_hop_slider,
@@ -89,6 +90,7 @@ def render(
     cached_input_songs_dropdown2: gr.Dropdown,
     rvc_model: gr.Dropdown,
     intermediate_audio_to_delete: gr.Dropdown,
+    output_audio_to_delete: gr.Dropdown,
 ) -> None:
 
     with gr.Tab("One-click generation"):
@@ -464,13 +466,21 @@ def render(
                 ],
             ),
             EventArgs(
-                partial(update_cached_input_songs, 3 + len(song_dir_dropdowns)),
+                partial(
+                    update_cached_input_songs, 3 + len(song_dir_dropdowns), [], [1]
+                ),
                 outputs=[
                     cached_input_songs_dropdown,
                     intermediate_audio_to_delete,
                     cached_input_songs_dropdown2,
                 ]
                 + song_dir_dropdowns,
+                name="then",
+                show_progress="hidden",
+            ),
+            EventArgs(
+                partial(update_output_audio, 1, [], [0]),
+                outputs=[output_audio_to_delete],
                 name="then",
                 show_progress="hidden",
             ),
@@ -600,13 +610,21 @@ def render(
                 outputs=[song_cover_track],
             ),
             EventArgs(
-                partial(update_cached_input_songs, 3 + len(song_dir_dropdowns)),
+                partial(
+                    update_cached_input_songs, 3 + len(song_dir_dropdowns), [], [1]
+                ),
                 outputs=[
                     cached_input_songs_dropdown,
                     intermediate_audio_to_delete,
                     cached_input_songs_dropdown2,
                 ]
                 + song_dir_dropdowns,
+                name="then",
+                show_progress="hidden",
+            ),
+            EventArgs(
+                partial(update_output_audio, 1, [], [0]),
+                outputs=[output_audio_to_delete],
                 name="then",
                 show_progress="hidden",
             ),

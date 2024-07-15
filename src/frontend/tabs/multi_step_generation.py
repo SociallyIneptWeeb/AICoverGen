@@ -9,6 +9,7 @@ from frontend.common import (
     setup_consecutive_event_listeners_with_toggled_interactivity,
     exception_harness,
     update_cached_input_songs,
+    update_output_audio,
     get_song_cover_name_harness,
     toggle_visible_component,
     show_hop_slider,
@@ -30,10 +31,12 @@ from backend.generate_song_cover import (
 
 def _transfer(
     num_components: int, output_indices: list[int], value: str
-) -> tuple[gr.Audio, ...]:
+) -> gr.Audio | tuple[gr.Audio, ...]:
     update_args: list[TransferUpdateArgs] = [{} for _ in range(num_components)]
     for index in output_indices:
         update_args[index]["value"] = value
+    if num_components == 1:
+        return gr.Audio(**update_args[0])
     return tuple(gr.Audio(**update_arg) for update_arg in update_args)
 
 
@@ -44,6 +47,7 @@ def render(
     cached_input_songs_dropdown2: gr.Dropdown,
     rvc_model: gr.Dropdown,
     intermediate_audio_to_delete: gr.Dropdown,
+    output_audio_to_remove: gr.Dropdown,
 ) -> None:
     with gr.Tab("Multi-step generation"):
         (
@@ -277,7 +281,7 @@ def render(
                 EventArgs(
                     partial(
                         update_cached_input_songs,
-                        len(song_dir_dropdowns) + 3,
+                        len(song_dir_dropdowns) + 2,
                         value_indices=range(len(song_dir_dropdowns) + 1),
                     ),
                     inputs=[current_song_dir],
@@ -286,9 +290,14 @@ def render(
                         + [
                             cached_input_songs_dropdown2,
                             cached_input_songs_dropdown,
-                            intermediate_audio_to_delete,
                         ]
                     ),
+                    name="then",
+                    show_progress="hidden",
+                ),
+                EventArgs(
+                    partial(update_cached_input_songs, 1, [], [0]),
+                    outputs=[intermediate_audio_to_delete],
                     name="then",
                     show_progress="hidden",
                 ),
@@ -892,6 +901,12 @@ def render(
                         output_name,
                     ],
                     outputs=[song_cover_track],
+                ),
+                EventArgs(
+                    partial(update_output_audio, 1, [], [0]),
+                    outputs=[output_audio_to_remove],
+                    name="then",
+                    show_progress="hidden",
                 ),
                 EventArgs(
                     partial(_transfer, len(input_tracks)),

@@ -29,6 +29,7 @@ from backend.generate_song_cover import (
     get_named_song_dirs,
     get_song_cover_name,
 )
+from backend.manage_audio import get_output_audio
 
 PROGRESS_BAR = gr.Progress()
 
@@ -73,7 +74,7 @@ def update_dropdowns(
     value_indices: Sequence[int] = [],
     *args: P.args,
     **kwargs: P.kwargs,
-) -> tuple[gr.Dropdown, ...]:
+) -> gr.Dropdown | tuple[gr.Dropdown, ...]:
     if len(value_indices) != len(set(value_indices)):
         raise ValueError("Value indices must be unique.")
     if value_indices and max(value_indices) >= num_components:
@@ -86,6 +87,10 @@ def update_dropdowns(
     ]
     for index in value_indices:
         update_args[index]["value"] = value
+    if len(update_args) == 1:
+        # NOTE This is a workaround as gradio does not support
+        # singleton tuples for components.
+        return gr.Dropdown(**update_args[0])
     return tuple(gr.Dropdown(**update_arg) for update_arg in update_args)
 
 
@@ -93,26 +98,33 @@ def update_cached_input_songs(
     num_components: int,
     value: DropdownValue = None,
     value_indices: Sequence[int] = [],
-) -> tuple[gr.Dropdown, ...]:
-    return update_dropdowns(
-        get_named_song_dirs,
-        num_components,
-        value=value,
-        value_indices=value_indices,
-    )
+) -> gr.Dropdown | tuple[gr.Dropdown, ...]:
+    return update_dropdowns(get_named_song_dirs, num_components, value, value_indices)
+
+
+def update_output_audio(
+    num_components: int,
+    value: DropdownValue = None,
+    value_indices: Sequence[int] = [],
+) -> gr.Dropdown | tuple[gr.Dropdown, ...]:
+    return update_dropdowns(get_output_audio, num_components, value, value_indices)
 
 
 def toggle_visible_component(
     num_components: int, visible_index: int
-) -> tuple[ComponentVisibilityUpdate, ...]:
+) -> ComponentVisibilityUpdate | tuple[ComponentVisibilityUpdate, ...]:
     update_args = [{"visible": False, "value": None} for _ in range(num_components)]
     update_args[visible_index]["visible"] = True
+    if num_components == 1:
+        return gr.update(**update_args[0])
     return tuple(gr.update(**update_arg) for update_arg in update_args)
 
 
 def _toggle_component_interactivity(
     num_components: int, interactive: bool
-) -> tuple[ComponentInteractivityUpdate, ...]:
+) -> ComponentInteractivityUpdate | tuple[ComponentInteractivityUpdate, ...]:
+    if num_components == 1:
+        return gr.update(interactive=interactive)
     return tuple(gr.update(interactive=interactive) for _ in range(num_components))
 
 

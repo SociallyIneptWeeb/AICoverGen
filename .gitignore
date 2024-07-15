@@ -1,7 +1,6 @@
 # General
 dependencies
-gradio_temp
-songs
+audio
 
 # MDX Models
 

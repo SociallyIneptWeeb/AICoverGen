@@ -5,10 +5,11 @@ import os
 import shutil
 import json
 import hashlib
-from common import SONGS_DIR, RVC_MODELS_DIR
+from common import AUDIO_DIR, RVC_MODELS_DIR
 from backend.exceptions import PathNotFoundError
 
-TEMP_AUDIO_DIR = os.path.join(SONGS_DIR, "temp")
+INTERMEDIATE_AUDIO_DIR = os.path.join(AUDIO_DIR, "intermediate")
+OUTPUT_AUDIO_DIR = os.path.join(AUDIO_DIR, "output")
 
 
 def display_progress(

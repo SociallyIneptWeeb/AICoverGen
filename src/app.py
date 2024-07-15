@@ -9,6 +9,7 @@ from common import GRADIO_TEMP_DIR
 
 from backend.generate_song_cover import get_named_song_dirs
 from backend.manage_voice_models import get_current_models
+from backend.manage_audio import delete_gradio_temp_dir, get_output_audio
 
 from frontend.tabs.one_click_generation import render as render_one_click_tab
 from frontend.tabs.multi_step_generation import render as render_multi_step_tab
@@ -16,14 +17,20 @@ from frontend.tabs.manage_models import render as render_manage_models_tab
 from frontend.tabs.manage_audio import render as render_manage_audio_tab
 
 
-def _refresh_dropdowns() -> tuple[gr.Dropdown, ...]:
+def _init_app() -> tuple[gr.Dropdown, ...]:
+    delete_gradio_temp_dir()
     updated_rvc_model_dropdowns = tuple(
         gr.Dropdown(choices=list(get_current_models())) for _ in range(3)
     )
     updated_song_dir_dropdowns = tuple(
         gr.Dropdown(choices=list(get_named_song_dirs())) for _ in range(10)
     )
-    return updated_rvc_model_dropdowns + updated_song_dir_dropdowns
+    updated_output_audio_dropdown = (gr.Dropdown(choices=list(get_output_audio())),)
+    return (
+        updated_rvc_model_dropdowns
+        + updated_song_dir_dropdowns
+        + updated_output_audio_dropdown
+    )
 
 
 os.environ["GRADIO_TEMP_DIR"] = GRADIO_TEMP_DIR
@@ -58,6 +65,12 @@ with gr.Blocks(title="Ultimate RVC") as app:
         label="Songs with intermediate audio files",
         multiselect=True,
         info="Select one or more songs to delete their asssociated intermediate audio files.",
+        render=False,
+    )
+    output_audio_to_delete = gr.Dropdown(
+        label="Output audio files",
+        multiselect=True,
+        info="Select one or more output audio files to delete.",
         render=False,
     )
     rvc_model, rvc_model2 = [
@@ -98,6 +111,7 @@ with gr.Blocks(title="Ultimate RVC") as app:
             cached_input_songs_dropdown2,
             rvc_model,
             intermediate_audio_to_delete,
+            output_audio_to_delete,
         )
         render_multi_step_tab(
             generate_buttons,
@@ -106,6 +120,7 @@ with gr.Blocks(title="Ultimate RVC") as app:
             cached_input_songs_dropdown2,
             rvc_model2,
             intermediate_audio_to_delete,
+            output_audio_to_delete,
         )
     with gr.Tab("Manage models"):
         render_manage_models_tab(
@@ -124,10 +139,11 @@ with gr.Blocks(title="Ultimate RVC") as app:
             cached_input_songs_dropdown,
             cached_input_songs_dropdown2,
             intermediate_audio_to_delete,
+            output_audio_to_delete,
         )
 
     app.load(
-        _refresh_dropdowns,
+        _init_app,
         outputs=[
             rvc_model,
             rvc_model2,
@@ -136,9 +152,12 @@ with gr.Blocks(title="Ultimate RVC") as app:
             cached_input_songs_dropdown,
             cached_input_songs_dropdown2,
             *song_dir_dropdowns,
+            output_audio_to_delete,
         ],
         show_progress="hidden",
     )
+
+    app.unload(delete_gradio_temp_dir)
 
 
 if __name__ == "__main__":

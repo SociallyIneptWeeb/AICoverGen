@@ -23,8 +23,8 @@ from pydub import AudioSegment, utils as pydub_utils
 from common import MDXNET_MODELS_DIR, RVC_MODELS_DIR
 
 from backend.common import (
-    SONGS_DIR,
-    TEMP_AUDIO_DIR,
+    INTERMEDIATE_AUDIO_DIR,
+    OUTPUT_AUDIO_DIR,
     display_progress,
     get_path_stem,
     json_dump,
@@ -100,7 +100,7 @@ def _yt_download(link: str, song_dir: str) -> str:
 
 def _get_cached_input_paths() -> list[str]:
     # TODO if we later add .json file for input then we need to exclude those here
-    return glob.glob(os.path.join(TEMP_AUDIO_DIR, "*", "0_*_Original*"))
+    return glob.glob(os.path.join(INTERMEDIATE_AUDIO_DIR, "*", "0_*_Original*"))
 
 
 def _get_orig_song_path(song_dir: str) -> str | None:
@@ -314,7 +314,7 @@ def _make_song_dir(
 ) -> tuple[str, InputType]:
     # if song directory
     if os.path.isdir(song_input):
-        if not PurePath(song_input).parent == PurePath(TEMP_AUDIO_DIR):
+        if not PurePath(song_input).parent == PurePath(INTERMEDIATE_AUDIO_DIR):
             raise InvalidPathError(
                 "Song directory not located in intermediate audio root directory."
             )
@@ -342,7 +342,7 @@ def _make_song_dir(
         else:
             raise PathNotFoundError(f"File {song_input} does not exist.")
 
-    song_dir = os.path.join(TEMP_AUDIO_DIR, song_id)
+    song_dir = os.path.join(INTERMEDIATE_AUDIO_DIR, song_id)
 
     Path(song_dir).mkdir(parents=True, exist_ok=True)
 
@@ -963,7 +963,8 @@ def mix_song_cover(
     output_name = output_name or get_song_cover_name(
         main_vocals_path, song_dir, None, progress_bar, percentages[1]
     )
-    song_cover_path = os.path.join(SONGS_DIR, f"{output_name}.{output_format}")
+    song_cover_path = os.path.join(OUTPUT_AUDIO_DIR, f"{output_name}.{output_format}")
+    os.makedirs(OUTPUT_AUDIO_DIR, exist_ok=True)
     shutil.copyfile(mixdown_path, song_cover_path)
 
     return song_cover_path

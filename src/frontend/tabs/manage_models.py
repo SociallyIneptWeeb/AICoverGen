@@ -29,10 +29,8 @@ def _update_model_lists(
     num_components: int,
     value: DropdownValue = None,
     value_indices: list[int] = [],
-) -> tuple[gr.Dropdown, ...]:
-    return update_dropdowns(
-        get_current_models, num_components, value=value, value_indices=value_indices
-    )
+) -> gr.Dropdown | tuple[gr.Dropdown, ...]:
+    return update_dropdowns(get_current_models, num_components, value, value_indices)
 
 
 def _filter_public_models_table_harness(

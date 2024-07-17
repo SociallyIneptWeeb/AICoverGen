@@ -65,6 +65,8 @@ if "%1" == "install" (
     if not exist "%CONDA_EXE_DIR%" (
         echo Installing Miniconda to %CONDA_ROOT%...
         start /wait "" miniconda3_11.exe /InstallationType=JustMe /RegisterPython=0 /S /D=%CONDA_ROOT%
+    )
+    if exist miniconda3_11.exe (
         del miniconda3_11.exe
     )
     cd %ROOT%

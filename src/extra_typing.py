@@ -68,28 +68,36 @@ class TransferUpdateArgs(TypedDict, total=False):
     value: str | None
 
 
-MixSongCoverHarnessArgs = tuple[str, int, int, int, int, InputAudioExt, str]
+MixSongCoverHarnessArgs = tuple[
+    str,  # song_dir
+    int,  # main_gain
+    int,  # inst_gain
+    int,  # backup_gain
+    int,  # output_sr
+    InputAudioExt,  # output_format
+    str,  # output_name
+]
 
 RunPipelineHarnessArgs = tuple[
-    str,
-    str,
-    int,
-    int,
-    float,
-    int,
-    float,
-    float,
-    F0Method,
-    int,
-    float,
-    float,
-    float,
-    float,
-    int,
-    int,
-    int,
-    int,
-    InputAudioExt,
-    str,
-    bool,
+    str,  # song_input
+    str,  # voice_model
+    int,  # pitch_change_vocals
+    int,  # pitch_change_all
+    float,  # index_rate
+    int,  # filter_radius
+    float,  # rms_mix_rate
+    float,  # protect
+    F0Method,  # f0_method
+    int,  # crepe_hop_length
+    float,  # reverb_rm_size
+    float,  # reverb_wet
+    float,  # reverb_dry
+    float,  # reverb_damping
+    int,  # main_gain
+    int,  # inst_gain
+    int,  # backup_gain
+    int,  # output_sr
+    InputAudioExt,  # output_format
+    str,  # output_name
+    bool,  # return_files
 ]

@@ -8,15 +8,16 @@ tqdm==4.65.0 #NOTE upgraded from unspecified
 
 # Audio processing
 #faiss-cpu==1.7.3 # NOTE outcommented due to incompatibility on windows
-librosa==0.9.2 # NOTE upgraded from 0.9.1
+librosa >=0.10 # NOTE upgraded from 0.9.1
 pyworld==0.3.4
-scipy==1.11.1
+scipy~=1.13.0
 soundfile==0.12.1
 praat-parselmouth>=0.4.2 # NOTE upgraded from unspecified
 pedalboard==0.7.7
 pydub==0.25.1
 pydub-stubs
 sox==1.4.1
+audio-separator[gpu]==0.17.5
 #TODO add these later
 #noisereduce
 #audio_upscaler==0.1.4
@@ -27,9 +28,8 @@ git+https://github.com/JackismyShephard/fairseq; sys_platform == 'linux'
 ./dependencies/fairseq-0.12.3.1-cp311-cp311-win_amd64.whl; sys_platform == 'win32'
 ./dependencies/diffq-0.2.4-cp311-cp311-win_amd64.whl; sys_platform == 'win32'
 --find-links https://download.pytorch.org/whl/torch_stable.html
-torch==2.1.1+cu118 # NOTE upgraded from 2.0.1+cu118
+torch==2.1.1+cu121 # NOTE upgraded from 2.0.1+cu118
 torchcrepe==0.0.23 # NOTE upgraded from 0.0.20
-onnxruntime-gpu
 #TODO add these later
 #numba; sys_platform == 'linux'
 #numba==0.57.0; sys_platform == 'darwin' or sys_platform == 'win32'

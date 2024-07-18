@@ -19,8 +19,9 @@ from pedalboard import Reverb, Compressor, HighpassFilter
 from pedalboard._pedalboard import Pedalboard
 from pedalboard.io import AudioFile
 from pydub import AudioSegment, utils as pydub_utils
+from audio_separator.separator import Separator
 
-from common import MDXNET_MODELS_DIR, RVC_MODELS_DIR
+from common import RVC_MODELS_DIR, SEPARATOR_MODELS_DIR
 
 from backend.common import (
     INTERMEDIATE_AUDIO_DIR,
@@ -38,8 +39,26 @@ from backend.exceptions import (
     PathNotFoundError,
     InvalidPathError,
 )
-from backend.mdx import run_mdx
 from vc.rvc import Config, load_hubert, get_vc, rvc_infer
+from logging import WARNING
+
+SEPARATOR = Separator(
+    log_level=WARNING,
+    model_file_dir=SEPARATOR_MODELS_DIR,
+    output_dir=INTERMEDIATE_AUDIO_DIR,
+    mdx_params={
+        "hop_length": 1024,
+        "segment_size": 256,
+        "overlap": 0.001,
+        "batch_size": 1,
+        "enable_denoise": False,
+    },
+    mdxc_params={
+        "segment_size": 256,
+        "batch_size": 1,
+        "overlap": 2,
+    },
+)
 
 
 def _get_youtube_video_id(url: str, ignore_playlist: bool = True) -> str | None:
@@ -441,14 +460,16 @@ def separate_vocals(
             percentages[1],
             progress_bar,
         )
-        run_mdx(
-            MDXNET_MODELS_DIR,
-            song_dir,
-            "UVR-MDX-NET-Voc_FT.onnx",
-            song_path,
-            suffix=vocals_path_base,
-            invert_suffix=instrumentals_path_base,
-            denoise=True,
+        SEPARATOR.arch_specific_params["MDX"]["segment_size"] = 512
+        SEPARATOR.load_model("UVR-MDX-NET-Voc_FT.onnx")
+        temp_instrumentals_name, temp_vocals_name = SEPARATOR.separate(song_path)
+        shutil.move(
+            os.path.join(INTERMEDIATE_AUDIO_DIR, temp_instrumentals_name),
+            instrumentals_path,
+        )
+        shutil.move(
+            os.path.join(INTERMEDIATE_AUDIO_DIR, temp_vocals_name),
+            vocals_path,
         )
         json_dump(arg_dict, vocals_json_path)
         json_dump(arg_dict, instrumentals_json_path)
@@ -513,14 +534,16 @@ def separate_main_vocals(
             percentages[1],
             progress_bar,
         )
-        run_mdx(
-            MDXNET_MODELS_DIR,
-            song_dir,
-            "UVR_MDXNET_KARA_2.onnx",
-            vocals_path,
-            suffix=backup_vocals_path_base,
-            invert_suffix=main_vocals_path_base,
-            denoise=True,
+        SEPARATOR.arch_specific_params["MDX"]["segment_size"] = 512
+        SEPARATOR.load_model("UVR_MDXNET_KARA_2.onnx")
+        temp_main_vocals_name, temp_backup_vocals_name = SEPARATOR.separate(vocals_path)
+        shutil.move(
+            os.path.join(INTERMEDIATE_AUDIO_DIR, temp_main_vocals_name),
+            main_vocals_path,
+        )
+        shutil.move(
+            os.path.join(INTERMEDIATE_AUDIO_DIR, temp_backup_vocals_name),
+            backup_vocals_path,
         )
         json_dump(arg_dict, main_vocals_json_path)
         json_dump(arg_dict, backup_vocals_json_path)
@@ -585,14 +608,18 @@ def dereverb_vocals(
             percentages[1],
             progress_bar,
         )
-        run_mdx(
-            MDXNET_MODELS_DIR,
-            song_dir,
-            "Reverb_HQ_By_FoxJoy.onnx",
-            vocals_path,
-            suffix=vocals_reverb_path_base,
-            invert_suffix=vocals_dereverb_path_base,
-            denoise=True,
+        SEPARATOR.arch_specific_params["MDX"]["segment_size"] = 256
+        SEPARATOR.load_model("Reverb_HQ_By_FoxJoy.onnx")
+        temp_vocals_dereverb_name, temp_vocals_reverb_name = SEPARATOR.separate(
+            vocals_path
+        )
+        shutil.move(
+            os.path.join(INTERMEDIATE_AUDIO_DIR, temp_vocals_dereverb_name),
+            vocals_dereverb_path,
+        )
+        shutil.move(
+            os.path.join(INTERMEDIATE_AUDIO_DIR, temp_vocals_reverb_name),
+            vocals_reverb_path,
         )
         json_dump(arg_dict, vocals_dereverb_json_path)
         json_dump(arg_dict, vocals_reverb_json_path)

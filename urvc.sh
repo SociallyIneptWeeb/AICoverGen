@@ -11,10 +11,10 @@ main() {
             install_distro_specifics
             install_cuda_118
             sudo add-apt-repository -y ppa:deadsnakes/ppa
-            sudo apt install -y python3.10 python3.10-dev python3.10-venv
+            sudo apt install -y python3.11 python3.11-dev python3.11-venv
             sudo apt install -y sox libsox-dev ffmpeg
 
-            python3.10 -m venv .venv --upgrade-deps 
+            python3.11 -m venv .venv --upgrade-deps 
             . .venv/bin/activate
             pip cache purge
             pip install -r requirements.txt
@@ -36,7 +36,7 @@ main() {
             echo "Updating Ultimate RVC"
             git pull
             rm -rf .venv
-            python3.10 -m venv .venv --upgrade-deps
+            python3.11 -m venv .venv --upgrade-deps
             . .venv/bin/activate
             pip cache purge
             pip install -r requirements.txt

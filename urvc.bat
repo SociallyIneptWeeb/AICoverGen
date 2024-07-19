@@ -54,14 +54,7 @@ if "%1" == "install" (
         echo "%URL_MAIN%/dependencies.zip"
         exit /b 1
     )
-
-    echo.
-    echo Installing Visual Studio Build Tools. This might take a while...
     cd %DEPENDENCIES_DIR%
-    start /wait "" vs.exe --wait --quiet --norestart --add Microsoft.VisualStudio.Component.VC.Tools.x86.x64 --add Microsoft.VisualStudio.Component.Windows10SDK.19041
-    echo Visual Studio Build Tools successfully installed.
-    del vs.exe
-
     if not exist "%CONDA_EXE_DIR%" (
         echo Installing Miniconda to %CONDA_ROOT%...
         start /wait "" miniconda3_11.exe /InstallationType=JustMe /RegisterPython=0 /S /D=%CONDA_ROOT%
@@ -71,7 +64,7 @@ if "%1" == "install" (
     )
     cd %ROOT%
 
-    call conda create --no-shortcuts -y -k --prefix %VIRTUAL_ENV_DIR% python=3.10
+    call conda create --no-shortcuts -y -k --prefix %VIRTUAL_ENV_DIR% python=3.11
     call activate.bat %VIRTUAL_ENV_DIR%
     echo Installing Python packages..
     REM installing vs2015_runtime is necessary due to conda using an old vc runtime 
@@ -111,7 +104,7 @@ if "%1" == "update" (
     git pull
     call activate.bat
     call conda remove --prefix %VIRTUAL_ENV_DIR% --all --yes
-    call conda create --no-shortcuts -y -k --prefix %VIRTUAL_ENV_DIR% python=3.10
+    call conda create --no-shortcuts -y -k --prefix %VIRTUAL_ENV_DIR% python=3.11
     call conda activate %VIRTUAL_ENV_DIR%
     call conda install -y -c conda-forge vs2015_runtime faiss-cpu
     pip cache purge

@@ -53,7 +53,7 @@ Run the following command to install the necessary dependencies on Debian-based 
 ./urvc.sh install 
 ```
 The command has been tested only on Ubuntu 22.04 and 24.04 so support for other distributions is not guaranteed. 
-Also note that the command will install the CUDA 11.8 toolkit system-wide. In case you have problems, you may need to install the toolkit manually.
+Also note that the command will install the CUDA 12.1 toolkit system-wide. In case you have problems, you may need to install the toolkit manually.
 
 ## Usage
 

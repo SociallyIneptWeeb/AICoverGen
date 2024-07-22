@@ -2,10 +2,8 @@
 dependencies
 audio
 
-# MDX Models
-
-
-models/mdxnet/*.onnx
+# Audio separation models
+models/audio_separator
 
 # RVC Models
 models/rvc/*/*.pth

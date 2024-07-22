@@ -9,7 +9,7 @@ main() {
             echo "Installing Ultimate RVC"
             sudo apt install -y build-essential software-properties-common
             install_distro_specifics
-            install_cuda_118
+            install_cuda_121
             sudo add-apt-repository -y ppa:deadsnakes/ppa
             sudo apt install -y python3.11 python3.11-dev python3.11-venv
             sudo apt install -y sox libsox-dev ffmpeg
@@ -20,7 +20,7 @@ main() {
             pip install -r requirements.txt
             pip install faiss-cpu==1.7.3
             pip uninstall torch torchaudio -y
-            pip install torch==2.1.1 torchaudio==2.1.1 --index-url https://download.pytorch.org/whl/cu118
+            pip install torch==2.1.1 torchaudio==2.1.1 --index-url https://download.pytorch.org/whl/cu121
             python ./src/init.py
             deactivate
             echo
@@ -42,7 +42,7 @@ main() {
             pip install -r requirements.txt
             pip install faiss-cpu==1.7.3
             pip uninstall torch torchaudio -y
-            pip install torch==2.1.1 torchaudio==2.1.1 --index-url https://download.pytorch.org/whl/cu118
+            pip install torch==2.1.1 torchaudio==2.1.1 --index-url https://download.pytorch.org/whl/cu121
             deactivate
             echo
             echo "Ultimate RVC has been updated successfully"
@@ -66,7 +66,7 @@ install_distro_specifics() {
         Ubuntu)
             case $DISTRIB_RELEASE in
                 24.04)
-                    # Add Ubuntu 23.10 repository to sources.list so that we can install cuda 11.8 toolkit
+                    # Add Ubuntu 23.10 repository to sources.list so that we can install cuda 12.1 toolkit
 
                     # sed command removes leading whitespace from subsequent lines
                     TEXT=$(sed 's/^[[:space:]]*//' <<< "\
@@ -99,14 +99,14 @@ install_distro_specifics() {
     esac
 }
 
-install_cuda_118() {
-    echo "Installing CUDA 11.8"
+install_cuda_121() {
+    echo "Installing CUDA 12.1"
     wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/x86_64/cuda-keyring_1.0-1_all.deb
     sudo dpkg -i cuda-keyring_1.0-1_all.deb
     sudo apt-get update
-    sudo apt-get -y install cuda-toolkit-11-8
+    sudo apt-get -y install cuda-toolkit-12-1
     rm -rf cuda-keyring_1.0-1_all.deb
-    echo "CUDA 11.8 has been installed successfully"
+    echo "CUDA 12.1 has been installed successfully"
 }
 
 main $@

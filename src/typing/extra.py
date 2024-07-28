@@ -1,6 +1,5 @@
-from typing import TypeVar, Callable, Any, Literal
+from typing import TypeVar, Callable, Any, Literal, ParamSpec, TypedDict
 from os import PathLike
-from typing_extensions import ParamSpec, TypedDict
 
 P = ParamSpec("P")
 T = TypeVar("T")
@@ -43,15 +42,9 @@ ModelsTable = list[list[str]]
 ModelsTablePredicate = Callable[[dict[str, str]], bool]
 
 
-class ComponentVisibilityUpdate(TypedDict):
-    __type__: str
+class ComponentVisibilityKwArgs(TypedDict):
     visible: bool
-    value: None
-
-
-class ComponentInteractivityUpdate(TypedDict):
-    __type__: str
-    interactive: bool
+    value: Any
 
 
 class UpdateDropdownArgs(TypedDict, total=False):

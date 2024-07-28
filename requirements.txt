@@ -38,7 +38,7 @@ torchcrepe==0.0.23 # NOTE upgraded from 0.0.20
 #torchfcpe
 
 # Visualization
-gradio==4.37.1
+gradio==4.39.0
 #TODO add these later
 #matplotlib==3.7.2
 #tensorboard

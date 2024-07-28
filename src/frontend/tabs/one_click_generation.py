@@ -1,6 +1,5 @@
 from typing import Callable
-from typing_extensions import Unpack
-from extra_typing import P, MixSongCoverHarnessArgs, RunPipelineHarnessArgs
+from typing.extra import P, MixSongCoverHarnessArgs, RunPipelineHarnessArgs
 from functools import partial
 
 import gradio as gr
@@ -51,7 +50,7 @@ def _mix_song_cover_harness(
     backup_vocals_path: str,
     instrumentals_shifted_path: str,
     backup_vocals_shifted_path: str,
-    *args: Unpack[MixSongCoverHarnessArgs],
+    *args: *MixSongCoverHarnessArgs,
     percentages: list[float],
 ) -> str:
     return exception_harness(mix_song_cover)(
@@ -65,7 +64,7 @@ def _mix_song_cover_harness(
 
 
 def _run_pipeline_harness(
-    *args: Unpack[RunPipelineHarnessArgs],
+    *args: *RunPipelineHarnessArgs,
 ) -> tuple[str | None, ...]:
 
     res = exception_harness(run_pipeline)(*args, progress_bar=PROGRESS_BAR)

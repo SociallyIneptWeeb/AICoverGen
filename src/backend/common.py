@@ -1,5 +1,5 @@
 from typing import Any
-from extra_typing import StrOrBytesPath
+from typing.extra import StrOrBytesPath
 import gradio as gr
 import os
 import shutil

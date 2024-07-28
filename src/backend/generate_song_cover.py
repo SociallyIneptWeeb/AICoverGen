@@ -1,5 +1,5 @@
 from typing import Any
-from extra_typing import InputType, F0Method, InputAudioExt, OutputAudioExt
+from typing.extra import InputType, F0Method, InputAudioExt, OutputAudioExt
 import gradio as gr
 
 import gc

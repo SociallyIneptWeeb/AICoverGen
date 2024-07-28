@@ -1,11 +1,5 @@
-from typing import (
-    Callable,
-    Literal,
-    Any,
-    Sequence,
-)
-from typing_extensions import Concatenate
-from extra_typing import (
+from typing import Callable, Literal, Any, Sequence, Concatenate
+from typing.extra import (
     P,
     T,
     SongCoverNameUpdateKey,
@@ -13,8 +7,7 @@ from extra_typing import (
     InputChoices,
     DropdownValue,
     UpdateDropdownArgs,
-    ComponentVisibilityUpdate,
-    ComponentInteractivityUpdate,
+    ComponentVisibilityKwArgs,
     TextBoxArgs,
 )
 from dataclasses import dataclass
@@ -112,8 +105,10 @@ def update_output_audio(
 
 def toggle_visible_component(
     num_components: int, visible_index: int
-) -> ComponentVisibilityUpdate | tuple[ComponentVisibilityUpdate, ...]:
-    update_args = [{"visible": False, "value": None} for _ in range(num_components)]
+) -> dict[str, Any] | tuple[dict[str, Any], ...]:
+    update_args: list[ComponentVisibilityKwArgs] = [
+        {"visible": False, "value": None} for _ in range(num_components)
+    ]
     update_args[visible_index]["visible"] = True
     if num_components == 1:
         return gr.update(**update_args[0])
@@ -122,7 +117,7 @@ def toggle_visible_component(
 
 def _toggle_component_interactivity(
     num_components: int, interactive: bool
-) -> ComponentInteractivityUpdate | tuple[ComponentInteractivityUpdate, ...]:
+) -> dict[str, Any] | tuple[dict[str, Any], ...]:
     if num_components == 1:
         return gr.update(interactive=interactive)
     return tuple(gr.update(interactive=interactive) for _ in range(num_components))

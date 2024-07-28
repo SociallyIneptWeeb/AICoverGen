@@ -1,4 +1,4 @@
-from extra_typing import DropdownValue, TransferUpdateArgs
+from typing.extra import DropdownValue, TransferUpdateArgs
 
 from functools import partial
 

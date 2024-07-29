@@ -1,5 +1,5 @@
 from typing import Any
-from extra import F0Method
+from typings.extra import F0Method
 from multiprocessing import cpu_count
 from pathlib import Path
 

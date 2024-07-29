@@ -1,3 +1,3 @@
 {
-    "python.analysis.stubPath": "src/typing",
+    "python.analysis.stubPath": "src/typings",
 }

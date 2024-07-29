@@ -1,4 +1,4 @@
-from typing.extra import ModelsTable, ModelsTablePredicate
+from typings.extra import ModelsTable, ModelsTablePredicate
 import os
 import shutil
 import gradio as gr

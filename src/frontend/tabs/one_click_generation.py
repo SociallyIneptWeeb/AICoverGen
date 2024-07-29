@@ -1,5 +1,5 @@
 from typing import Callable
-from typing.extra import P, MixSongCoverHarnessArgs, RunPipelineHarnessArgs
+from typings.extra import P, MixSongCoverHarnessArgs, RunPipelineHarnessArgs
 from functools import partial
 
 import gradio as gr

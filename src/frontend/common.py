@@ -1,5 +1,5 @@
 from typing import Callable, Literal, Any, Sequence, Concatenate
-from typing.extra import (
+from typings.extra import (
     P,
     T,
     SongCoverNameUpdateKey,

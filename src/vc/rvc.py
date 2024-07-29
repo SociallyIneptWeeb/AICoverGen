@@ -1,3 +1,5 @@
+from typing import Any
+from extra import F0Method
 from multiprocessing import cpu_count
 from pathlib import Path
 
@@ -103,8 +105,8 @@ class Config:
         return x_pad, x_query, x_center, x_max
 
 
-def load_hubert(device, is_half, model_path):
-    models, saved_cfg, task = checkpoint_utils.load_model_ensemble_and_task(
+def load_hubert(device: str, is_half: bool, model_path: str) -> torch.nn.Module:
+    models, _, _ = checkpoint_utils.load_model_ensemble_and_task(
         [model_path],
         suffix="",
     )
@@ -120,7 +122,9 @@ def load_hubert(device, is_half, model_path):
     return hubert
 
 
-def get_vc(device, is_half, config, model_path):
+def get_vc(
+    device: str, is_half: bool, config: Config, model_path: str
+) -> tuple[dict[str, Any], str, torch.nn.Module, int, VC]:
     cpt = torch.load(model_path, map_location="cpu")
     if "config" not in cpt or "weight" not in cpt:
         raise ValueError(
@@ -157,24 +161,24 @@ def get_vc(device, is_half, config, model_path):
 
 
 def rvc_infer(
-    index_path,
-    index_rate,
-    input_path,
-    output_path,
-    pitch_change,
-    f0_method,
-    cpt,
-    version,
-    net_g,
-    filter_radius,
-    tgt_sr,
-    rms_mix_rate,
-    protect,
-    crepe_hop_length,
-    vc,
-    hubert_model,
-    resample_sr,
-):
+    index_path: str,
+    index_rate: float,
+    input_path: str,
+    output_path: str,
+    pitch_change: int,
+    f0_method: F0Method,
+    cpt: dict[str, Any],
+    version: str,
+    net_g: torch.nn.Module,
+    filter_radius: int,
+    tgt_sr: int,
+    rms_mix_rate: float,
+    protect: float,
+    crepe_hop_length: int,
+    vc: VC,
+    hubert_model: torch.nn.Module,
+    resample_sr: int,
+) -> None:
     audio = load_audio(input_path, 16000)
     times = [0, 0, 0]
     if_f0 = cpt.get("f0", 1)

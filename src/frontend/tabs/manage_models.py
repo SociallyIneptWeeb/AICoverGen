@@ -1,4 +1,4 @@
-from extra_typing import DropdownValue
+from typing.extra import DropdownValue
 from functools import partial
 
 import gradio as gr

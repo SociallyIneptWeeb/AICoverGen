@@ -71,7 +71,7 @@ if "%1" == "install" (
     REM that is not compatible with new visual studio compiler
     call conda install -y -c conda-forge faiss-cpu vs2015_runtime
     pip cache purge
-    pip install --upgrade pip setuptools<72.0.0
+    pip install --upgrade pip "setuptools<72.0.0"
     pip install -r "%ROOT%\requirements.txt"
 
     echo.
@@ -108,7 +108,7 @@ if "%1" == "update" (
     call conda activate %VIRTUAL_ENV_DIR%
     call conda install -y -c conda-forge vs2015_runtime faiss-cpu
     pip cache purge
-    pip install --upgrade pip setuptools<72.0.0
+    pip install --upgrade pip "setuptools<72.0.0"
     pip install -r "%ROOT%\requirements.txt"
     call conda deactivate
 

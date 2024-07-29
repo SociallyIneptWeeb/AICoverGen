@@ -17,7 +17,7 @@ main() {
             python3.11 -m venv .venv
             . .venv/bin/activate
             pip cache purge
-            pip install --upgrade pip setuptools<72.0.0
+            pip install --upgrade pip "setuptools<72.0.0"
             pip install -r requirements.txt
             pip install faiss-cpu==1.7.3
             pip uninstall torch torchaudio -y
@@ -40,7 +40,7 @@ main() {
             python3.11 -m venv .venv
             . .venv/bin/activate
             pip cache purge
-            pip install --upgrade pip setuptools<72.0.0
+            pip install --upgrade pip "setuptools<72.0.0"
             pip install -r requirements.txt
             pip install faiss-cpu==1.7.3
             pip uninstall torch torchaudio -y

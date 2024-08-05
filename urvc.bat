@@ -67,11 +67,9 @@ if "%1" == "install" (
     call conda create --no-shortcuts -y -k --prefix %VIRTUAL_ENV_DIR% python=3.11
     call activate.bat %VIRTUAL_ENV_DIR%
     echo Installing Python packages..
-    REM installing vs2015_runtime is necessary due to conda using an old vc runtime 
-    REM that is not compatible with new visual studio compiler
-    call conda install -y -c conda-forge faiss-cpu vs2015_runtime
+    call conda install -y -c conda-forge faiss-cpu
     pip cache purge
-    pip install --upgrade pip "setuptools<72.0.0"
+    python -m pip install --upgrade pip setuptools
     pip install -r "%ROOT%\requirements.txt"
 
     echo.
@@ -106,9 +104,9 @@ if "%1" == "update" (
     call conda remove --prefix %VIRTUAL_ENV_DIR% --all --yes
     call conda create --no-shortcuts -y -k --prefix %VIRTUAL_ENV_DIR% python=3.11
     call conda activate %VIRTUAL_ENV_DIR%
-    call conda install -y -c conda-forge vs2015_runtime faiss-cpu
+    call conda install -y -c conda-forge faiss-cpu
     pip cache purge
-    pip install --upgrade pip "setuptools<72.0.0"
+    python -m pip install --upgrade pip setuptools
     pip install -r "%ROOT%\requirements.txt"
     call conda deactivate
 

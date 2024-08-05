@@ -39,8 +39,9 @@ torchcrepe==0.0.23 # NOTE upgraded from 0.0.20
 
 # Visualization
 gradio==4.39.0
+matplotlib==3.9.0
 #TODO add these later
-#matplotlib==3.7.2
+
 #tensorboard
 
 # Miscellaneous

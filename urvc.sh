@@ -14,10 +14,9 @@ main() {
             sudo apt install -y python3.11 python3.11-dev python3.11-venv
             sudo apt install -y sox libsox-dev ffmpeg
 
-            python3.11 -m venv .venv
+            python3.11 -m venv .venv --upgrade-deps
             . .venv/bin/activate
             pip cache purge
-            pip install --upgrade pip "setuptools<72.0.0"
             pip install -r requirements.txt
             pip install faiss-cpu==1.7.3
             pip uninstall torch torchaudio -y
@@ -37,10 +36,9 @@ main() {
             echo "Updating Ultimate RVC"
             git pull
             rm -rf .venv
-            python3.11 -m venv .venv
+            python3.11 -m venv .venv --upgrade-deps
             . .venv/bin/activate
             pip cache purge
-            pip install --upgrade pip "setuptools<72.0.0"
             pip install -r requirements.txt
             pip install faiss-cpu==1.7.3
             pip uninstall torch torchaudio -y

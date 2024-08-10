@@ -17,7 +17,7 @@ pedalboard==0.7.7
 pydub==0.25.1
 pydub-stubs
 sox==1.4.1
-audio-separator[gpu]==0.17.5
+audio-separator[gpu]==0.18.3
 #TODO add these later
 #noisereduce
 #audio_upscaler==0.1.4
@@ -38,7 +38,7 @@ torchcrepe==0.0.23 # NOTE upgraded from 0.0.20
 #torchfcpe
 
 # Visualization
-gradio==4.39.0
+gradio==4.41.0
 matplotlib==3.9.0
 #TODO add these later
 

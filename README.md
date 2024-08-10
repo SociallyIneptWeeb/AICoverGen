@@ -2,6 +2,8 @@
 
 An extension of [AiCoverGen](https://github.com/SociallyIneptWeeb/AICoverGen), which provides several new features and improvements, enabling users to generate song covers using RVC with ease. Ideal for people who wnat to incorporate singing functionality into their AI assistant/chatbot/vtuber, or for people who want to hear their favourite characters sing their favourite song.
 
+
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/medicenjona1/ultimate-rvc/blob/main/ultimate_rvc_colab_by_medicenjona1.ipynb)
 <!-- Showcase: TBA -->
 
 ![](images/webui_generate.png?raw=true)
@@ -77,6 +79,7 @@ While it is possible to run the Ultimate RVC web app on a CPU, it is highly reco
 ```
 ./urvc.sh run
 ```
+
 
 Once the following output message `Running on local URL:  http://127.0.0.1:7860` appears, you can click on the link to open a tab with the web app.
 

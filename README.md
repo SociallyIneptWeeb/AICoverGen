@@ -2,13 +2,11 @@
 
 An extension of [AiCoverGen](https://github.com/SociallyIneptWeeb/AICoverGen), which provides several new features and improvements, enabling users to generate song covers using RVC with ease. Ideal for people who wnat to incorporate singing functionality into their AI assistant/chatbot/vtuber, or for people who want to hear their favourite characters sing their favourite song.
 
-
-[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/medicenjona1/ultimate-rvc/blob/main/ultimate_rvc_colab_by_medicenjona1.ipynb)
 <!-- Showcase: TBA -->
 
 ![](images/webui_generate.png?raw=true)
 
-Ultimate RVC is under constant development and testing, but you can try it out right now locally!
+Ultimate RVC is under constant development and testing, but you can try it out right now locally or on Google Colab!
 
 ## New Features
 
@@ -24,6 +22,14 @@ Ultimate RVC is under constant development and testing, but you can try it out r
 <!-- ## Changelog
 
 TBA -->
+
+## Colab notebook
+
+For those without a powerful enough NVIDIA GPU, you may try Ultimate RVC out using Google Colab.
+
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/JackismyShephard/ultimate-rvc/blob/main/notebooks/ultimate_rvc_colab.ipynb)
+
+For those who want to run this locally, follow the setup guide below.
 
 ## Setup
 

@@ -32,6 +32,11 @@ main() {
             ./.venv/bin/python ./src/app.py
             exit 0
             ;;
+        colab)
+            echo "Starting Ultimate RVC"
+            ./.venv/bin/python ./src/app.py --share --listen-port 9999
+            exit 0
+            ;;
         update)
             echo "Updating Ultimate RVC"
             git pull

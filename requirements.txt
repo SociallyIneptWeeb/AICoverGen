@@ -24,11 +24,12 @@ audio-separator[gpu]==0.18.3
 #deemix
 
 # Machine learning
-git+https://github.com/JackismyShephard/fairseq; sys_platform == 'linux'
+./dependencies/fairseq-0.12.2-cp311-cp311-linux_x86_64.whl; sys_platform == 'linux'
 ./dependencies/fairseq-0.12.3.1-cp311-cp311-win_amd64.whl; sys_platform == 'win32'
 ./dependencies/diffq-0.2.4-cp311-cp311-win_amd64.whl; sys_platform == 'win32'
 --find-links https://download.pytorch.org/whl/torch_stable.html
 torch==2.1.1+cu121 # NOTE upgraded from 2.0.1+cu118
+torchaudio==2.1.1+cu121
 torchcrepe==0.0.23 # NOTE upgraded from 0.0.20
 #TODO add these later
 #numba; sys_platform == 'linux'

@@ -2,7 +2,9 @@
 #
 # Launcher script for Ultimate RVC on Debian-based linux systems.
 # Currently only supports Ubuntu 22.04 and Ubuntu 24.04.
-
+DEPS_PATH="./dependencies"
+VENV_PATH="$DEPS_PATH/.venv"
+BIN_PATH="$VENV_PATH/bin"
 main() {
     case $1 in
         install)
@@ -13,14 +15,14 @@ main() {
             sudo add-apt-repository -y ppa:deadsnakes/ppa
             sudo apt install -y python3.11 python3.11-dev python3.11-venv
             sudo apt install -y sox libsox-dev ffmpeg
-
-            python3.11 -m venv .venv --upgrade-deps
-            . .venv/bin/activate
+            rm -rf $DEPS_PATH
+            curl -LJ -o ./dependencies/fairseq-0.12.2-cp311-cp311-linux_x86_64.whl --create-dirs \
+                https://huggingface.co/JackismyShephard/ultimate-rvc/resolve/main/fairseq-0.12.2-cp311-cp311-linux_x86_64.whl
+            python3.11 -m venv $VENV_PATH --upgrade-deps
+            . $BIN_PATH/activate
             pip cache purge
             pip install -r requirements.txt
             pip install faiss-cpu==1.7.3
-            pip uninstall torch torchaudio -y
-            pip install torch==2.1.1 torchaudio==2.1.1 --index-url https://download.pytorch.org/whl/cu121
             python ./src/init.py
             deactivate
             echo
@@ -29,25 +31,23 @@ main() {
             ;;
         run)
             echo "Starting Ultimate RVC"
-            ./.venv/bin/python ./src/app.py
+            $BIN_PATH/python ./src/app.py
             exit 0
             ;;
         colab)
             echo "Starting Ultimate RVC"
-            ./.venv/bin/python ./src/app.py --share --listen-port 9999
+            $BIN_PATH/python ./src/app.py --share --listen-port 9999
             exit 0
             ;;
         update)
             echo "Updating Ultimate RVC"
             git pull
-            rm -rf .venv
-            python3.11 -m venv .venv --upgrade-deps
-            . .venv/bin/activate
+            rm -rf $VENV_PATH
+            python3.11 -m venv $VENV_PATH --upgrade-deps
+            . $BIN_PATH/activate
             pip cache purge
             pip install -r requirements.txt
             pip install faiss-cpu==1.7.3
-            pip uninstall torch torchaudio -y
-            pip install torch==2.1.1 torchaudio==2.1.1 --index-url https://download.pytorch.org/whl/cu121
             deactivate
             echo
             echo "Ultimate RVC has been updated successfully"
@@ -55,7 +55,7 @@ main() {
             ;;
         dev)
             echo "Starting Ultimate RVC in development mode"
-            ./.venv/bin/gradio ./src/app.py --demo-name app
+            $BIN_PATH/gradio ./src/app.py --demo-name app
             exit 0
             ;;
         *)

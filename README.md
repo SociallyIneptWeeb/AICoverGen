@@ -23,6 +23,10 @@ Ultimate RVC is under constant development and testing, but you can try it out r
 
 TBA -->
 
+#### PRO TIP: Use a GPU for faster processing
+
+While it is possible to run the Ultimate RVC web app on a CPU, it is highly recommended to use a GPU for faster processing. On an NVIDIA 3080 GPU, the AI cover generation process takes approximately 1.5 minutes, while on a CPU, it takes approximately 15 minutes. No testing has been done on AMD GPUs, so no guarantees are made for their performance.
+
 ## Colab notebook
 
 For those without a powerful enough NVIDIA GPU, you may try Ultimate RVC out using Google Colab.
@@ -65,21 +69,13 @@ Also note that the command will install the CUDA 12.1 toolkit system-wide. In ca
 
 ## Usage
 
-#### PRO TIP: Use a GPU for faster processing
-
-While it is possible to run the Ultimate RVC web app on a CPU, it is highly recommended to use a GPU for faster processing. On an NVIDIA 3080 GPU, the AI cover generation process takes approximately 1.5 minutes, while on a CPU, it takes approximately 15 minutes. No testing has been done on AMD GPUs, so no guarantees are made for their performance.
-
 ### Start the app
-
-
-
 
 #### Windows
 
 ```
 ./urvc.bat run
 ```
-
 #### Linux (Debian-based)
 
 ```

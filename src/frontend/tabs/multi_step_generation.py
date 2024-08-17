@@ -1,4 +1,4 @@
-from typings.extra import DropdownValue, TransferUpdateArgs
+from typings.extra import TransferUpdateArgs
 
 from functools import partial
 
@@ -131,7 +131,7 @@ def render(
             shifted_backup_vocals_track_input,
         ) = input_tracks
 
-        transfer_defaults: list[DropdownValue] = [
+        transfer_defaults = [
             ["Step 1: input song"],
             ["Step 2: vocals"],
             ["Step 6: instrumentals"],

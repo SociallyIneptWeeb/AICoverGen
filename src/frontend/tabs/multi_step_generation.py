@@ -60,7 +60,6 @@ def render(
             pitch_shift_background_btn,
             mix_btn,
             _,
-            _,
         ) = generate_buttons
         (
             separate_vocals_dir,
@@ -228,7 +227,7 @@ def render(
                         type="index",
                     )
                 with gr.Column():
-                    song_input = gr.Text(
+                    song_input = gr.Textbox(
                         label="Song input",
                         info="Link to a song on YouTube or the full path of a local audio file.",
                     )
@@ -825,7 +824,7 @@ def render(
                 inst_gain = gr.Slider(-20, 20, value=0, step=1, label="Instrumentals")
                 backup_gain = gr.Slider(-20, 20, value=0, step=1, label="Backup vocals")
             with gr.Row():
-                output_name = gr.Text(
+                output_name = gr.Textbox(
                     label="Output file name",
                     placeholder="Ultimate RVC song cover",
                 )

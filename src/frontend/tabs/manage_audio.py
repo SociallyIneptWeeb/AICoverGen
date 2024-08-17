@@ -40,7 +40,7 @@ def render(
                         "Delete all", variant="primary"
                     )
                 with gr.Row():
-                    intermediate_audio_delete_msg = gr.Text(
+                    intermediate_audio_delete_msg = gr.Textbox(
                         label="Output message", interactive=False
                     )
         with gr.Accordion("Output audio", open=False):
@@ -54,13 +54,13 @@ def render(
                         "Delete all", variant="primary"
                     )
                 with gr.Row():
-                    output_audio_delete_msg = gr.Text(
+                    output_audio_delete_msg = gr.Textbox(
                         label="Output message", interactive=False
                     )
         with gr.Accordion("All audio", open=True):
             with gr.Row():
                 delete_all_audio_btn = gr.Button("Delete", variant="primary")
-                delete_all_audio_msg = gr.Text(
+                delete_all_audio_msg = gr.Textbox(
                     label="Output message", interactive=False
                 )
 

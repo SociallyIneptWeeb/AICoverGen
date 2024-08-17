@@ -1,5 +1,4 @@
-from typing import Callable
-from typings.extra import P, MixSongCoverHarnessArgs, RunPipelineHarnessArgs
+from typings.extra import RunPipelineHarnessArgs
 from functools import partial
 
 import gradio as gr
@@ -17,50 +16,7 @@ from frontend.common import (
     PROGRESS_BAR,
 )
 
-from backend.generate_song_cover import (
-    retrieve_song,
-    separate_vocals,
-    separate_main_vocals,
-    dereverb_vocals,
-    convert_vocals,
-    postprocess_vocals,
-    pitch_shift_background,
-    mix_song_cover,
-    run_pipeline,
-)
-
-
-def _duplication_harness(
-    fun: Callable[P, str | tuple[str, ...]],
-) -> Callable[P, tuple[str, ...]]:
-    def _wrapped(*args: P.args, **kwargs: P.kwargs) -> tuple[str, ...]:
-
-        res = exception_harness(fun)(*args, **kwargs)
-        if not isinstance(res, tuple):
-            return (res, res)
-        else:
-            return (res[0],) + res
-
-    return _wrapped
-
-
-def _mix_song_cover_harness(
-    vocals_path: str,
-    instrumentals_path: str,
-    backup_vocals_path: str,
-    instrumentals_shifted_path: str,
-    backup_vocals_shifted_path: str,
-    *args: *MixSongCoverHarnessArgs,
-    percentages: list[float],
-) -> str:
-    return exception_harness(mix_song_cover)(
-        vocals_path,
-        instrumentals_shifted_path or instrumentals_path,
-        backup_vocals_shifted_path or backup_vocals_path,
-        *args,
-        progress_bar=PROGRESS_BAR,
-        percentages=percentages,
-    )
+from backend.generate_song_cover import run_pipeline
 
 
 def _run_pipeline_harness(
@@ -77,8 +33,8 @@ def _run_pipeline_harness(
 def _toggle_intermediate_files_accordion(
     visible: bool,
 ) -> list[gr.Accordion | gr.Audio]:
-    audio_components = list(gr.Audio(value=None) for _ in range(11))
-    accordions = list(gr.Accordion(open=False) for _ in range(7))
+    audio_components = [gr.Audio(value=None) for _ in range(11)]
+    accordions = [gr.Accordion(open=False) for _ in range(7)]
     return [gr.Accordion(visible=visible, open=False)] + accordions + audio_components
 
 
@@ -103,10 +59,8 @@ def render(
             _,
             _,
             generate_btn,
-            generate_btn2,
         ) = generate_buttons
 
-        current_song_dir = gr.State(None)
         with gr.Accordion("Main options"):
             with gr.Row():
                 with gr.Column():
@@ -120,7 +74,7 @@ def render(
                         label="Song input type",
                         type="index",
                     )
-                    song_input = gr.Text(
+                    song_input = gr.Textbox(
                         label="Song input",
                         info="Link to a song on YouTube or the full path of a local audio file.",
                     )
@@ -265,7 +219,7 @@ def render(
                 backup_gain = gr.Slider(-20, 20, value=0, step=1, label="Backup vocals")
         with gr.Accordion("Audio output options", open=False):
             with gr.Row():
-                output_name = gr.Text(
+                output_name = gr.Textbox(
                     label="Output file name",
                     info="If no name is provided, a suitable name will be generated automatically.",
                     placeholder="Ultimate RVC song cover",
@@ -394,7 +348,6 @@ def render(
                 value="Reset settings",
                 scale=2,
             )
-            generate_btn2.render()
             generate_btn.render()
             song_cover_track = gr.Audio(label="Song cover", scale=3)
         show_intermediate_files.change(
@@ -488,150 +441,6 @@ def render(
             generate_btn,
             generate_event_args_list,
             generate_buttons + [show_intermediate_files],
-        )
-        percentages = [i / 15 for i in range(15)]
-
-        generate_btn2_event_args_list = [
-            EventArgs(
-                partial(
-                    _duplication_harness(retrieve_song),
-                    progress_bar=PROGRESS_BAR,
-                    percentages=percentages[:3],
-                ),
-                inputs=[song_input],
-                outputs=[song_cover_track, original_track, current_song_dir],
-            ),
-            EventArgs(
-                partial(
-                    _duplication_harness(separate_vocals),
-                    progress_bar=PROGRESS_BAR,
-                    percentages=percentages[3:5],
-                ),
-                inputs=[original_track, current_song_dir],
-                outputs=[song_cover_track, vocals_track, instrumentals_track],
-            ),
-            EventArgs(
-                partial(
-                    _duplication_harness(separate_main_vocals),
-                    progress_bar=PROGRESS_BAR,
-                    percentages=percentages[5:7],
-                ),
-                inputs=[vocals_track, current_song_dir],
-                outputs=[song_cover_track, main_vocals_track, backup_vocals_track],
-            ),
-            EventArgs(
-                partial(
-                    _duplication_harness(dereverb_vocals),
-                    progress_bar=PROGRESS_BAR,
-                    percentages=percentages[7:9],
-                ),
-                inputs=[main_vocals_track, current_song_dir],
-                outputs=[
-                    song_cover_track,
-                    main_vocals_dereverbed_track,
-                    main_vocals_reverb_track,
-                ],
-            ),
-            EventArgs(
-                partial(
-                    _duplication_harness(convert_vocals),
-                    progress_bar=PROGRESS_BAR,
-                    percentage=percentages[9],
-                ),
-                inputs=[
-                    main_vocals_dereverbed_track,
-                    current_song_dir,
-                    rvc_model,
-                    pitch_change_vocals,
-                    pitch_change_all,
-                    index_rate,
-                    filter_radius,
-                    rms_mix_rate,
-                    protect,
-                    f0_method,
-                    crepe_hop_length,
-                ],
-                outputs=[song_cover_track, converted_vocals_track],
-            ),
-            EventArgs(
-                partial(
-                    _duplication_harness(postprocess_vocals),
-                    progress_bar=PROGRESS_BAR,
-                    percentage=percentages[10],
-                ),
-                inputs=[
-                    converted_vocals_track,
-                    current_song_dir,
-                    reverb_rm_size,
-                    reverb_wet,
-                    reverb_dry,
-                    reverb_damping,
-                ],
-                outputs=[song_cover_track, postprocessed_vocals_track],
-            ),
-            EventArgs(
-                partial(
-                    _duplication_harness(pitch_shift_background),
-                    progress_bar=PROGRESS_BAR,
-                    percentages=percentages[11:13],
-                ),
-                inputs=[
-                    instrumentals_track,
-                    backup_vocals_track,
-                    current_song_dir,
-                    pitch_change_all,
-                ],
-                outputs=[
-                    song_cover_track,
-                    instrumentals_shifted_track,
-                    backup_vocals_shifted_track,
-                ],
-            ),
-            EventArgs(
-                partial(
-                    _mix_song_cover_harness,
-                    percentages=percentages[13:15],
-                ),
-                inputs=[
-                    postprocessed_vocals_track,
-                    instrumentals_track,
-                    backup_vocals_track,
-                    instrumentals_shifted_track,
-                    backup_vocals_shifted_track,
-                    current_song_dir,
-                    main_gain,
-                    inst_gain,
-                    backup_gain,
-                    output_sr,
-                    output_format,
-                    output_name,
-                ],
-                outputs=[song_cover_track],
-            ),
-            EventArgs(
-                partial(
-                    update_cached_input_songs, 3 + len(song_dir_dropdowns), [], [1]
-                ),
-                outputs=[
-                    cached_input_songs_dropdown,
-                    intermediate_audio_to_delete,
-                    cached_input_songs_dropdown2,
-                ]
-                + song_dir_dropdowns,
-                name="then",
-                show_progress="hidden",
-            ),
-            EventArgs(
-                partial(update_output_audio, 1, [], [0]),
-                outputs=[output_audio_to_delete],
-                name="then",
-                show_progress="hidden",
-            ),
-        ]
-        setup_consecutive_event_listeners_with_toggled_interactivity(
-            generate_btn2,
-            generate_btn2_event_args_list,
-            generate_buttons + [show_intermediate_files, clear_btn],
         )
         clear_btn.click(
             lambda: [

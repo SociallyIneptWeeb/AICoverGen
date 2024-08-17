@@ -165,7 +165,7 @@ def setup_consecutive_event_listeners(
         raise ValueError("Event args list must not be empty.")
     dependency = component
     for event_args in event_args_list:
-        event_listener: Callable[..., Dependency] = getattr(dependency, event_args.name)
+        event_listener = getattr(dependency, event_args.name)
         dependency = event_listener(
             event_args.fn,
             inputs=event_args.inputs,

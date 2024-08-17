@@ -4,7 +4,7 @@ from typings.extra import (
     T,
     SongCoverNameUpdateKey,
     F0Method,
-    InputChoices,
+    DropdownChoices,
     DropdownValue,
     UpdateDropdownArgs,
     ComponentVisibilityKwArgs,
@@ -61,7 +61,7 @@ def update_value(x: Any) -> dict[str, Any]:
 
 
 def update_dropdowns(
-    fn: Callable[P, InputChoices],
+    fn: Callable[P, DropdownChoices],
     num_components: int,
     value: DropdownValue = None,
     value_indices: Sequence[int] = [],
@@ -76,7 +76,7 @@ def update_dropdowns(
         )
     updated_choices = fn(*args, **kwargs)
     update_args: list[UpdateDropdownArgs] = [
-        {"choices": list(updated_choices)} for _ in range(num_components)
+        {"choices": updated_choices} for _ in range(num_components)
     ]
     for index in value_indices:
         update_args[index]["value"] = value

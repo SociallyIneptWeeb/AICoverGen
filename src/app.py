@@ -20,12 +20,12 @@ from frontend.tabs.manage_audio import render as render_manage_audio_tab
 def _init_app() -> tuple[gr.Dropdown, ...]:
     delete_gradio_temp_dir()
     updated_rvc_model_dropdowns = tuple(
-        gr.Dropdown(choices=list(get_current_models())) for _ in range(3)
+        gr.Dropdown(choices=get_current_models()) for _ in range(3)
     )
     updated_song_dir_dropdowns = tuple(
-        gr.Dropdown(choices=list(get_named_song_dirs())) for _ in range(10)
+        gr.Dropdown(choices=get_named_song_dirs()) for _ in range(10)
     )
-    updated_output_audio_dropdown = (gr.Dropdown(choices=list(get_output_audio())),)
+    updated_output_audio_dropdown = (gr.Dropdown(choices=get_output_audio()),)
     return (
         updated_rvc_model_dropdowns
         + updated_song_dir_dropdowns

@@ -71,7 +71,7 @@ def render(
             filter_tags = gr.CheckboxGroup(
                 value=[],
                 label="Show voice models with tags",
-                choices=list(load_public_model_tags()),
+                choices=load_public_model_tags(),
             )
             search_query = gr.Text(label="Search")
 

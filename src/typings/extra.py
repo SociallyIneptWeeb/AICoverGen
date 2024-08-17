@@ -1,4 +1,4 @@
-from typing import TypeVar, Callable, Any, Literal, ParamSpec, TypedDict
+from typing import TypeVar, Callable, Any, Literal, ParamSpec, TypedDict, Sequence
 from os import PathLike
 
 P = ParamSpec("P")
@@ -6,11 +6,11 @@ T = TypeVar("T")
 
 StrOrBytesPath = str | bytes | PathLike[str] | PathLike[bytes]
 
-InputChoices = list[tuple[str, str]] | list[str]
+DropdownChoices = Sequence[str | int | float | tuple[str, str | int | float]] | None
 
-DropdownChoices = list[str | int | float | tuple[str, str | int | float]] | None
-
-DropdownValue = str | int | float | list[str | int | float] | Callable[..., Any] | None
+DropdownValue = (
+    str | int | float | Sequence[str | int | float] | Callable[..., Any] | None
+)
 
 InputType = Literal["yt", "local"]
 
@@ -39,7 +39,7 @@ OutputAudioExt = Literal[
 
 ModelsTable = list[list[str]]
 
-ModelsTablePredicate = Callable[[dict[str, str]], bool]
+ModelsTablePredicate = Callable[[dict[str, str | list[str]]], bool]
 
 
 class ComponentVisibilityKwArgs(TypedDict):

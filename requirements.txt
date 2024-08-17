@@ -1,22 +1,22 @@
 # General dependencies
 ffmpeg-python>=0.2.0
 numpy==1.23.5
-requests==2.31.0 #NOTE downgraded from 2.32.0
+requests==2.32.3 #NOTE upgraded from 2.32.0
 tqdm==4.65.0 #NOTE upgraded from unspecified
 # TODO add these later
 # wget
 
 # Audio processing
 #faiss-cpu==1.7.3 # NOTE outcommented due to incompatibility on windows
-librosa >=0.10 # NOTE upgraded from 0.9.1
+librosa >=0.10 # NOTE upgraded from 0.9.2
 pyworld==0.3.4
-scipy~=1.13.0
+scipy~=1.13.0 # NOTE upgraded from 1.11.1
 soundfile==0.12.1
 praat-parselmouth>=0.4.2 # NOTE upgraded from unspecified
-pedalboard==0.7.7
+pedalboard==0.9.12
 pydub==0.25.1
 pydub-stubs
-sox==1.4.1
+sox==1.5.0
 audio-separator[gpu]==0.18.3
 #TODO add these later
 #noisereduce
@@ -40,14 +40,14 @@ torchcrepe==0.0.23 # NOTE upgraded from 0.0.20
 
 # Visualization
 gradio==4.41.0
-matplotlib==3.9.0
+matplotlib==3.9.0 #NOTE upgraded from 3.7.2
 #TODO add these later
 
 #tensorboard
 
 # Miscellaneous
 lib==4.0.0
-yt_dlp==2023.7.6
+yt_dlp==2024.8.6
 tensorboardX
 #TODO add these later
 #ffmpy==0.3.1

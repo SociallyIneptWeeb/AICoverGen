@@ -88,14 +88,10 @@ def get_hash(thing: Any, size: int = 5) -> str:
 # for better speedups
 def get_file_hash(
     filepath: StrOrBytesPath,
-    digest_size: int = 5,
-    chunk_size: int = 655360,
 ) -> str:
-    with open(filepath, "rb") as f:
-        file_hash = hashlib.blake2b(digest_size=digest_size)
-        while chunk := f.read(chunk_size):
-            file_hash.update(chunk)
 
+    with open(filepath, "rb") as f:
+        file_hash = hashlib.file_digest(f, "blake2b")
     return file_hash.hexdigest()
 
 

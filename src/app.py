@@ -84,21 +84,19 @@ with gr.Blocks(title="Ultimate RVC") as app:
         gr.Button(
             label,
             variant="primary",
-            visible=visible,
             render=False,
             scale=scale,
         )
-        for label, visible, scale, in [
-            ("Retrieve song", True, 1),
-            ("Separate vocals/instrumentals", True, 1),
-            ("Separate main/backup vocals", True, 1),
-            ("De-reverb vocals", True, 1),
-            ("Convert vocals", True, 1),
-            ("Post-process vocals", True, 1),
-            ("Pitch shift background", True, 1),
-            ("Mix song cover", True, 1),
-            ("Generate", True, 2),
-            ("Generate step-by-step", False, 1),
+        for label, scale, in [
+            ("Retrieve song", 1),
+            ("Separate vocals/instrumentals", 1),
+            ("Separate main/backup vocals", 1),
+            ("De-reverb vocals", 1),
+            ("Convert vocals", 1),
+            ("Post-process vocals", 1),
+            ("Pitch shift background", 1),
+            ("Mix song cover", 1),
+            ("Generate", 2),
         ]
     ]
 

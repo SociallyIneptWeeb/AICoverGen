@@ -73,7 +73,7 @@ def render(
                 label="Show voice models with tags",
                 choices=load_public_model_tags(),
             )
-            search_query = gr.Text(label="Search")
+            search_query = gr.Textbox(label="Search")
 
             public_models_table = gr.DataFrame(
                 value=load_public_models_table([]),
@@ -90,18 +90,18 @@ def render(
             )
 
         with gr.Row():
-            model_zip_link = gr.Text(
+            model_zip_link = gr.Textbox(
                 label="Download link to model",
                 info="Should point to a zip file containing a .pth model file and an optional .index file.",
             )
-            model_name = gr.Text(
+            model_name = gr.Textbox(
                 label="Model name",
                 info="Enter a unique name for the model.",
             )
 
         with gr.Row():
             download_btn = gr.Button("Download 🌐", variant="primary", scale=19)
-            dl_output_message = gr.Text(
+            dl_output_message = gr.Textbox(
                 label="Output message", interactive=False, scale=20
             )
 
@@ -154,11 +154,11 @@ def render(
             with gr.Column():
                 model_files = gr.File(label="Files", file_count="multiple")
 
-            local_model_name = gr.Text(label="Model name")
+            local_model_name = gr.Textbox(label="Model name")
 
         with gr.Row():
             model_upload_button = gr.Button("Upload model", variant="primary", scale=19)
-            local_upload_output_message = gr.Text(
+            local_upload_output_message = gr.Textbox(
                 label="Output message", interactive=False, scale=20
             )
             model_upload_button_click = model_upload_button.click(
@@ -174,7 +174,7 @@ def render(
             with gr.Column():
                 rvc_models_to_delete.render()
             with gr.Column():
-                rvc_models_deleted_message = gr.Text(
+                rvc_models_deleted_message = gr.Textbox(
                     label="Output message", interactive=False
                 )
 

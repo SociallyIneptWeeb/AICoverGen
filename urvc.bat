@@ -67,7 +67,7 @@ if "%1" == "install" (
     call conda create --no-shortcuts -y -k --prefix %VIRTUAL_ENV_DIR% python=3.11
     call activate.bat %VIRTUAL_ENV_DIR%
     echo Installing Python packages..
-    call conda install -y -c conda-forge faiss-cpu
+    call conda install -y -c conda-forge faiss-cpu==1.7.3
     pip cache purge
     python -m pip install --upgrade pip setuptools
     pip install -r "%ROOT%\requirements.txt"
@@ -104,7 +104,7 @@ if "%1" == "update" (
     call conda remove --prefix %VIRTUAL_ENV_DIR% --all --yes
     call conda create --no-shortcuts -y -k --prefix %VIRTUAL_ENV_DIR% python=3.11
     call conda activate %VIRTUAL_ENV_DIR%
-    call conda install -y -c conda-forge faiss-cpu
+    call conda install -y -c conda-forge faiss-cpu==1.7.3
     pip cache purge
     python -m pip install --upgrade pip setuptools
     pip install -r "%ROOT%\requirements.txt"

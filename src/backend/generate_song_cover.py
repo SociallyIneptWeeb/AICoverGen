@@ -970,6 +970,14 @@ def run_pipeline(
     return_files: bool = False,
     progress_bar: gr.Progress | None = None,
 ) -> str | tuple[str, ...]:
+    if not song_input:
+        raise InputMissingError(
+            "Song input missing! Please provide a valid YouTube url, local audio file or cached input song."
+        )
+    if not voice_model:
+        raise InputMissingError("Voice model missing!")
+    if not os.path.isdir(os.path.join(RVC_MODELS_DIR, voice_model)):
+        raise PathNotFoundError("Voice model does not exist!")
     display_progress("[~] Starting song cover generation pipeline...", 0, progress_bar)
     percentages = [i / 15 for i in range(15)]
     orig_song_path, song_dir = retrieve_song(song_input, progress_bar, percentages[:3])

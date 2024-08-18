@@ -4,6 +4,7 @@ import shutil
 import gradio as gr
 import urllib.request
 import zipfile
+import re
 
 from common import RVC_MODELS_DIR
 from backend.exceptions import (
@@ -145,6 +146,16 @@ def download_online_model(
             f'Voice model directory "{dir_name}" already exists! Choose a different name for your voice model.'
         )
     zip_name = url.split("/")[-1].split("?")[0]
+
+    # NOTE in case huggingface link is a direct link rather
+    # than a resolve link then convert it to a resolve link
+    url = re.sub(
+        r"https://huggingface.co/([^/]+)/([^/]+)/blob/(.*)",
+        r"https://huggingface.co/\1/\2/resolve/\3",
+        url,
+    )
+
+    print(url)
 
     if "pixeldrain.com" in url:
         url = f"https://pixeldrain.com/api/file/{zip_name}"

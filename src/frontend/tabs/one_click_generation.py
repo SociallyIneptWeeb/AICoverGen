@@ -19,9 +19,7 @@ from frontend.common import (
 from backend.generate_song_cover import run_pipeline
 
 
-def _run_pipeline_harness(
-    *args: *RunPipelineHarnessArgs,
-) -> tuple[str | None, ...]:
+def _run_pipeline_harness(*args: *RunPipelineHarnessArgs) -> tuple[str | None, ...]:
 
     res = exception_harness(run_pipeline)(*args, progress_bar=PROGRESS_BAR)
     if isinstance(res, tuple):
@@ -65,11 +63,7 @@ def render(
             with gr.Row():
                 with gr.Column():
                     song_input_type_dropdown = gr.Dropdown(
-                        [
-                            "YouTube link/local path",
-                            "Local file",
-                            "Cached song",
-                        ],
+                        ["YouTube link/local path", "Local file", "Cached song"],
                         value="YouTube link/local path",
                         label="Song input type",
                         type="index",
@@ -79,9 +73,7 @@ def render(
                         info="Link to a song on YouTube or the full path of a local audio file.",
                     )
                     local_file = gr.Audio(
-                        label="Song input",
-                        type="filepath",
-                        visible=False,
+                        label="Song input", type="filepath", visible=False
                     )
                     cached_input_songs_dropdown.render()
                     song_input_type_dropdown.input(
@@ -230,14 +222,7 @@ def render(
                     label="Output sample rate",
                 )
                 output_format = gr.Dropdown(
-                    [
-                        "mp3",
-                        "wav",
-                        "flac",
-                        "aac",
-                        "m4a",
-                        "ogg",
-                    ],
+                    ["mp3", "wav", "flac", "aac", "m4a", "ogg"],
                     value="mp3",
                     label="Output file format",
                 )
@@ -344,10 +329,7 @@ def render(
                     backup_vocals_shifted_track.render()
 
         with gr.Row():
-            clear_btn = gr.Button(
-                value="Reset settings",
-                scale=2,
-            )
+            clear_btn = gr.Button(value="Reset settings", scale=2)
             generate_btn.render()
             song_cover_track = gr.Audio(label="Song cover", scale=3)
         show_intermediate_files.change(

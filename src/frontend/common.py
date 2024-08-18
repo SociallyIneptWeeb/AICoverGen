@@ -18,10 +18,7 @@ from gradio.components.base import Component
 from gradio.events import Dependency
 
 
-from backend.generate_song_cover import (
-    get_named_song_dirs,
-    get_song_cover_name,
-)
+from backend.generate_song_cover import get_named_song_dirs, get_song_cover_name
 from backend.manage_audio import get_output_audio
 
 PROGRESS_BAR = gr.Progress()
@@ -88,17 +85,13 @@ def update_dropdowns(
 
 
 def update_cached_input_songs(
-    num_components: int,
-    value: DropdownValue = None,
-    value_indices: Sequence[int] = [],
+    num_components: int, value: DropdownValue = None, value_indices: Sequence[int] = []
 ) -> gr.Dropdown | tuple[gr.Dropdown, ...]:
     return update_dropdowns(get_named_song_dirs, num_components, value, value_indices)
 
 
 def update_output_audio(
-    num_components: int,
-    value: DropdownValue = None,
-    value_indices: Sequence[int] = [],
+    num_components: int, value: DropdownValue = None, value_indices: Sequence[int] = []
 ) -> gr.Dropdown | tuple[gr.Dropdown, ...]:
     return update_dropdowns(get_output_audio, num_components, value, value_indices)
 
@@ -123,9 +116,7 @@ def _toggle_component_interactivity(
     return tuple(gr.update(interactive=interactive) for _ in range(num_components))
 
 
-def show_hop_slider(
-    pitch_detection_algo: F0Method,
-) -> gr.Slider:
+def show_hop_slider(pitch_detection_algo: F0Method) -> gr.Slider:
     if pitch_detection_algo == "mangio-crepe":
         return gr.Slider(visible=True)
     else:

@@ -81,12 +81,7 @@ with gr.Blocks(title="Ultimate RVC") as app:
     )
 
     generate_buttons = [
-        gr.Button(
-            label,
-            variant="primary",
-            render=False,
-            scale=scale,
-        )
+        gr.Button(label, variant="primary", render=False, scale=scale)
         for label, scale, in [
             ("Retrieve song", 1),
             ("Separate vocals/instrumentals", 1),

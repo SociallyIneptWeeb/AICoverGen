@@ -46,8 +46,7 @@ def delete_intermediate_audio(
 
 
 def delete_all_intermediate_audio(
-    progress_bar: gr.Progress | None = None,
-    percentage: float = 0.0,
+    progress_bar: gr.Progress | None = None, percentage: float = 0.0
 ) -> str:
     display_progress(
         "[~] Deleting all intermediate audio files...", percentage, progress_bar

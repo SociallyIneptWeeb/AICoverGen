@@ -34,11 +34,7 @@ from backend.common import (
     get_file_hash,
     get_rvc_model,
 )
-from backend.exceptions import (
-    InputMissingError,
-    PathNotFoundError,
-    InvalidPathError,
-)
+from backend.exceptions import InputMissingError, PathNotFoundError, InvalidPathError
 from vc.rvc import Config, load_hubert, get_vc, rvc_infer
 from logging import WARNING
 
@@ -53,11 +49,7 @@ SEPARATOR = Separator(
         "batch_size": 1,
         "enable_denoise": False,
     },
-    mdxc_params={
-        "segment_size": 256,
-        "batch_size": 1,
-        "overlap": 2,
-    },
+    mdxc_params={"segment_size": 256, "batch_size": 1, "overlap": 2},
 )
 
 
@@ -313,9 +305,7 @@ def convert_to_stereo(
         stereo_json_path = f"{stereo_path_base}.json"
         if not (os.path.exists(stereo_path) and os.path.exists(stereo_json_path)):
             display_progress(
-                "[~] Converting song to stereo...",
-                percentage,
-                progress_bar,
+                "[~] Converting song to stereo...", percentage, progress_bar
             )
             command = shlex.split(
                 f'ffmpeg -y -loglevel error -i "{song_path}" -ac 2 -f wav "{stereo_path}"'
@@ -327,9 +317,7 @@ def convert_to_stereo(
 
 
 def _make_song_dir(
-    song_input: str,
-    progress_bar: gr.Progress | None = None,
-    percentage: float = 0.0,
+    song_input: str, progress_bar: gr.Progress | None = None, percentage: float = 0.0
 ) -> tuple[str, InputType]:
     # if song directory
     if os.path.isdir(song_input):
@@ -385,11 +373,7 @@ def retrieve_song(
 
     if not orig_song_path:
         if input_type == "yt":
-            display_progress(
-                "[~] Downloading song...",
-                percentages[1],
-                progress_bar,
-            )
+            display_progress("[~] Downloading song...", percentages[1], progress_bar)
             song_link = song_input.split("&")[0]
             orig_song_path = _yt_download(song_link, song_dir)
         else:
@@ -456,9 +440,7 @@ def separate_vocals(
         and os.path.exists(instrumentals_json_path)
     ):
         display_progress(
-            "[~] Separating vocals from instrumentals...",
-            percentages[1],
-            progress_bar,
+            "[~] Separating vocals from instrumentals...", percentages[1], progress_bar
         )
         SEPARATOR.arch_specific_params["MDX"]["segment_size"] = 512
         SEPARATOR.load_model("UVR-MDX-NET-Voc_FT.onnx")
@@ -467,10 +449,7 @@ def separate_vocals(
             os.path.join(INTERMEDIATE_AUDIO_DIR, temp_instrumentals_name),
             instrumentals_path,
         )
-        shutil.move(
-            os.path.join(INTERMEDIATE_AUDIO_DIR, temp_vocals_name),
-            vocals_path,
-        )
+        shutil.move(os.path.join(INTERMEDIATE_AUDIO_DIR, temp_vocals_name), vocals_path)
         json_dump(arg_dict, vocals_json_path)
         json_dump(arg_dict, instrumentals_json_path)
     return vocals_path, instrumentals_path
@@ -503,10 +482,7 @@ def separate_main_vocals(
 
     arg_dict = {
         "input-files": [
-            {
-                "name": os.path.basename(vocals_path),
-                "hash": get_file_hash(vocals_path),
-            }
+            {"name": os.path.basename(vocals_path), "hash": get_file_hash(vocals_path)}
         ],
     }
 
@@ -577,10 +553,7 @@ def dereverb_vocals(
 
     arg_dict = {
         "input-files": [
-            {
-                "name": os.path.basename(vocals_path),
-                "hash": get_file_hash(vocals_path),
-            }
+            {"name": os.path.basename(vocals_path), "hash": get_file_hash(vocals_path)}
         ],
     }
 
@@ -603,11 +576,7 @@ def dereverb_vocals(
         and os.path.exists(vocals_reverb_path)
         and os.path.exists(vocals_reverb_json_path)
     ):
-        display_progress(
-            "[~] De-reverbing vocals...",
-            percentages[1],
-            progress_bar,
-        )
+        display_progress("[~] De-reverbing vocals...", percentages[1], progress_bar)
         SEPARATOR.arch_specific_params["MDX"]["segment_size"] = 256
         SEPARATOR.load_model("Reverb_HQ_By_FoxJoy.onnx")
         temp_vocals_dereverb_name, temp_vocals_reverb_name = SEPARATOR.separate(
@@ -658,10 +627,7 @@ def convert_vocals(
     hop_length_suffix = "" if f0_method != "mangio-crepe" else f"_{crepe_hop_length}"
     arg_dict = {
         "input-files": [
-            {
-                "name": os.path.basename(vocals_path),
-                "hash": get_file_hash(vocals_path),
-            }
+            {"name": os.path.basename(vocals_path), "hash": get_file_hash(vocals_path)}
         ],
         "voice-model": voice_model,
         "pitch-shift": pitch_change,
@@ -722,10 +688,7 @@ def postprocess_vocals(
 
     arg_dict = {
         "input-files": [
-            {
-                "name": os.path.basename(vocals_path),
-                "hash": get_file_hash(vocals_path),
-            }
+            {"name": os.path.basename(vocals_path), "hash": get_file_hash(vocals_path)}
         ],
         "reverb-room-size": reverb_rm_size,
         "reverb-wet": reverb_wet,
@@ -744,9 +707,7 @@ def postprocess_vocals(
         os.path.exists(vocals_mixed_path) and os.path.exists(vocals_mixed_json_path)
     ):
         display_progress(
-            "[~] Applying audio effects to vocals...",
-            percentage,
-            progress_bar,
+            "[~] Applying audio effects to vocals...", percentage, progress_bar
         )
         _add_audio_effects(
             vocals_path,
@@ -817,11 +778,7 @@ def pitch_shift_background(
                 percentages[0],
                 progress_bar,
             )
-            _pitch_shift(
-                instrumentals_path,
-                instrumentals_shifted_path,
-                pitch_change,
-            )
+            _pitch_shift(instrumentals_path, instrumentals_shifted_path, pitch_change)
             json_dump(instrumentals_dict, instrumentals_shifted_json_path)
 
         backup_vocals_dict = {
@@ -852,11 +809,7 @@ def pitch_shift_background(
                 percentages[1],
                 progress_bar,
             )
-            _pitch_shift(
-                backup_vocals_path,
-                backup_vocals_shifted_path,
-                pitch_change,
-            )
+            _pitch_shift(backup_vocals_path, backup_vocals_shifted_path, pitch_change)
             json_dump(backup_vocals_dict, backup_vocals_shifted_json_path)
     return instrumentals_shifted_path, backup_vocals_shifted_path
 
@@ -973,11 +926,7 @@ def mix_song_cover(
         )
 
         _mix_audio(
-            [
-                main_vocals_path,
-                backup_vocals_path,
-                instrumentals_path,
-            ],
+            [main_vocals_path, backup_vocals_path, instrumentals_path],
             mixdown_path,
             main_gain,
             backup_gain,

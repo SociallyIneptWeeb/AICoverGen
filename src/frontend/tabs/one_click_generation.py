@@ -1,3 +1,7 @@
+"""
+This module contains the code for the "One-click generation" tab.
+"""
+
 from typings.extra import RunPipelineHarnessArgs
 from functools import partial
 
@@ -9,7 +13,7 @@ from frontend.common import (
     exception_harness,
     update_cached_input_songs,
     update_output_audio,
-    get_song_cover_name_harness,
+    update_song_cover_name,
     toggle_visible_component,
     show_hop_slider,
     update_value,
@@ -20,6 +24,24 @@ from backend.generate_song_cover import run_pipeline
 
 
 def _run_pipeline_harness(*args: *RunPipelineHarnessArgs) -> tuple[str | None, ...]:
+    """
+    Run the song cover generation pipeline in a harness
+    which displays a progress bar, re-raises exceptions as Gradio errors,
+    and returns the output of the pipeline.
+
+    If the pipeline outputs only a single path,
+    then that output is extended with a None value for each intermediate audio file.
+
+    Parameters
+    ----------
+    *args : *RunPipelineHarnessArgs
+        Arguments to forward to the pipeline.
+
+    Returns
+    -------
+    tuple[str | None, ...]
+        The output of the pipeline, potentially extended with None values.
+    """
 
     res = exception_harness(run_pipeline)(*args, progress_bar=PROGRESS_BAR)
     if isinstance(res, tuple):
@@ -31,6 +53,20 @@ def _run_pipeline_harness(*args: *RunPipelineHarnessArgs) -> tuple[str | None, .
 def _toggle_intermediate_files_accordion(
     visible: bool,
 ) -> list[gr.Accordion | gr.Audio]:
+    """
+    Toggle the visibility of intermediate audio file accordions
+    and their associated audio components.
+
+    Parameters
+    ----------
+    visible : bool
+        Visibility status of the accordions and audio components.
+
+    Returns
+    -------
+    list[gr.Accordion | gr.Audio]
+        The accordions and audio components with updated visibility.
+    """
     audio_components = [gr.Audio(value=None) for _ in range(11)]
     accordions = [gr.Accordion(open=False) for _ in range(7)]
     return [gr.Accordion(visible=visible, open=False)] + accordions + audio_components
@@ -39,12 +75,39 @@ def _toggle_intermediate_files_accordion(
 def render(
     generate_buttons: list[gr.Button],
     song_dir_dropdowns: list[gr.Dropdown],
-    cached_input_songs_dropdown: gr.Dropdown,
-    cached_input_songs_dropdown2: gr.Dropdown,
+    cached_input_songs_dropdown_1click: gr.Dropdown,
+    cached_input_songs_dropdown_multi: gr.Dropdown,
     rvc_model: gr.Dropdown,
     intermediate_audio_to_delete: gr.Dropdown,
     output_audio_to_delete: gr.Dropdown,
 ) -> None:
+    """
+    Render "One-click generation" tab.
+
+    Parameters
+    ----------
+    generate_buttons : list[gr.Button]
+        Buttons used for audio generation in the
+        "One-click generation" tab and the "Multi-step generation" tab.
+    song_dir_dropdowns : list[gr.Dropdown]
+        Dropdowns for selecting song directories in the
+        "Multi-step generation" tab.
+    cached_input_songs_dropdown_1click : gr.Dropdown
+        Dropdown for selecting cached input songs in the
+        "One-click generation" tab
+    cached_input_songs_dropdown_multi : gr.Dropdown
+        Dropdown for selecting cached input songs in the
+        "Multi-step generation" tab
+    rvc_model : gr.Dropdown
+        Dropdown for selecting RVC model in the
+        "One-click generation" tab.
+    intermediate_audio_to_delete : gr.Dropdown
+        Dropdown for selecting intermediate audio files to delete in the
+        "Manage audio" tab.
+    output_audio_to_delete : gr.Dropdown
+        Dropdown for selecting output audio files to delete in the
+        "Manage audio" tab.
+    """
 
     with gr.Tab("One-click generation"):
         (
@@ -75,11 +138,15 @@ def render(
                     local_file = gr.Audio(
                         label="Song input", type="filepath", visible=False
                     )
-                    cached_input_songs_dropdown.render()
+                    cached_input_songs_dropdown_1click.render()
                     song_input_type_dropdown.input(
                         partial(toggle_visible_component, 3),
                         inputs=song_input_type_dropdown,
-                        outputs=[song_input, local_file, cached_input_songs_dropdown],
+                        outputs=[
+                            song_input,
+                            local_file,
+                            cached_input_songs_dropdown_1click,
+                        ],
                         show_progress="hidden",
                     )
 
@@ -89,9 +156,9 @@ def render(
                         outputs=song_input,
                         show_progress="hidden",
                     )
-                    cached_input_songs_dropdown.input(
+                    cached_input_songs_dropdown_1click.input(
                         update_value,
-                        inputs=cached_input_songs_dropdown,
+                        inputs=cached_input_songs_dropdown_1click,
                         outputs=song_input,
                         show_progress="hidden",
                     )
@@ -233,14 +300,14 @@ def render(
                     info="Show generated intermediate audio files when song cover generation completes. Leave unchecked to optimize performance.",
                 )
             rvc_model.change(
-                partial(get_song_cover_name_harness, None, update_key="placeholder"),
-                inputs=[cached_input_songs_dropdown, rvc_model],
+                partial(update_song_cover_name, None, update_placeholder=True),
+                inputs=[cached_input_songs_dropdown_1click, rvc_model],
                 outputs=output_name,
                 show_progress="hidden",
             )
-            cached_input_songs_dropdown.change(
-                partial(get_song_cover_name_harness, None, update_key="placeholder"),
-                inputs=[cached_input_songs_dropdown, rvc_model],
+            cached_input_songs_dropdown_1click.change(
+                partial(update_song_cover_name, None, update_placeholder=True),
+                inputs=[cached_input_songs_dropdown_1click, rvc_model],
                 outputs=output_name,
                 show_progress="hidden",
             )
@@ -404,9 +471,9 @@ def render(
                     update_cached_input_songs, 3 + len(song_dir_dropdowns), [], [1]
                 ),
                 outputs=[
-                    cached_input_songs_dropdown,
+                    cached_input_songs_dropdown_1click,
                     intermediate_audio_to_delete,
-                    cached_input_songs_dropdown2,
+                    cached_input_songs_dropdown_multi,
                 ]
                 + song_dir_dropdowns,
                 name="then",

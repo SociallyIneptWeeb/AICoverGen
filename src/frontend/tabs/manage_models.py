@@ -1,3 +1,7 @@
+"""
+This module contains the code for the "Manage models" tab.
+"""
+
 from typings.extra import DropdownValue
 from functools import partial
 
@@ -28,12 +32,49 @@ from backend.manage_voice_models import (
 def _update_model_lists(
     num_components: int, value: DropdownValue = None, value_indices: list[int] = []
 ) -> gr.Dropdown | tuple[gr.Dropdown, ...]:
+    """
+    Updates the choices of one or more dropdown
+    components to the current set of voice models.
+
+    Optionally updates the default value of one or more of these components.
+
+    Parameters
+    ----------
+    num_components : int
+        Number of dropdown components to update.
+    value : DropdownValue, optional
+        New value for dropdown components.
+    value_indices : list[int], default=[]
+        Indices of dropdown components to update the value for.
+
+    Returns
+    -------
+    gr.Dropdown | tuple[gr.Dropdown, ...]
+        Updated dropdown component or components.
+    """
     return update_dropdowns(get_current_models, num_components, value, value_indices)
 
 
 def _filter_public_models_table_harness(
     tags: list[str], query: str, progress_bar: gr.Progress
 ) -> gr.Dataframe:
+    """
+    Filter the public models table based on tags and search query.
+
+    Parameters
+    ----------
+    tags : list[str]
+        Tags to filter the table by.
+    query : str
+        Search query to filter the table by.
+    progress_bar : gr.Progress
+        Progress bar to display progress.
+
+    Returns
+    -------
+    gr.Dataframe
+        The filtered public models table rendered in a Gradio dataframe.
+    """
     models_table = filter_public_models_table(tags, query, progress_bar)
     return gr.Dataframe(value=models_table)
 
@@ -41,6 +82,23 @@ def _filter_public_models_table_harness(
 def _pub_dl_autofill(
     pub_models: pd.DataFrame, event: gr.SelectData
 ) -> tuple[gr.Textbox, gr.Textbox]:
+    """
+    Autofill download link and model name based on selected row in public models table.
+
+    Parameters
+    ----------
+    pub_models : pd.DataFrame
+        Public models table.
+    event : gr.SelectData
+        Event containing the selected row.
+
+    Returns
+    -------
+    download_link : gr.Textbox
+        Autofilled download link.
+    model_name : gr.Textbox
+        Autofilled model name.
+    """
     event_index = event.index[0]
     url_str = pub_models.loc[event_index, "URL"]
     model_str = pub_models.loc[event_index, "Model Name"]
@@ -52,9 +110,28 @@ def render(
     dummy_deletion_checkbox: gr.Checkbox,
     delete_confirmation: gr.State,
     rvc_models_to_delete: gr.Dropdown,
-    rvc_model: gr.Dropdown,
-    rvc_model2: gr.Dropdown,
+    rvc_model_1click: gr.Dropdown,
+    rvc_model_multi: gr.Dropdown,
 ) -> None:
+    """
+    Render "Manage models" tab.
+
+    Parameters
+    ----------
+    dummy_deletion_checkbox : gr.Checkbox
+        Dummy component needed for deletion confirmation in the
+        "Manage audio" tab and the "Manage models" tab.
+    delete_confirmation : gr.State
+        Component storing deletion confirmation status in the
+        "Manage audio" tab and the "Manage models" tab.
+    rvc_models_to_delete : gr.Dropdown
+        Dropdown for selecting models to delete in the
+        "Manage models" tab.
+    rvc_model_1click : gr.Dropdown
+        Dropdown for selecting models in the "One-click generation" tab.
+    rvc_model_multi : gr.Dropdown
+        Dropdown for selecting models in the "Multi-step generation" tab.
+    """
 
     # Download tab
     with gr.Tab("Download model"):
@@ -214,6 +291,6 @@ def render(
     ]:
         click_event.success(
             partial(_update_model_lists, 3, [], [2]),
-            outputs=[rvc_model, rvc_model2, rvc_models_to_delete],
+            outputs=[rvc_model_1click, rvc_model_multi, rvc_models_to_delete],
             show_progress="hidden",
         )

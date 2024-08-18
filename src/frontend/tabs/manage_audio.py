@@ -1,3 +1,7 @@
+"""
+This module contains the code for the "Delete audio" tab.
+"""
+
 from functools import partial
 import gradio as gr
 
@@ -22,11 +26,38 @@ def render(
     dummy_deletion_checkbox: gr.Checkbox,
     delete_confirmation: gr.State,
     song_dir_dropdowns: list[gr.Dropdown],
-    cached_input_songs_dropdown: gr.Dropdown,
-    cached_input_songs_dropdown2: gr.Dropdown,
+    cached_input_songs_dropdown_1click: gr.Dropdown,
+    cached_input_songs_dropdown_multi: gr.Dropdown,
     intermediate_audio_to_delete: gr.Dropdown,
     output_audio_to_delete: gr.Dropdown,
-):
+) -> None:
+    """
+    Render "Delete audio" tab.
+
+    Parameters
+    ----------
+    dummy_deletion_checkbox : gr.Checkbox
+        Dummy component needed for deletion confirmation in the
+        "Delete audio" tab and the "Manage models" tab.
+    delete_confirmation : gr.State
+        Component storing deletion confirmation status in the
+        "Delete audio" tab and the "Manage models" tab.
+    song_dir_dropdowns : list[gr.Dropdown]
+        Dropdowns for selecting song directories in the
+        "Multi-step generation" tab.
+    cached_input_songs_dropdown_1click : gr.Dropdown
+        Dropdown for selecting cached input songs in the
+        "One-click generation" tab
+    cached_input_songs_dropdown_multi : gr.Dropdown
+        Dropdown for selecting cached input songs in the
+        "Multi-step generation" tab
+    intermediate_audio_to_delete : gr.Dropdown
+        Dropdown for selecting intermediate audio files to delete in the
+        "Delete audio" tab.
+    output_audio_to_delete : gr.Dropdown
+        Dropdown for selecting output audio files to delete in the
+        "Delete audio" tab.
+    """
     with gr.Tab("Delete audio"):
         with gr.Accordion("Intermediate audio", open=False):
             with gr.Row():
@@ -152,8 +183,8 @@ def render(
                 ),
                 outputs=[
                     intermediate_audio_to_delete,
-                    cached_input_songs_dropdown,
-                    cached_input_songs_dropdown2,
+                    cached_input_songs_dropdown_1click,
+                    cached_input_songs_dropdown_multi,
                     *song_dir_dropdowns,
                 ],
                 show_progress="hidden",
@@ -174,8 +205,8 @@ def render(
             partial(update_cached_input_songs, 3 + len(song_dir_dropdowns), [], [0]),
             outputs=[
                 intermediate_audio_to_delete,
-                cached_input_songs_dropdown,
-                cached_input_songs_dropdown2,
+                cached_input_songs_dropdown_1click,
+                cached_input_songs_dropdown_multi,
                 *song_dir_dropdowns,
             ],
             show_progress="hidden",

@@ -1,3 +1,7 @@
+"""
+This module contains functions to manage voice models.
+"""
+
 from typings.extra import ModelsTable, ModelsTablePredicate
 import os
 import shutil
@@ -19,6 +23,14 @@ PUBLIC_MODELS = json_load(os.path.join(RVC_MODELS_DIR, "public_models.json"))
 
 
 def get_current_models() -> list[str]:
+    """
+    Get the names of all saved voice models.
+
+    Returns
+    -------
+    list[str]
+        A list of names of all saved voice models.
+    """
     models_list = os.listdir(RVC_MODELS_DIR)
     items_to_remove = ["hubert_base.pt", "MODELS.txt", "public_models.json", "rmvpe.pt"]
     return [item for item in models_list if item not in items_to_remove]
@@ -29,6 +41,23 @@ def load_public_models_table(
     progress_bar: gr.Progress | None = None,
     percentage: float = 0.0,
 ) -> ModelsTable:
+    """
+    Load the public models table and filter it by the given predicates.
+
+    Parameters
+    ----------
+    predicates : list[ModelsTablePredicate]
+        List of predicates to filter the models table by.
+    progress_bar : gr.Progress, optional
+        Gradio progress bar to update.
+    percentage : float, default=0.0
+        Percentage to display in the progress bar.
+
+    Returns
+    -------
+    ModelsTable
+        The public models table, filtered by the given predicates.
+    """
     models_table: ModelsTable = []
     keys = ["name", "description", "tags", "credit", "added", "url"]
     display_progress("[~] Loading public models table ...", percentage, progress_bar)
@@ -40,6 +69,14 @@ def load_public_models_table(
 
 
 def load_public_model_tags() -> list[str]:
+    """
+    Load the tags of all public voice models.
+
+    Returns
+    -------
+    list[str]
+        A list of all tags of public voice models.
+    """
     return list(PUBLIC_MODELS["tags"].keys())
 
 
@@ -49,35 +86,63 @@ def filter_public_models_table(
     progress_bar: gr.Progress | None = None,
     percentage: float = 0.0,
 ) -> ModelsTable:
+    """
+    Filter the public models table by a set of tags and a search query.
 
+    The search query is matched against the name, description, tags, credit,
+    and added date of each model in the public models table.
+    Case insensitive search is performed.
+    If the search query is empty, the models table is filtered only by the tags.
+
+    Parameters
+    ----------
+    tags : list[str]
+        List of tags to filter the models table by.
+    query : str
+        Search query to filter the models table by.
+    progress_bar : gr.Progress, optional
+        Gradio progress bar to update.
+    percentage : float, default=0.0
+        Percentage to display in the progress bar.
+
+    Returns
+    -------
+    ModelsTable
+        The public models table, filtered by the given tags and the given query.
+    """
     tags_predicate: ModelsTablePredicate = lambda model: all(
         tag in model["tags"] for tag in tags
     )
-    query_predicate: ModelsTablePredicate = (
-        lambda model: query.lower()
+    query_predicate: ModelsTablePredicate = lambda model: (
+        query.lower()
         in f"{model['name']} {model['description']} {' '.join(model['tags'])} {model['credit']} {model['added']}".lower()
+        if query
+        else True
     )
 
-    # no filter
-    if len(tags) == 0 and len(query) == 0:
-        filter_fns = []
-
-    # filter based on tags and query
-    elif len(tags) > 0 and len(query) > 0:
-        filter_fns = [tags_predicate, query_predicate]
-
-    # filter based on only tags
-    elif len(tags) > 0:
-        filter_fns = [tags_predicate]
-
-    # filter based on only query
-    else:
-        filter_fns = [query_predicate]
+    filter_fns = [tags_predicate, query_predicate]
 
     return load_public_models_table(filter_fns, progress_bar, percentage)
 
 
 def _extract_model_zip(extraction_folder: str, zip_name: str, remove_zip: bool) -> None:
+    """
+    Extract a voice model zip file to a directory.
+
+    Parameters
+    ----------
+    extraction_folder : str
+        The directory to extract the voice model to.
+    zip_name : str
+        The name of the zip file to extract.
+    remove_zip : bool
+        Whether to remove the zip file after extraction.
+
+    Raises
+    ------
+    PathNotFoundError
+        If no .pth model file is found in the extracted zip folder.
+    """
     try:
         os.makedirs(extraction_folder)
         with zipfile.ZipFile(zip_name, "r") as zip_ref:
@@ -132,10 +197,34 @@ def download_online_model(
     url: str,
     dir_name: str,
     progress_bar: gr.Progress | None = None,
-    percentages: list[float] = [0.0, 0.5],
+    percentages: tuple[float, float] = (0.0, 0.5),
 ) -> str:
-    if len(percentages) != 2:
-        raise ValueError("Percentages must be a list of length 2.")
+    """
+    Download a voice model from a given URL and extract it to a directory.
+
+    Parameters
+    ----------
+    url : str
+        The URL of the voice model to download.
+    dir_name : str
+        The name of the directory to extract the voice model to.
+    progress_bar : gr.Progress, optional
+        Gradio progress bar to update.
+    percentages : tuple[float, float], default=(0.0, 0.5)
+        Percentages to display in the progress bar.
+
+    Returns
+    -------
+    str
+        Success message.
+
+    Raises
+    ------
+    InputMissingError
+        If an URL or a voice model directory name is not given.
+    PathExistsError
+        If the voice model directory already exists.
+    """
     if not url:
         raise InputMissingError("Download link to model missing!")
     if not dir_name:
@@ -154,9 +243,6 @@ def download_online_model(
         r"https://huggingface.co/\1/\2/resolve/\3",
         url,
     )
-
-    print(url)
-
     if "pixeldrain.com" in url:
         url = f"https://pixeldrain.com/api/file/{zip_name}"
 
@@ -180,6 +266,38 @@ def upload_local_model(
     progress_bar: gr.Progress | None = None,
     percentage: float = 0.0,
 ) -> str:
+    """
+    Upload a voice model from either a local zip file or a local .pth file
+    and an optional index file.
+
+    Parameters
+    ----------
+    input_paths : list[str]
+        Paths of the local files to upload.
+    dir_name : str
+        The name of the directory to save the voice model files in.
+    progress_bar : gr.Progress, optional
+        Gradio progress bar to update.
+    percentage : float, default=0.0
+        Percentage to display in the progress bar.
+
+    Returns
+    -------
+    str
+        Success message.
+
+    Raises
+    ------
+    InputMissingError
+        If no file paths or no voice model directory name is given.
+    ValueError
+        If more than two file paths are given.
+    PathExistsError
+        If a voice model directory by the given name already exists.
+    FileTypeError
+        If a single uploaded file is not a .pth file or a .zip file.
+        If two uploaded files are not a .pth file and an .index file.
+    """
     if not input_paths:
         raise InputMissingError("No files selected!")
     if len(input_paths) > 2:
@@ -229,6 +347,30 @@ def delete_models(
     progress_bar: gr.Progress | None = None,
     percentage: float = 0.0,
 ) -> str:
+    """
+    Delete one or more voice models.
+
+    Parameters
+    ----------
+    model_names : list[str]
+        Names of the models to delete.
+    progress_bar : gr.Progress, optional
+        Gradio progress bar to update.
+    percentage : float, default=0.0
+        Percentage to display in the progress bar.
+
+    Returns
+    -------
+    str
+        Success message.
+
+    Raises
+    ------
+    InputMissingError
+        If no model names are given.
+    PathNotFoundError
+        If a voice model directory does not exist.
+    """
     if not model_names:
         raise InputMissingError("No models selected!")
     display_progress("[~] Deleting selected models ...", percentage, progress_bar)
@@ -251,6 +393,21 @@ def delete_models(
 def delete_all_models(
     progress_bar: gr.Progress | None = None, percentage: float = 0.0
 ) -> str:
+    """
+    Delete all voice models.
+
+    Parameters
+    ----------
+    progress_bar : gr.Progress, optional
+        Gradio progress bar to update.
+    percentage : float, default=0.0
+        Percentage to display in the progress bar.
+
+    Returns
+    -------
+    str
+        Success message.
+    """
     all_models = get_current_models()
     display_progress("[~] Deleting all models ...", percentage, progress_bar)
     for model_name in all_models:

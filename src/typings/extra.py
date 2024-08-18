@@ -14,8 +14,6 @@ DropdownValue = (
 
 InputType = Literal["yt", "local"]
 
-SongCoverNameUpdateKey = Literal["value", "placeholder"]
-
 F0Method = Literal["rmvpe", "mangio-crepe"]
 
 InputAudioExt = Literal["mp3", "wav", "flac", "aac", "m4a", "ogg"]

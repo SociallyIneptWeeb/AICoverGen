@@ -1,3 +1,7 @@
+"""
+This module contains functions to generate song covers using RVC-based voice models.
+"""
+
 from typing import Any
 from typings.extra import InputType, F0Method, InputAudioExt, OutputAudioExt
 import gradio as gr
@@ -55,11 +59,19 @@ SEPARATOR = Separator(
 
 def _get_youtube_video_id(url: str, ignore_playlist: bool = True) -> str | None:
     """
-    Examples:
-    http://youtu.be/SA2iWivDJiE
-    http://www.youtube.com/watch?v=_oPAwA_Udwc&feature=feedu
-    http://www.youtube.com/embed/SA2iWivDJiE
-    http://www.youtube.com/v/SA2iWivDJiE?version=3&amp;hl=en_US
+    Get video id from a YouTube URL.
+
+    Parameters
+    ----------
+    url : str
+        The YouTube URL.
+    ignore_playlist : bool, default=True
+        Whether to get id of first video in playlist or the playlist id itself.
+
+    Returns
+    -------
+    str
+        The video id.
     """
     query = urlparse(url)
     if query.hostname == "youtu.be":
@@ -80,12 +92,25 @@ def _get_youtube_video_id(url: str, ignore_playlist: bool = True) -> str | None:
             return query.path.split("/")[2]
         if query.path[:3] == "/v/":
             return query.path.split("/")[2]
-
-    # returns None for invalid YouTube url
     return None
 
 
 def _yt_download(link: str, song_dir: str) -> str:
+    """
+    Download audio from a YouTube link.
+
+    Parameters
+    ----------
+    link : str
+        The YouTube link.
+    song_dir : str
+        The directory to save the downloaded audio to.
+
+    Returns
+    -------
+    str
+        The path to the downloaded audio file.
+    """
     outtmpl = os.path.join(song_dir, "0_%(title)s_Original")
     ydl_opts = {
         "quiet": True,
@@ -104,22 +129,57 @@ def _yt_download(link: str, song_dir: str) -> str:
     }
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
         result = ydl.extract_info(link, download=True)
+        if not result:
+            raise PathNotFoundError("No audio found in the provided YouTube link!")
         download_path = ydl.prepare_filename(result, outtmpl=f"{outtmpl}.wav")
 
     return download_path
 
 
-def _get_cached_input_paths() -> list[str]:
+def _get_input_audio_paths() -> list[str]:
+    """
+    Get the paths of all cached input audio files.
+
+    Returns
+    -------
+    list[str]
+        The paths of all cached input audio files
+    """
     # TODO if we later add .json file for input then we need to exclude those here
     return glob.glob(os.path.join(INTERMEDIATE_AUDIO_DIR, "*", "0_*_Original*"))
 
 
-def _get_orig_song_path(song_dir: str) -> str | None:
+def _get_input_audio_path(song_dir: str) -> str | None:
+    """
+    Get the path of the cached input audio file in a given song directory.
+
+    Parameters
+    ----------
+    song_dir : str
+        The path to a song directory.
+
+    Returns
+    -------
+    str
+        The path of the cached input audio file, if it exists.
+    """
     # NOTE orig_song_paths should never contain more than one element
     return next(iter(glob.glob(os.path.join(song_dir, "0_*_Original*"))), None)
 
 
 def _pitch_shift(audio_path: str, output_path: str, n_semi_tones: int) -> None:
+    """
+    Pitch-shift an audio file.
+
+    Parameters
+    ----------
+    audio_path : str
+        The path of the audio file to pitch-shift.
+    output_path : str
+        The path to save the pitch-shifted audio file to.
+    n_semi_tones : int
+        The number of semi-tones to pitch-shift the audio by.
+    """
     y, sr = sf.read(audio_path)
     tfm = sox.Transformer()
     tfm.pitch(n_semi_tones)
@@ -127,7 +187,7 @@ def _pitch_shift(audio_path: str, output_path: str, n_semi_tones: int) -> None:
     sf.write(output_path, y_shifted, sr)
 
 
-# TODO consider increasing size to 16
+# TODO consider increasing hash_size to 16
 # otherwise we might have problems with hash collisions
 # when using app as CLI
 def _get_unique_base_path(
@@ -138,6 +198,30 @@ def _get_unique_base_path(
     percentage: float = 0.0,
     hash_size: int = 5,
 ) -> str:
+    """
+    Get a unique base path for an audio file in a song directory
+    by hashing the arguments used to generate the audio.
+
+    Parameters
+    ----------
+    song_dir : str
+        The path to a song directory.
+    prefix : str
+        The prefix to use for the base path.
+    arg_dict : dict
+        The dictionary of arguments used to generate the audio in the given file.
+    progress_bar : gr.Progress, optional
+        Gradio progress bar to update.
+    percentage : float, default=0.0
+        Percentage to display in the progress bar.
+    hash_size : int, default=5
+        The size (in bytes) of the hash to use for the base path.
+
+    Returns
+    -------
+    str
+        The unique base path for the audio file.
+    """
     dict_hash = get_hash(arg_dict, size=hash_size)
     while True:
         base_path = os.path.join(song_dir, f"{prefix}_{dict_hash}")
@@ -152,9 +236,9 @@ def _get_unique_base_path(
             return base_path
 
 
-def _voice_change(
+def _convert_voice(
     voice_model: str,
-    vocals_path: str,
+    voice_path: str,
     output_path: str,
     pitch_change: int,
     f0_method: F0Method,
@@ -165,6 +249,34 @@ def _voice_change(
     crepe_hop_length: int,
     output_sr: int,
 ) -> None:
+    """
+    Convert a voice track using a voice model.
+
+    Parameters
+    ----------
+    voice_model : str
+        The name of the voice model to use.
+    voice_path : str
+        The path to the voice track to convert.
+    output_path : str
+        The path to save the converted voice to.
+    pitch_change : int
+        The number of semi-tones to pitch-shift the converted voice by.
+    f0_method : F0Method
+        The method to use for pitch extraction.
+    index_rate : float
+        The influence of index file on voice conversion.
+    filter_radius : int
+        The filter radius to use for the voice conversion.
+    rms_mix_rate : float
+        The blending rate of the volume envelope of converted voice.
+    protect : float
+        The protection rate for consonants and breathing sounds.
+    crepe_hop_length : int
+        The hop length to use for Crepe pitch extraction method.
+    output_sr : int
+        The sample rate to use for the output audio.
+    """
     rvc_model_path, rvc_index_path = get_rvc_model(voice_model)
     device = "cuda:0"
     config = Config(device, True)
@@ -179,7 +291,7 @@ def _voice_change(
     rvc_infer(
         rvc_index_path,
         index_rate,
-        vocals_path,
+        voice_path,
         output_path,
         pitch_change,
         f0_method,
@@ -207,8 +319,24 @@ def _add_audio_effects(
     reverb_dry: float,
     reverb_damping: float,
 ) -> None:
+    """
+    Add high-pass filter, compressor and reverb effects to an audio file.
 
-    # Initialize audio effects plugins
+    Parameters
+    ----------
+    audio_path : str
+        The path of the audio file to add effects to.
+    output_path : str
+        The path to save the effected audio file to.
+    reverb_rm_size : float
+        The room size of the reverb effect.
+    reverb_wet : float
+        The wet level of the reverb effect.
+    reverb_dry : float
+        The dry level of the reverb effect.
+    reverb_damping : float
+        The damping of the reverb effect.
+    """
     board = Pedalboard(
         [
             HighpassFilter(),
@@ -232,25 +360,66 @@ def _add_audio_effects(
 
 
 def _map_audio_ext(input_audio_ext: InputAudioExt) -> OutputAudioExt:
-    if input_audio_ext == "m4a":
-        return "ipod"
-    elif input_audio_ext == "aac":
-        return "ipod"
-    return input_audio_ext
+    """
+    Map an input audio extension to an output audio extension.
+
+    Parameters
+    ----------
+    input_audio_ext : InputAudioExt
+        The input audio extension.
+
+    Returns
+    -------
+    OutputAudioExt
+        The output audio extension.
+    """
+    match input_audio_ext:
+        case "m4a":
+            return "ipod"
+        case "aac":
+            return "adts"
+        case _:
+            return input_audio_ext
 
 
 def _mix_audio(
-    audio_paths: list[str],
-    output_path: str,
+    main_vocal_path: str,
+    backup_vocal_path: str,
+    instrumental_path: str,
     main_gain: int,
     backup_gain: int,
     inst_gain: int,
     output_format: InputAudioExt,
     output_sr: int,
+    output_path: str,
 ) -> None:
-    main_vocal_audio = AudioSegment.from_wav(audio_paths[0]) + main_gain
-    backup_vocal_audio = AudioSegment.from_wav(audio_paths[1]) + backup_gain
-    instrumental_audio = AudioSegment.from_wav(audio_paths[2]) + inst_gain
+    """
+    Mix main vocals, backup vocals and instrumentals.
+
+    Parameters
+    ----------
+    main_vocal_path : str
+        The path of an audio file containing main vocals.
+    backup_vocal_path : str
+        The path of an audio file containing backup vocals.
+    instrumental_path : str
+        The path of an audio file containing instrumentals.
+    main_gain : int
+        The gain to apply to the main vocals.
+    backup_gain : int
+        The gain to apply to the backup vocals.
+    inst_gain : int
+        The gain to apply to the instrumental.
+    output_format : InputAudioExt
+        The format to save the mixed audio file in.
+    output_sr : int
+        The sample rate to use for the mixed audio file.
+    output_path : str
+        The path to save the mixed audio file to.
+    """
+    main_vocal_audio = AudioSegment.from_wav(main_vocal_path) + main_gain
+    backup_vocal_audio = AudioSegment.from_wav(backup_vocal_path) + backup_gain
+    instrumental_audio = AudioSegment.from_wav(instrumental_path) + inst_gain
     combined_audio = main_vocal_audio.overlay(backup_vocal_audio).overlay(
         instrumental_audio
     )
@@ -260,7 +429,15 @@ def _mix_audio(
 
 
 def get_named_song_dirs() -> list[tuple[str, str]]:
-    input_paths = _get_cached_input_paths()
+    """
+    Get the names and paths of all song directories.
+
+    Returns
+    -------
+    list[tuple[str, str]]
+        A list of tuples containing the name and path of each song directory.
+    """
+    input_paths = _get_input_audio_paths()
     named_song_dirs: list[tuple[str, str]] = []
 
     for path in input_paths:
@@ -280,6 +457,33 @@ def convert_to_stereo(
     progress_bar: gr.Progress | None = None,
     percentage: float = 0.0,
 ) -> str:
+    """
+    Converts an audio file to stereo.
+
+    Parameters
+    ----------
+    song_path : str
+        The path to the audio file to convert.
+    song_dir : str
+        The path to the directory where the stereo audio file will be saved.
+    progress_bar : gr.Progress, optional
+        Gradio progress bar to update.
+    percentage : float, default=0.0
+        Percentage to display in the progress bar.
+
+    Returns
+    -------
+    str
+        The path to the stereo audio file.
+
+    Raises
+    ------
+    InputMissingError
+        If no audio file or song directory path is provided.
+    PathNotFoundError
+        If the provided audio file or song directory path does not point
+        to an existing file or directory.
+    """
     if not song_path:
         raise InputMissingError("Input song missing!")
     if not os.path.isfile(song_path):
@@ -319,11 +523,48 @@ def convert_to_stereo(
 def _make_song_dir(
     song_input: str, progress_bar: gr.Progress | None = None, percentage: float = 0.0
 ) -> tuple[str, InputType]:
+    """
+    Create a song directory for a given song input.
+
+    * If the song input is a YouTube URL,
+    the song directory will be named after the video id.
+    * If the song input is a local audio file,
+    the song directory will be named after the file hash.
+    * if the song input is a song directory,
+    the song directory will be used as is.
+
+    Parameters
+    ----------
+    song_input : str
+        The song input to create a directory for.
+    progress_bar : gr.Progress, optional
+        Gradio progress bar to update.
+    percentage : float, default=0.0
+        Percentage to display in the progress bar.
+
+    Returns
+    -------
+    song_dir : str
+        The path to the created song directory.
+    input_type : InputType
+        The type of input provided.
+
+    Raises
+    ------
+    InputMissingError
+        If no song input is provided.
+    InvalidPathError
+        If the provided YouTube URL is invalid or if the provided song directory
+        is not located in the root of the intermediate audio directory.
+    PathNotFoundError
+        If the provided song input is neither a valid HTTPS-based URL
+        nor the path of an existing song directory or audio file.
+    """
     # if song directory
     if os.path.isdir(song_input):
         if not PurePath(song_input).parent == PurePath(INTERMEDIATE_AUDIO_DIR):
             raise InvalidPathError(
-                "Song directory not located in intermediate audio root directory."
+                "Song directory not located in the root of the intermediate audio directory."
             )
         display_progress(
             "[~] Using existing song directory...", percentage, progress_bar
@@ -338,16 +579,12 @@ def _make_song_dir(
         song_id = _get_youtube_video_id(song_input)
         if song_id is None:
             raise InvalidPathError("Invalid YouTube url!")
-    # local audio file
-    else:
+    # if local audio file
+    elif os.path.isfile(song_input):
         input_type = "local"
-        # TODO can probably remove line below
-        # filenames cant contain '"' on windows and on linux it should be fine to
-        # song_input = song_input.strip('"')
-        if os.path.isfile(song_input):
-            song_id = get_file_hash(song_input)
-        else:
-            raise PathNotFoundError(f"File {song_input} does not exist.")
+        song_id = get_file_hash(song_input)
+    else:
+        raise PathNotFoundError(f"Song input {song_input} does not exist.")
 
     song_dir = os.path.join(INTERMEDIATE_AUDIO_DIR, song_id)
 
@@ -359,17 +596,46 @@ def _make_song_dir(
 def retrieve_song(
     song_input: str,
     progress_bar: gr.Progress | None = None,
-    percentages: list[float] = [i / 3 for i in range(3)],
+    percentages: tuple[float, float, float] = (0, 0.33, 0.67),
 ) -> tuple[str, str]:
-    if len(percentages) != 3:
-        raise ValueError("Percentages must be a list of length 3.")
+    """
+    Retrieve a song from a YouTube URL, local audio file or a song directory.
+
+    Parameters
+    ----------
+    song_input : str
+        A Youtube URL, the path of a local audio file
+        or the path of a song directory.
+    progress_bar : gr.Progress, optional
+        Gradio progress bar to update.
+    percentages : tuple[float,float,float], default=(0, 0.33, 0.67)
+        Percentages to display in the progress bar.
+
+    Returns
+    -------
+    song_path : str
+        The path to the retrieved audio file
+    song_dir : str
+        The path to the song directory containing it.
+
+    Raises
+    ------
+    InputMissingError
+        If no song input is provided.
+    InvalidPathError
+        If the provided Youtube URL is invalid or if the provided song directory
+        is not located in the root of the intermediate audio directory.
+    PathNotFoundError
+        If the provided song input is neither a valid HTTPS-based URL
+        nor the path of an existing song directory or audio file.
+    """
     if not song_input:
         raise InputMissingError(
-            "Song input missing! Please provide a valid YouTube url, local audio file or cached input song."
+            "Song input missing! Please provide a valid YouTube url, local audio file path or cached song directory path."
         )
 
     song_dir, input_type = _make_song_dir(song_input, progress_bar, percentages[0])
-    orig_song_path = _get_orig_song_path(song_dir)
+    orig_song_path = _get_input_audio_path(song_dir)
 
     if not orig_song_path:
         if input_type == "yt":
@@ -395,10 +661,41 @@ def separate_vocals(
     song_dir: str,
     stereofy: bool = True,
     progress_bar: gr.Progress | None = None,
-    percentages: list[float] = [i / 2 for i in range(2)],
+    percentages: tuple[float, float] = (0.0, 0.5),
 ) -> tuple[str, str]:
-    if len(percentages) != 2:
-        raise ValueError("Percentages must be a list of length 2.")
+    """
+    Separate a song into vocals and instrumentals.
+
+    Parameters
+    ----------
+    song_path : str
+        The path to the song to separate.
+    song_dir : str
+        The path to the song directory where the
+        separated vocals and instrumentals will be saved.
+    stereofy : bool, default=True
+        Whether to convert the song to stereo
+        before separating its vocals and instrumentals.
+    progress_bar : gr.Progress, optional
+        Gradio progress bar to update.
+    percentages : tuple[float,float], default=(0.0, 0.5)
+        Percentages to display in the progress bar.
+
+    Returns
+    -------
+    vocals_path : str
+        The path to the separated vocals.
+    instrumentals_path : str
+        The path to the separated instrumentals.
+
+    Raises
+    ------
+    InputMissingError
+        If no song path or song directory path is provided.
+    PathNotFoundError
+        If the provided song path or song directory path does not point
+        to an existing file or directory.
+    """
     if not song_path:
         raise InputMissingError("Input song missing!")
     if not os.path.isfile(song_path):
@@ -460,11 +757,41 @@ def separate_main_vocals(
     song_dir: str,
     stereofy: bool = True,
     progress_bar: gr.Progress | None = None,
-    percentages: list[float] = [i / 2 for i in range(2)],
+    percentages: tuple[float, float] = (0.0, 0.5),
 ) -> tuple[str, str]:
-    if len(percentages) != 2:
-        raise ValueError("Percentages must be a list of length 2.")
+    """
+    Separate a vocals track into main vocals and backup vocals.
 
+    Parameters
+    ----------
+    vocals_path : str
+        The path to the vocals track to separate.
+    song_dir : str
+        The path to the directory where the separated main vocals
+        and backup vocals will be saved.
+    stereofy : bool, default=True
+        Whether to convert the vocals track to stereo
+        before separating its main vocals and backup vocals.
+    progress_bar : gr.Progress, optional
+        Gradio progress bar to update.
+    percentages : tuple[float,float], default=(0.0, 0.5)
+        Percentages to display in the progress bar.
+
+    Returns
+    -------
+    main_vocals_path : str
+        The path to the separated main vocals.
+    backup_vocals_path : str
+        The path to the separated backup vocals.
+
+    Raises
+    ------
+    InputMissingError
+        If no vocals track path or song directory path is provided.
+    PathNotFoundError
+        If the provided vocals path or song directory path does not point
+        to an existing file or directory.
+    """
     if not vocals_path:
         raise InputMissingError("Vocals missing!")
     if not os.path.isfile(vocals_path):
@@ -531,11 +858,39 @@ def dereverb_vocals(
     song_dir: str,
     stereofy: bool = True,
     progress_bar: gr.Progress | None = None,
-    percentages: list[float] = [i / 2 for i in range(2)],
+    percentages: tuple[float, float] = (0.0, 0.5),
 ) -> tuple[str, str]:
-    if len(percentages) != 2:
-        raise ValueError("Percentages must be a list of length 2.")
+    """
+    De-reverb a vocals track.
 
+    Parameters
+    ----------
+    vocals_path : str
+        The path to the vocals track to de-reverb.
+    song_dir : str
+        The path to the directory where the de-reverbed vocals will be saved.
+    stereofy : bool, default=True
+        Whether to convert the vocals track to stereo before de-reverbing it.
+    progress_bar : gr.Progress, optional
+        Gradio progress bar to update.
+    percentages : tuple[float,float], default=(0.0, 0.5)
+        Percentages to display in the progress bar.
+
+    Returns
+    -------
+    vocals_dereverb_path : str
+        The path to the de-reverbed vocals.
+    vocals_reverb_path : str
+        The path to the reverb of the vocals.
+
+    Raises
+    ------
+    InputMissingError
+        If no vocals track path or song directory path is provided.
+    PathNotFoundError
+        If the provided vocals path or song directory path does not point
+        to an existing file or directory.
+    """
     if not vocals_path:
         raise InputMissingError("Vocals missing!")
     if not os.path.isfile(vocals_path):
@@ -610,6 +965,51 @@ def convert_vocals(
     progress_bar: gr.Progress | None = None,
     percentage: float = 0.0,
 ) -> str:
+    """
+    Convert a vocals track using a voice model.
+
+    Parameters
+    ----------
+    vocals_path : str
+        The path to the vocals track to convert.
+    song_dir : str
+        The path to the directory where the converted vocals will be saved.
+    voice_model : str
+        The name of the voice model to use.
+    pitch_change_octaves : int, default=0
+        The number of octaves to pitch-shift the converted vocals by.
+    pitch_change_semi_tones : int, default=0
+        The number of semi-tones to pitch-shift the converted vocals by.
+    index_rate : float, default=0.5
+        The influence of the index file on the vocal conversion.
+    filter_radius : int, default=3
+        The filter radius to use for the vocal conversion.
+    rms_mix_rate : float, default=0.25
+        The blending rate of the volume envelope of the converted vocals.
+    protect : float, default=0.33
+        The protection rate for consonants and breathing sounds.
+    f0_method : F0Method, default="rmvpe"
+        The method to use for pitch extraction.
+    crepe_hop_length : int, default=128
+        The hop length to use for crepe-based pitch extraction.
+    progress_bar : gr.Progress, optional
+        Gradio progress bar to update.
+    percentage : float, default=0.0
+        Percentage to display in the progress bar.
+
+    Returns
+    -------
+    str
+        The path to the converted vocals.
+
+    Raises
+    ------
+    InputMissingError
+        If no vocals track path, song directory path or voice model name is provided.
+    PathNotFoundError
+        If the provided vocals path, song directory path or voice model name
+        does not point to an existing file or directory.
+    """
     if not vocals_path:
         raise InputMissingError("Vocals missing!")
     if not os.path.isfile(vocals_path):
@@ -649,7 +1049,7 @@ def convert_vocals(
         and os.path.exists(converted_vocals_json_path)
     ):
         display_progress("[~] Converting vocals using RVC...", percentage, progress_bar)
-        _voice_change(
+        _convert_voice(
             voice_model,
             vocals_path,
             converted_vocals_path,
@@ -676,7 +1076,41 @@ def postprocess_vocals(
     progress_bar: gr.Progress | None = None,
     percentage: float = 0.0,
 ) -> str:
+    """
+    Apply high-pass filter, compressor and reverb effects to a vocals track.
 
+    Parameters
+    ----------
+    vocals_path : str
+        The path to the vocals track to add effects to.
+    song_dir : str
+        The path to the directory where the effected vocals will be saved.
+    reverb_rm_size : float, default=0.15
+        The room size of the reverb effect.
+    reverb_wet : float, default=0.2
+        The wet level of the reverb effect.
+    reverb_dry : float, default=0.8
+        The dry level of the reverb effect.
+    reverb_damping : float, default=0.7
+        The damping of the reverb effect.
+    progress_bar : gr.Progress, optional
+        Gradio progress bar to update.
+    percentage : float, default=0.0
+        Percentage to display in the progress bar.
+
+    Returns
+    -------
+    str
+        The path to the effected vocals.
+
+    Raises
+    ------
+    InputMissingError
+        If no vocals track path or song directory path is provided.
+    PathNotFoundError
+        If the provided vocals path or song directory path does not point
+        to an existing file or directory.
+    """
     if not vocals_path:
         raise InputMissingError("Vocals missing!")
     if not os.path.isfile(vocals_path):
@@ -727,10 +1161,43 @@ def pitch_shift_background(
     song_dir: str,
     pitch_change: int = 0,
     progress_bar: gr.Progress | None = None,
-    percentages: list[float] = [i / 2 for i in range(2)],
+    percentages: tuple[float, float] = (0.0, 0.5),
 ) -> tuple[str, str]:
-    if len(percentages) != 2:
-        raise ValueError("Percentages must be a list of length 2.")
+    """
+    Pitch shift instrumentals and backup vocals by a given number of semi-tones.
+
+    Parameters
+    ----------
+    instrumentals_path : str
+        The path to the instrumentals to pitch shift.
+    backup_vocals_path : str
+        The path to the backup vocals to pitch shift.
+    song_dir : str
+        The path to the directory where the pitch-shifted instrumentals
+        and backup vocals will be saved.
+    pitch_change : int, default=0
+        The number of semi-tones to pitch-shift the instrumentals
+        and backup vocals by.
+    progress_bar : gr.Progress, optional
+        Gradio progress bar to update.
+    percentages : tuple[float,float], default=(0.0, 0.5)
+        Percentages to display in the progress bar.
+
+    Returns
+    -------
+    instrumentals_shifted_path : str
+        The path to the pitch-shifted instrumentals.
+    backup_vocals_shifted_path : str
+        The path to the pitch-shifted backup vocals.
+
+    Raises
+    ------
+    InputMissingError
+        If no instrumentals path, backup vocals path or song directory path is provided.
+    PathNotFoundError
+        If the provided instrumentals path, backup vocals path or song directory path
+        does not point to an existing file or directory.
+    """
     if not instrumentals_path:
         raise InputMissingError("Instrumentals missing!")
     if not os.path.isfile(instrumentals_path):
@@ -817,6 +1284,24 @@ def pitch_shift_background(
 def _get_voice_model(
     mixed_vocals_path: str | None = None, song_dir: str | None = None
 ) -> str:
+    """
+    Infer the voice model used for vocal conversion from a
+    mixed vocals file in a given song directory.
+
+    If the voice model cannot be inferred, "Unknown" is returned.
+
+    Parameters
+    ----------
+    mixed_vocals_path : str, optional
+        The path to a mixed vocals file.
+    song_dir : str, optional
+        The path to a song directory.
+
+    Returns
+    -------
+    str
+        The voice model used for vocal conversion.
+    """
     voice_model = "Unknown"
     if not (mixed_vocals_path and song_dir):
         return voice_model
@@ -844,9 +1329,37 @@ def get_song_cover_name(
     progress_bar: gr.Progress | None = None,
     percentage: float = 0.0,
 ) -> str:
+    """
+    Generates a suitable name for a cover of a song based on that song's
+    original name and the voice model used for vocal conversion.
+
+    If the path of an existing song directory is provided, the original song
+    name is inferred from that directory. If a voice model is not provided but
+    the path of an existing song directory and the path of a mixed
+    vocals file in that directory are provided, then the voice model is
+    inferred from the mixed vocals file.
+
+    Parameters
+    ----------
+    mixed_vocals_path : str, optional
+        The path to a mixed vocals file.
+    song_dir : str, optional
+        The path to a song directory.
+    voice_model : str, optional
+        A voice model name.
+    progress_bar : gr.Progress, optional
+        Gradio progress bar to update.
+    percentage : float, default=0.0
+        Percentage to display in the progress bar.
+
+    Returns
+    -------
+    str
+        The song cover name
+    """
     display_progress("[~] Getting song cover name...", percentage, progress_bar)
 
-    orig_song_path = _get_orig_song_path(song_dir) if song_dir else None
+    orig_song_path = _get_input_audio_path(song_dir) if song_dir else None
     orig_song_name = (
         (get_path_stem(orig_song_path).removeprefix("0_").removesuffix("_Original"))
         if orig_song_path
@@ -870,10 +1383,51 @@ def mix_song_cover(
     output_format: InputAudioExt = "mp3",
     output_name: str | None = None,
     progress_bar: gr.Progress | None = None,
-    percentages: list[float] = [i / 2 for i in range(2)],
+    percentages: tuple[float, float] = (0.0, 0.5),
 ) -> str:
-    if len(percentages) != 2:
-        raise ValueError("Percentages must be a list of length 2.")
+    """
+    Mix main vocals, instrumentals, and backup vocals to create a song cover.
+
+    Parameters
+    ----------
+    main_vocals_path : str
+        The path to the main vocals to mix.
+    instrumentals_path : str
+        The path to the instrumentals to mix.
+    backup_vocals_path : str
+        The path to the backup vocals to mix.
+    song_dir : str
+        The path to the song directory where the song cover will be saved.
+    main_gain : int, default=0
+        The gain to apply to the main vocals.
+    inst_gain : int, default=0
+        The gain to apply to the instrumentals.
+    backup_gain : int, default=0
+        The gain to apply to the backup vocals.
+    output_sr : int, default=44100
+        The sample rate of the song cover.
+    output_format : InputAudioExt, default="mp3"
+        The audio format of the song cover.
+    output_name : str, optional
+        The name of the song cover.
+    progress_bar : gr.Progress, optional
+        Gradio progress bar to update.
+    percentages : tuple[float,float], default=(0.0, 0.5)
+        Percentages to display in the progress bar.
+
+    Returns
+    -------
+    str
+        The path to the song cover.
+
+    Raises
+    ------
+    InputMissingError
+        If no main vocals, instrumentals, backup vocals or song directory path is provided.
+    PathNotFoundError
+        If the provided main vocals, instrumentals, backup vocals or song directory path
+        does not point to an existing file or directory.
+    """
     if not main_vocals_path:
         raise InputMissingError("Main vocals missing!")
     if not os.path.isfile(main_vocals_path):
@@ -926,13 +1480,15 @@ def mix_song_cover(
         )
 
         _mix_audio(
-            [main_vocals_path, backup_vocals_path, instrumentals_path],
-            mixdown_path,
+            main_vocals_path,
+            backup_vocals_path,
+            instrumentals_path,
             main_gain,
             backup_gain,
             inst_gain,
             output_format,
             output_sr,
+            mixdown_path,
         )
         json_dump(arg_dict, mixdown_json_path)
 
@@ -970,25 +1526,83 @@ def run_pipeline(
     return_files: bool = False,
     progress_bar: gr.Progress | None = None,
 ) -> str | tuple[str, ...]:
+    """
+    Run the song cover generation pipeline.
+
+    Parameters
+    ----------
+    song_input : str
+        A Youtube URL, the path of a local audio file or the path of a song directory.
+    voice_model : str
+        The name of the voice model to use for vocal conversion.
+    pitch_change_vocals : int, default=0
+        The number of octaves to pitch-shift the converted vocals by.
+    pitch_change_all : int, default=0
+        The number of semi-tones to pitch-shift the converted vocals,
+        instrumentals, and backup vocals by.
+    index_rate : float, default=0.5
+        The influence of the index file on the vocal conversion.
+    filter_radius : int, default=3
+        The filter radius to use for the vocal conversion.
+    rms_mix_rate : float, default=0.25
+        The blending rate of the volume envelope of the converted vocals.
+    protect : float, default=0.33
+        The protection rate for consonants and breathing sounds in the vocal conversion.
+    f0_method : F0Method, default="rmvpe"
+        The method to use for pitch extraction in the vocal conversion.
+    crepe_hop_length : int, default=128
+        The hop length to use for crepe-based pitch extraction.
+    reverb_rm_size : float, default=0.15
+        The room size of the reverb effect to apply to the converted vocals.
+    reverb_wet : float, default=0.2
+        The wet level of the reverb effect to apply to the converted vocals.
+    reverb_dry : float, default=0.8
+        The dry level of the reverb effect to apply to the converted vocals.
+    reverb_damping : float, default=0.7
+        The damping of the reverb effect to apply to the converted vocals.
+    main_gain : int, default=0
+        The gain to apply to the post-processed vocals.
+    inst_gain : int, default=0
+        The gain to apply to the pitch-shifted instrumentals.
+    backup_gain : int, default=0
+        The gain to apply to the pitch-shifted backup vocals.
+    output_sr : int, default=44100
+        The sample rate of the song cover.
+    output_format : InputAudioExt, default="mp3"
+        The audio format of the song cover.
+    output_name : str, optional
+        The name of the song cover.
+    return_files : bool, default=False
+        Whether to return the paths of the generated intermediate audio files.
+    progress_bar : gr.Progress, optional
+        Gradio progress bar to update.
+
+    Returns
+    -------
+    str | tuple[str,...]
+        The path to the generated song cover and, if `return_files=True`,
+        also the paths of any generated intermediate audio files.
+    """
     if not song_input:
         raise InputMissingError(
-            "Song input missing! Please provide a valid YouTube url, local audio file or cached input song."
+            "Song input missing! Please provide a valid YouTube url, local audio file path or cached song directory path."
         )
     if not voice_model:
         raise InputMissingError("Voice model missing!")
     if not os.path.isdir(os.path.join(RVC_MODELS_DIR, voice_model)):
         raise PathNotFoundError("Voice model does not exist!")
     display_progress("[~] Starting song cover generation pipeline...", 0, progress_bar)
-    percentages = [i / 15 for i in range(15)]
-    orig_song_path, song_dir = retrieve_song(song_input, progress_bar, percentages[:3])
+    orig_song_path, song_dir = retrieve_song(
+        song_input, progress_bar, (0 / 15, 1 / 15, 2 / 15)
+    )
     vocals_path, instrumentals_path = separate_vocals(
-        orig_song_path, song_dir, False, progress_bar, percentages[3:5]
+        orig_song_path, song_dir, False, progress_bar, (3 / 15, 4 / 15)
     )
     main_vocals_path, backup_vocals_path = separate_main_vocals(
-        vocals_path, song_dir, False, progress_bar, percentages[5:7]
+        vocals_path, song_dir, False, progress_bar, (5 / 15, 6 / 15)
     )
     vocals_dereverb_path, reverb_path = dereverb_vocals(
-        main_vocals_path, song_dir, False, progress_bar, percentages[7:9]
+        main_vocals_path, song_dir, False, progress_bar, (7 / 15, 8 / 15)
     )
     converted_vocals_path = convert_vocals(
         vocals_dereverb_path,
@@ -1003,7 +1617,7 @@ def run_pipeline(
         f0_method,
         crepe_hop_length,
         progress_bar,
-        percentages[9],
+        9 / 15,
     )
     vocals_mixed_path = postprocess_vocals(
         converted_vocals_path,
@@ -1013,7 +1627,7 @@ def run_pipeline(
         reverb_dry,
         reverb_damping,
         progress_bar,
-        percentages[10],
+        10 / 15,
     )
     instrumentals_shifted_path, backup_vocals_shifted_path = pitch_shift_background(
         instrumentals_path,
@@ -1021,7 +1635,7 @@ def run_pipeline(
         song_dir,
         pitch_change_all,
         progress_bar,
-        percentages[11:13],
+        (11 / 15, 12 / 15),
     )
 
     song_cover_path = mix_song_cover(
@@ -1036,7 +1650,7 @@ def run_pipeline(
         output_format,
         output_name,
         progress_bar,
-        percentages[13:15],
+        (13 / 15, 14 / 15),
     )
     if return_files:
         return (

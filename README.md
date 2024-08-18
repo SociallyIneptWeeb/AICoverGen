@@ -1,6 +1,6 @@
 # Ultimate RVC
 
-An extension of [AiCoverGen](https://github.com/SociallyIneptWeeb/AICoverGen), which provides several new features and improvements, enabling users to generate song covers using RVC with ease. Ideal for people who wnat to incorporate singing functionality into their AI assistant/chatbot/vtuber, or for people who want to hear their favourite characters sing their favourite song.
+An extension of [AiCoverGen](https://github.com/SociallyIneptWeeb/AICoverGen), which provides several new features and improvements, enabling users to generate song covers using RVC with ease. Ideal for people who want to incorporate singing functionality into their AI assistant/chatbot/vtuber, or for people who want to hear their favourite characters sing their favourite song.
 
 <!-- Showcase: TBA -->
 

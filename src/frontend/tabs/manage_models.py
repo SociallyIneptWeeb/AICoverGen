@@ -26,9 +26,7 @@ from backend.manage_voice_models import (
 
 
 def _update_model_lists(
-    num_components: int,
-    value: DropdownValue = None,
-    value_indices: list[int] = [],
+    num_components: int, value: DropdownValue = None, value_indices: list[int] = []
 ) -> gr.Dropdown | tuple[gr.Dropdown, ...]:
     return update_dropdowns(get_current_models, num_components, value, value_indices)
 
@@ -77,14 +75,7 @@ def render(
 
             public_models_table = gr.DataFrame(
                 value=load_public_models_table([]),
-                headers=[
-                    "Model Name",
-                    "Description",
-                    "Tags",
-                    "Credit",
-                    "Added",
-                    "URL",
-                ],
+                headers=["Model Name", "Description", "Tags", "Credit", "Added", "URL"],
                 label="Available Public Models",
                 interactive=False,
             )
@@ -95,8 +86,7 @@ def render(
                 info="Should point to a zip file containing a .pth model file and an optional .index file.",
             )
             model_name = gr.Textbox(
-                label="Model name",
-                info="Enter a unique name for the model.",
+                label="Model name", info="Enter a unique name for the model."
             )
 
         with gr.Row():

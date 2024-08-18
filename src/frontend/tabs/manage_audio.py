@@ -33,8 +33,7 @@ def render(
                 with gr.Column():
                     intermediate_audio_to_delete.render()
                     delete_intermediate_audio_btn = gr.Button(
-                        "Delete selected",
-                        variant="secondary",
+                        "Delete selected", variant="secondary"
                     )
                     delete_all_intermediate_audio_btn = gr.Button(
                         "Delete all", variant="primary"
@@ -125,8 +124,7 @@ def render(
             show_progress="hidden",
         ).then(
             partial(
-                confirmation_harness(delete_all_output_audio),
-                progress_bar=PROGRESS_BAR,
+                confirmation_harness(delete_all_output_audio), progress_bar=PROGRESS_BAR
             ),
             inputs=delete_confirmation,
             outputs=output_audio_delete_msg,

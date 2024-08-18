@@ -18,23 +18,9 @@ SongCoverNameUpdateKey = Literal["value", "placeholder"]
 
 F0Method = Literal["rmvpe", "mangio-crepe"]
 
-InputAudioExt = Literal[
-    "mp3",
-    "wav",
-    "flac",
-    "aac",
-    "m4a",
-    "ogg",
-]
+InputAudioExt = Literal["mp3", "wav", "flac", "aac", "m4a", "ogg"]
 
-OutputAudioExt = Literal[
-    "mp3",
-    "wav",
-    "flac",
-    "adts",
-    "ipod",
-    "ogg",
-]
+OutputAudioExt = Literal["mp3", "wav", "flac", "adts", "ipod", "ogg"]
 
 
 ModelsTable = list[list[str]]

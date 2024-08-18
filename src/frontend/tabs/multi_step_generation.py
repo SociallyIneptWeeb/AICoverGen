@@ -232,9 +232,7 @@ def render(
                         info="Link to a song on YouTube or the full path of a local audio file.",
                     )
                     local_file = gr.Audio(
-                        label="Song input",
-                        type="filepath",
-                        visible=False,
+                        label="Song input", type="filepath", visible=False
                     )
                     cached_input_songs_dropdown2.render()
 
@@ -286,10 +284,7 @@ def render(
                     inputs=[current_song_dir],
                     outputs=(
                         song_dir_dropdowns
-                        + [
-                            cached_input_songs_dropdown2,
-                            cached_input_songs_dropdown,
-                        ]
+                        + [cached_input_songs_dropdown2, cached_input_songs_dropdown]
                     ),
                     name="then",
                     show_progress="hidden",
@@ -494,9 +489,7 @@ def render(
             ]
 
             setup_consecutive_event_listeners_with_toggled_interactivity(
-                dereverb_vocals_btn,
-                dereverb_vocals_event_args_list,
-                generate_buttons,
+                dereverb_vocals_btn, dereverb_vocals_event_args_list, generate_buttons
             )
         with gr.Accordion("Step 4: vocal conversion", open=False):
             gr.Markdown("")
@@ -636,9 +629,7 @@ def render(
                 ),
             ]
             setup_consecutive_event_listeners_with_toggled_interactivity(
-                convert_vocals_btn,
-                convert_vocals_event_args_list,
-                generate_buttons,
+                convert_vocals_btn, convert_vocals_event_args_list, generate_buttons
             )
         with gr.Accordion("Step 5: post-processing of vocals", open=False):
             gr.Markdown("")
@@ -834,14 +825,7 @@ def render(
                     label="Output sample rate",
                 )
                 output_format = gr.Dropdown(
-                    [
-                        "mp3",
-                        "wav",
-                        "flac",
-                        "aac",
-                        "m4a",
-                        "ogg",
-                    ],
+                    ["mp3", "wav", "flac", "aac", "m4a", "ogg"],
                     value="mp3",
                     label="Output file format",
                 )
@@ -917,7 +901,5 @@ def render(
             ]
 
             setup_consecutive_event_listeners_with_toggled_interactivity(
-                mix_btn,
-                mix_btn_event_args_list,
-                generate_buttons,
+                mix_btn, mix_btn_event_args_list, generate_buttons
             )

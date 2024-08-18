@@ -31,10 +31,7 @@ def remove_suffix_after(text: str, occurrence: str) -> str:
         return text[: location + len(occurrence)]
 
 
-def copy_files_to_new_folder(
-    file_paths: list[str],
-    folder_path: str,
-) -> None:
+def copy_files_to_new_folder(file_paths: list[str], folder_path: str) -> None:
     os.makedirs(folder_path)
     for file_path in file_paths:
         if not os.path.exists(file_path):
@@ -50,11 +47,7 @@ def get_path_stem(path: str) -> str:
 
 def json_dumps(thing: Any) -> str:
     return json.dumps(
-        thing,
-        ensure_ascii=False,
-        sort_keys=True,
-        indent=4,
-        separators=(",", ": "),
+        thing, ensure_ascii=False, sort_keys=True, indent=4, separators=(",", ": ")
     )
 
 
@@ -86,18 +79,13 @@ def get_hash(thing: Any, size: int = 5) -> str:
 # when using app as CLI
 # TODO use dedicated file_digest function once we upgradeto python 3.11
 # for better speedups
-def get_file_hash(
-    filepath: StrOrBytesPath,
-) -> str:
-
+def get_file_hash(filepath: StrOrBytesPath) -> str:
     with open(filepath, "rb") as f:
         file_hash = hashlib.file_digest(f, "blake2b")
     return file_hash.hexdigest()
 
 
-def get_rvc_model(
-    voice_model: str,
-) -> tuple[str, str]:
+def get_rvc_model(voice_model: str) -> tuple[str, str]:
     rvc_model_filename, rvc_index_filename = None, None
     model_dir = os.path.join(RVC_MODELS_DIR, voice_model)
     if not os.path.exists(model_dir):

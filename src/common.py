@@ -1,3 +1,5 @@
+"""Common variables used in the Ultimate-RVC project."""
+
 import os
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))

@@ -1,3 +1,13 @@
+"""
+Main application for the Ultimate RVC project.
+
+Each tab of the application is defined in a separate module 
+in the `frontend/tabs` directory.
+
+Components that are accessed across multiple tabs are passed as arguments
+to the render functions in the respective modules.
+"""
+
 import os
 from argparse import ArgumentParser
 
@@ -18,6 +28,16 @@ from frontend.tabs.manage_audio import render as render_manage_audio_tab
 
 
 def _init_app() -> tuple[gr.Dropdown, ...]:
+    """
+    Initialize app by deleting any existing Gradio temp directory
+    and updating the choices of all dropdowns.
+
+    Returns
+    -------
+    tuple[gr.Dropdown, ...]
+        Updated dropdowns for selecting voice models, song directories,
+        and output audio files.
+    """
     delete_gradio_temp_dir()
     updated_rvc_model_dropdowns = tuple(
         gr.Dropdown(choices=get_current_models()) for _ in range(3)
@@ -52,7 +72,7 @@ with gr.Blocks(title="Ultimate RVC") as app:
         )
         for _ in range(7)
     ]
-    cached_input_songs_dropdown, cached_input_songs_dropdown2 = [
+    cached_input_songs_dropdown_1click, cached_input_songs_dropdown_multi = [
         gr.Dropdown(
             label="Song input",
             info="Select a song from the list of cached songs.",
@@ -73,7 +93,7 @@ with gr.Blocks(title="Ultimate RVC") as app:
         info="Select one or more output audio files to delete.",
         render=False,
     )
-    rvc_model, rvc_model2 = [
+    rvc_model_1click, rvc_model_multi = [
         gr.Dropdown(label="Voice model", render=False) for _ in range(2)
     ]
     rvc_models_to_delete = gr.Dropdown(
@@ -100,18 +120,18 @@ with gr.Blocks(title="Ultimate RVC") as app:
         render_one_click_tab(
             generate_buttons,
             song_dir_dropdowns,
-            cached_input_songs_dropdown,
-            cached_input_songs_dropdown2,
-            rvc_model,
+            cached_input_songs_dropdown_1click,
+            cached_input_songs_dropdown_multi,
+            rvc_model_1click,
             intermediate_audio_to_delete,
             output_audio_to_delete,
         )
         render_multi_step_tab(
             generate_buttons,
             song_dir_dropdowns,
-            cached_input_songs_dropdown,
-            cached_input_songs_dropdown2,
-            rvc_model2,
+            cached_input_songs_dropdown_1click,
+            cached_input_songs_dropdown_multi,
+            rvc_model_multi,
             intermediate_audio_to_delete,
             output_audio_to_delete,
         )
@@ -120,8 +140,8 @@ with gr.Blocks(title="Ultimate RVC") as app:
             dummy_deletion_checkbox,
             delete_confirmation,
             rvc_models_to_delete,
-            rvc_model,
-            rvc_model2,
+            rvc_model_1click,
+            rvc_model_multi,
         )
     with gr.Tab("Manage audio"):
 
@@ -129,8 +149,8 @@ with gr.Blocks(title="Ultimate RVC") as app:
             dummy_deletion_checkbox,
             delete_confirmation,
             song_dir_dropdowns,
-            cached_input_songs_dropdown,
-            cached_input_songs_dropdown2,
+            cached_input_songs_dropdown_1click,
+            cached_input_songs_dropdown_multi,
             intermediate_audio_to_delete,
             output_audio_to_delete,
         )
@@ -138,12 +158,12 @@ with gr.Blocks(title="Ultimate RVC") as app:
     app.load(
         _init_app,
         outputs=[
-            rvc_model,
-            rvc_model2,
+            rvc_model_1click,
+            rvc_model_multi,
             rvc_models_to_delete,
             intermediate_audio_to_delete,
-            cached_input_songs_dropdown,
-            cached_input_songs_dropdown2,
+            cached_input_songs_dropdown_1click,
+            cached_input_songs_dropdown_multi,
             *song_dir_dropdowns,
             output_audio_to_delete,
         ],

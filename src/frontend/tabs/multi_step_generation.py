@@ -1,3 +1,7 @@
+"""
+This module contains the code for the "Multi-step generation" tab.
+"""
+
 from typings.extra import TransferUpdateArgs
 
 from functools import partial
@@ -10,7 +14,7 @@ from frontend.common import (
     exception_harness,
     update_cached_input_songs,
     update_output_audio,
-    get_song_cover_name_harness,
+    update_song_cover_name,
     toggle_visible_component,
     show_hop_slider,
     update_value,
@@ -29,12 +33,30 @@ from backend.generate_song_cover import (
 )
 
 
-def _transfer(
-    num_components: int, output_indices: list[int], value: str
+def _update_audio(
+    num_components: int, output_indices: list[int], file_path: str
 ) -> gr.Audio | tuple[gr.Audio, ...]:
+    """
+    Update the value of a subset of `Audio` components to the given audio file path.
+
+    Parameters
+    ----------
+    num_components : int
+        The total number of `Audio` components under consideration.
+    output_indices : list[int]
+        Indices of `Audio` components to update the value for.
+    file_path : str
+        Path pointing to an audio track to update the indexed `Audio` components with.
+
+    Returns
+    -------
+    gr.Audio | tuple[gr.Audio, ...]
+        Each `Audio` component under consideration
+        with indexed components updated to the given audio file path.
+    """
     update_args: list[TransferUpdateArgs] = [{} for _ in range(num_components)]
     for index in output_indices:
-        update_args[index]["value"] = value
+        update_args[index]["value"] = file_path
     if num_components == 1:
         return gr.Audio(**update_args[0])
     return tuple(gr.Audio(**update_arg) for update_arg in update_args)
@@ -43,12 +65,39 @@ def _transfer(
 def render(
     generate_buttons: list[gr.Button],
     song_dir_dropdowns: list[gr.Dropdown],
-    cached_input_songs_dropdown: gr.Dropdown,
-    cached_input_songs_dropdown2: gr.Dropdown,
+    cached_input_songs_dropdown_1click: gr.Dropdown,
+    cached_input_songs_dropdown_multi: gr.Dropdown,
     rvc_model: gr.Dropdown,
     intermediate_audio_to_delete: gr.Dropdown,
     output_audio_to_remove: gr.Dropdown,
 ) -> None:
+    """
+    Render "Multi-step generation" tab.
+
+    Parameters
+    ----------
+    generate_buttons : list[gr.Button]
+        Buttons used for audio generation in the
+        "One-click generation" tab and the "Multi-step generation" tab.
+    song_dir_dropdowns : list[gr.Dropdown]
+        Dropdowns for selecting song directories in the
+        "Multi-step generation" tab.
+    cached_input_songs_dropdown_1click : gr.Dropdown
+        Dropdown for selecting cached input songs in the
+        "One-click generation" tab.
+    cached_input_songs_dropdown_multi : gr.Dropdown
+        Dropdown for selecting cached input songs in the
+        "Multi-step generation" tab.
+    rvc_model : gr.Dropdown
+        Dropdown for selecting voice models in the
+        "Multi-step generation" tab.
+    intermediate_audio_to_delete : gr.Dropdown
+        Dropdown for selecting intermediate audio files to delete in the
+        "Delete audio" tab.
+    output_audio_to_remove : gr.Dropdown
+        Dropdown for selecting output audio files to delete in the
+        "Delete audio" tab.
+    """
     with gr.Tab("Multi-step generation"):
         (
             retrieve_song_btn,
@@ -234,12 +283,12 @@ def render(
                     local_file = gr.Audio(
                         label="Song input", type="filepath", visible=False
                     )
-                    cached_input_songs_dropdown2.render()
+                    cached_input_songs_dropdown_multi.render()
 
                 song_input_type_dropdown.input(
                     partial(toggle_visible_component, 3),
                     inputs=song_input_type_dropdown,
-                    outputs=[song_input, local_file, cached_input_songs_dropdown2],
+                    outputs=[song_input, local_file, cached_input_songs_dropdown_multi],
                     show_progress="hidden",
                 )
 
@@ -249,9 +298,9 @@ def render(
                     outputs=song_input,
                     show_progress="hidden",
                 )
-                cached_input_songs_dropdown2.input(
+                cached_input_songs_dropdown_multi.input(
                     update_value,
-                    inputs=cached_input_songs_dropdown2,
+                    inputs=cached_input_songs_dropdown_multi,
                     outputs=song_input,
                     show_progress="hidden",
                 )
@@ -284,7 +333,10 @@ def render(
                     inputs=[current_song_dir],
                     outputs=(
                         song_dir_dropdowns
-                        + [cached_input_songs_dropdown2, cached_input_songs_dropdown]
+                        + [
+                            cached_input_songs_dropdown_multi,
+                            cached_input_songs_dropdown_1click,
+                        ]
                     ),
                     name="then",
                     show_progress="hidden",
@@ -296,7 +348,7 @@ def render(
                     show_progress="hidden",
                 ),
                 EventArgs(
-                    partial(_transfer, len(input_tracks)),
+                    partial(_update_audio, len(input_tracks)),
                     inputs=[original_track_transfer_dropdown, original_track_output],
                     outputs=input_tracks,
                     name="then",
@@ -350,7 +402,7 @@ def render(
                 )
             ] + [
                 EventArgs(
-                    partial(_transfer, len(input_tracks)),
+                    partial(_update_audio, len(input_tracks)),
                     inputs=[transfer_dropdown, output_track],
                     outputs=input_tracks,
                     name="then",
@@ -412,7 +464,7 @@ def render(
                 )
             ] + [
                 EventArgs(
-                    partial(_transfer, len(input_tracks)),
+                    partial(_update_audio, len(input_tracks)),
                     inputs=[transfer_dropdown, output_track],
                     outputs=input_tracks,
                     name="then",
@@ -473,7 +525,7 @@ def render(
                 )
             ] + [
                 EventArgs(
-                    partial(_transfer, len(input_tracks)),
+                    partial(_update_audio, len(input_tracks)),
                     inputs=[transfer_dropdown, output_track],
                     outputs=input_tracks,
                     name="then",
@@ -618,7 +670,7 @@ def render(
                     outputs=[converted_vocals_track_output],
                 ),
                 EventArgs(
-                    partial(_transfer, len(input_tracks)),
+                    partial(_update_audio, len(input_tracks)),
                     inputs=[
                         converted_vocals_track_transfer_dropdown,
                         converted_vocals_track_output,
@@ -706,7 +758,7 @@ def render(
                     outputs=[postprocessed_vocals_track_output],
                 ),
                 EventArgs(
-                    partial(_transfer, len(input_tracks)),
+                    partial(_update_audio, len(input_tracks)),
                     inputs=[
                         postprocessed_vocals_track_transfer_dropdown,
                         postprocessed_vocals_track_output,
@@ -779,7 +831,7 @@ def render(
                 )
             ] + [
                 EventArgs(
-                    partial(_transfer, len(input_tracks)),
+                    partial(_update_audio, len(input_tracks)),
                     inputs=[dropdown, output_track],
                     outputs=input_tracks,
                     name="then",
@@ -830,13 +882,13 @@ def render(
                     label="Output file format",
                 )
                 postprocessed_vocals_track_input.change(
-                    get_song_cover_name_harness,
+                    update_song_cover_name,
                     inputs=[postprocessed_vocals_track_input, mix_dir],
                     outputs=output_name,
                     show_progress="hidden",
                 )
                 mix_dir.change(
-                    get_song_cover_name_harness,
+                    update_song_cover_name,
                     inputs=[postprocessed_vocals_track_input, mix_dir],
                     outputs=output_name,
                     show_progress="hidden",
@@ -892,7 +944,7 @@ def render(
                     show_progress="hidden",
                 ),
                 EventArgs(
-                    partial(_transfer, len(input_tracks)),
+                    partial(_update_audio, len(input_tracks)),
                     inputs=[song_cover_track_transfer_dropdown, song_cover_track],
                     outputs=input_tracks,
                     name="then",

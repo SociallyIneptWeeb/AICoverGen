@@ -1,3 +1,7 @@
+"""
+This script downloads the models required for running the Ultimmate RVC app.
+"""
+
 import requests
 import os
 from common import RVC_MODELS_DIR
@@ -6,6 +10,18 @@ RVC_DOWNLOAD_LINK = "https://huggingface.co/lj1995/VoiceConversionWebUI/resolve/
 
 
 def dl_model(link: str, model_name: str, dir_name: str) -> None:
+    """
+    Download a model from a link and save it to a directory.
+
+    Parameters
+    ----------
+    link : str
+        The link to the site where the model is hosted.
+    model_name : str
+        The name of the model to download.
+    dir_name : str
+        The directory to save the model to.
+    """
     with requests.get(f"{link}{model_name}") as r:
         r.raise_for_status()
         with open(os.path.join(dir_name, model_name), "wb") as f:

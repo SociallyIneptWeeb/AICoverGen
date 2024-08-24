@@ -19,7 +19,7 @@ required-version = ">=0.5.7"
 docstring-code-format = true
 
 [tool.ruff.lint]
-select = ["ALL"]
+#select = ["ALL"]
 extend-select = ["I"]
 ignore = ["D205", "D203", "D212", "D416"]
 unfixable = ["F401"]

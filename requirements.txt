@@ -1,58 +1,55 @@
-# General dependencies
-ffmpeg-python>=0.2.0
-numpy==1.23.5
-requests==2.32.3 #NOTE upgraded from 2.32.0
-tqdm==4.65.0 #NOTE upgraded from unspecified
-# TODO add these later
-# wget
+# General
+lib==4.0.0
 
-# Audio processing
-#faiss-cpu==1.7.3 # NOTE outcommented due to incompatibility on windows
-librosa >=0.10 # NOTE upgraded from 0.9.2
-pyworld==0.3.4
-scipy~=1.13.0 # NOTE upgraded from 1.11.1
-soundfile==0.12.1
-praat-parselmouth>=0.4.2 # NOTE upgraded from unspecified
-pedalboard==0.9.12
-pydub==0.25.1
-pydub-stubs
-sox==1.5.0
-audio-separator[gpu]==0.18.3
+# Networking
+requests==2.32.3 #NOTE upgraded from 2.32.0
+yt_dlp==2024.8.6
 #TODO add these later
-#noisereduce
-#audio_upscaler==0.1.4
-#deemix
+# deemix
+# wget
+# flask
+# beautifulsoup4
+# pypresence
+
+# Data science
+numpy==1.23.5
+scipy~=1.13.0 # NOTE upgraded from 1.11.1
+matplotlib==3.9.0 #NOTE upgraded from 3.7.2
+tqdm==4.65.0 #NOTE upgraded from unspecified
+gradio==4.42.0
 
 # Machine learning
-./dependencies/fairseq-0.12.2-cp311-cp311-linux_x86_64.whl; sys_platform == 'linux'
-./dependencies/fairseq-0.12.3.1-cp311-cp311-win_amd64.whl; sys_platform == 'win32'
-./dependencies/diffq-0.2.4-cp311-cp311-win_amd64.whl; sys_platform == 'win32'
 --find-links https://download.pytorch.org/whl/torch_stable.html
 torch==2.1.1+cu121 # NOTE upgraded from 2.0.1+cu118
 torchaudio==2.1.1+cu121
 torchcrepe==0.0.23 # NOTE upgraded from 0.0.20
-#TODO add these later
-#numba; sys_platform == 'linux'
-#numba==0.57.0; sys_platform == 'darwin' or sys_platform == 'win32'
-#einops 
-#libf0 
-#torchfcpe
-
-# Visualization
-gradio==4.41.0
-matplotlib==3.9.0 #NOTE upgraded from 3.7.2
-#TODO add these later
-
-#tensorboard
-
-# Miscellaneous
-lib==4.0.0
-yt_dlp==2024.8.6
+./dependencies/fairseq-0.12.2-cp311-cp311-linux_x86_64.whl; sys_platform == 'linux'
+./dependencies/fairseq-0.12.3.1-cp311-cp311-win_amd64.whl; sys_platform == 'win32'
+./dependencies/diffq-0.2.4-cp311-cp311-win_amd64.whl; sys_platform == 'win32'
 tensorboardX
 #TODO add these later
-#ffmpy==0.3.1
-#edge-tts==6.1.9
-#pypresence
-#beautifulsoup4
-#flask
-#local-attention
+# faiss-cpu==1.7.3 # NOTE outcommented due to incompatibility on windows
+# tensorboard
+# torchfcpe
+# local-attention
+# libf0 
+# einops 
+# numba; sys_platform == 'linux'
+# numba==0.57.0; sys_platform == 'darwin' or sys_platform == 'win32'
+
+# Audio
+ffmpeg-python>=0.2.0
+soundfile==0.12.1
+librosa >=0.10 # NOTE upgraded from 0.9.2
+sox==1.5.0
+pydub==0.25.1
+pydub-stubs
+pedalboard==0.9.12
+audio-separator[gpu]==0.18.3
+praat-parselmouth>=0.4.2 # NOTE upgraded from unspecified
+pyworld==0.3.4
+#TODO add the later
+# noisereduce
+# audio_upscaler==0.1.4
+# edge-tts==6.1.9
+# ffmpy==0.3.1

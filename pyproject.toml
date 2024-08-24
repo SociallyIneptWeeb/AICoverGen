@@ -1,0 +1,104 @@
+[tool.pyright]
+stubPath = "src/typings"
+pythonVersion = "3.11"
+pythonPlatform = "All"
+typeCheckingMode = "strict"
+
+[tool.black]
+target-version = ['py311']
+preview = true
+enable-unstable-feature = ["string_processing"]
+
+[tool.ruff]
+extend-include = ["*.ipynb"]
+target-version = "py311"
+fix = true
+required-version = ">=0.5.7"
+
+[tool.ruff.format]
+docstring-code-format = true
+
+[tool.ruff.lint]
+select = ["ALL"]
+extend-select = ["I"]
+ignore = ["D205", "D203", "D212", "D416"]
+unfixable = ["F401"]
+preview = true
+
+[tool.ruff.lint.flake8-annotations]
+ignore-fully-untyped = true
+#suppress-none-returning = true
+
+[tool.ruff.lint.flake8-errmsg]
+#max-string-length = 20
+
+[tool.ruff.lint.isort]
+relative-imports-order = "closest-to-furthest"
+section-order = [
+    "future",
+    "typing",
+    "standard-library",
+    "third-party",
+    "networking",
+    "data-science",
+    "machine-learning",
+    "audio",
+    "visualisation",
+    "first-party",
+    "vc",
+    "backend",
+    "frontend",
+    "base",
+    "local-folder",
+]
+
+[tool.ruff.lint.isort.sections]
+"typing" = ["typing", "typing_extensions", "typings"]
+"networking" = [
+    "requests",
+    "yt_dlp",
+    "deemix",
+    "wget",
+    "flask",
+    "beautifulsoup4",
+    "pypresence",
+]
+"data-science" = ["numpy", "scipy", "matplotlib", "tqdm", "pandas", "gradio"]
+"machine-learning" = [
+    "torch",
+    "torchaudio",
+    "torchcrepe",
+    "fairseq",
+    "faiss",
+    "tensorboard",
+    "torchfcpe",
+    "local_attention",
+    "libf0",
+    "einops",
+    "numba",
+]
+"audio" = [
+    "ffmpeg",
+    "soundfile",
+    "librosa",
+    "sox",
+    "pydub",
+    "pedalboard",
+    "audio_separator",
+    "parselmouth",
+    "pyworld",
+    "noisereduce",
+    "audio_upscaler",
+    "edge_tts",
+    "ffmpy",
+]
+"vc" = ["vc"]
+"backend" = ["backend"]
+"frontend" = ["frontend"]
+"base" = ["common", "app", "cli", "init"]
+
+[tool.ruff.lint.pycodestyle]
+max-doc-length = 72
+
+[tool.ruff.lint.pylint]
+# max-args = 10

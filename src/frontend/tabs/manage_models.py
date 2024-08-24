@@ -3,29 +3,30 @@ This module contains the code for the "Manage models" tab.
 """
 
 from typings.extra import DropdownValue
+
 from functools import partial
 
 import gradio as gr
 import pandas as pd
 
-from frontend.common import (
-    exception_harness,
-    confirmation_harness,
-    confirm_box_js,
-    update_dropdowns,
-    identity,
-    PROGRESS_BAR,
+from backend.manage_voice_models import (
+    delete_all_models,
+    delete_models,
+    download_online_model,
+    filter_public_models_table,
+    get_current_models,
+    load_public_model_tags,
+    load_public_models_table,
+    upload_local_model,
 )
 
-from backend.manage_voice_models import (
-    get_current_models,
-    load_public_models_table,
-    load_public_model_tags,
-    filter_public_models_table,
-    download_online_model,
-    upload_local_model,
-    delete_models,
-    delete_all_models,
+from frontend.common import (
+    PROGRESS_BAR,
+    confirm_box_js,
+    confirmation_harness,
+    exception_harness,
+    identity,
+    update_dropdowns,
 )
 
 
@@ -160,7 +161,10 @@ def render(
         with gr.Row():
             model_zip_link = gr.Textbox(
                 label="Download link to model",
-                info="Should point to a zip file containing a .pth model file and an optional .index file.",
+                info=(
+                    "Should point to a zip file containing a .pth model file and an"
+                    " optional .index file."
+                ),
             )
             model_name = gr.Textbox(
                 label="Model name", info="Enter a unique name for the model."
@@ -209,10 +213,12 @@ def render(
     with gr.Tab("Upload model"):
         with gr.Accordion("HOW TO USE"):
             gr.Markdown(
-                "- Find locally trained RVC v2 model file (weights folder) and optional index file (logs/[name] folder)"
+                "- Find locally trained RVC v2 model file (weights folder) and optional"
+                " index file (logs/[name] folder)"
             )
             gr.Markdown(
-                "- Upload model file and optional index file directly or compress into a zip file and upload that"
+                "- Upload model file and optional index file directly or compress into"
+                " a zip file and upload that"
             )
             gr.Markdown("- Enter a unique name for the model")
             gr.Markdown("- Click 'Upload model'")

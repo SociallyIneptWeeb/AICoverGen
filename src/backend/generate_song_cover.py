@@ -3,44 +3,48 @@ This module contains functions to generate song covers using RVC-based voice mod
 """
 
 from typing import Any
-from typings.extra import InputType, F0Method, InputAudioExt, OutputAudioExt
-import gradio as gr
+from typings.extra import F0Method, InputAudioExt, InputType, OutputAudioExt
 
 import gc
-import os
 import glob
-from pathlib import Path, PurePath
-import shutil
+import os
 import shlex
+import shutil
 import subprocess
 from contextlib import suppress
-from urllib.parse import urlparse, parse_qs
+from logging import WARNING
+from pathlib import Path, PurePath
+from urllib.parse import parse_qs, urlparse
+
+import yt_dlp
+
+import gradio as gr
 
 import soundfile as sf
 import sox
-import yt_dlp
-from pedalboard import Reverb, Compressor, HighpassFilter
+from audio_separator.separator import Separator
+from pedalboard import Compressor, HighpassFilter, Reverb
 from pedalboard._pedalboard import Pedalboard
 from pedalboard.io import AudioFile
-from pydub import AudioSegment, utils as pydub_utils
-from audio_separator.separator import Separator
+from pydub import AudioSegment
+from pydub import utils as pydub_utils
 
-from common import RVC_MODELS_DIR, SEPARATOR_MODELS_DIR
+from vc.rvc import Config, get_vc, load_hubert, rvc_infer
 
 from backend.common import (
     INTERMEDIATE_AUDIO_DIR,
     OUTPUT_AUDIO_DIR,
     display_progress,
+    get_file_hash,
+    get_hash,
     get_path_stem,
+    get_rvc_model,
     json_dump,
     json_load,
-    get_hash,
-    get_file_hash,
-    get_rvc_model,
 )
-from backend.exceptions import InputMissingError, PathNotFoundError, InvalidPathError
-from vc.rvc import Config, load_hubert, get_vc, rvc_infer
-from logging import WARNING
+from backend.exceptions import InputMissingError, InvalidPathError, PathNotFoundError
+
+from common import RVC_MODELS_DIR, SEPARATOR_MODELS_DIR
 
 SEPARATOR = Separator(
     log_level=WARNING,
@@ -512,7 +516,8 @@ def convert_to_stereo(
                 "[~] Converting song to stereo...", percentage, progress_bar
             )
             command = shlex.split(
-                f'ffmpeg -y -loglevel error -i "{song_path}" -ac 2 -f wav "{stereo_path}"'
+                f'ffmpeg -y -loglevel error -i "{song_path}" -ac 2 -f wav'
+                f' "{stereo_path}"'
             )
             subprocess.run(command)
             json_dump(arg_dict, stereo_json_path)
@@ -564,7 +569,8 @@ def _make_song_dir(
     if os.path.isdir(song_input):
         if not PurePath(song_input).parent == PurePath(INTERMEDIATE_AUDIO_DIR):
             raise InvalidPathError(
-                "Song directory not located in the root of the intermediate audio directory."
+                "Song directory not located in the root of the intermediate audio"
+                " directory."
             )
         display_progress(
             "[~] Using existing song directory...", percentage, progress_bar
@@ -631,7 +637,8 @@ def retrieve_song(
     """
     if not song_input:
         raise InputMissingError(
-            "Song input missing! Please provide a valid YouTube url, local audio file path or cached song directory path."
+            "Song input missing! Please provide a valid YouTube url, local audio file"
+            " path or cached song directory path."
         )
 
     song_dir, input_type = _make_song_dir(song_input, progress_bar, percentages[0])
@@ -1585,7 +1592,8 @@ def run_pipeline(
     """
     if not song_input:
         raise InputMissingError(
-            "Song input missing! Please provide a valid YouTube url, local audio file path or cached song directory path."
+            "Song input missing! Please provide a valid YouTube url, local audio file"
+            " path or cached song directory path."
         )
     if not voice_model:
         raise InputMissingError("Voice model missing!")

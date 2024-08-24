@@ -1,5 +1,7 @@
 from typing import Self
+
 from pathlib import Path
+
 from numpy.typing import NDArray
 
 class Transformer:

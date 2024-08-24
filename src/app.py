@@ -1,30 +1,29 @@
 """
 Main application for the Ultimate RVC project.
 
-Each tab of the application is defined in a separate module 
+Each tab of the application is defined in a separate module
 in the `frontend/tabs` directory.
 
 Components that are accessed across multiple tabs are passed as arguments
 to the render functions in the respective modules.
 """
 
+import asyncio
 import os
 from argparse import ArgumentParser
 
 import gradio as gr
-import asyncio
-
-
-from common import GRADIO_TEMP_DIR
 
 from backend.generate_song_cover import get_named_song_dirs
-from backend.manage_voice_models import get_current_models
 from backend.manage_audio import delete_gradio_temp_dir, get_output_audio
+from backend.manage_voice_models import get_current_models
 
-from frontend.tabs.one_click_generation import render as render_one_click_tab
-from frontend.tabs.multi_step_generation import render as render_multi_step_tab
-from frontend.tabs.manage_models import render as render_manage_models_tab
 from frontend.tabs.manage_audio import render as render_manage_audio_tab
+from frontend.tabs.manage_models import render as render_manage_models_tab
+from frontend.tabs.multi_step_generation import render as render_multi_step_tab
+from frontend.tabs.one_click_generation import render as render_one_click_tab
+
+from common import GRADIO_TEMP_DIR
 
 
 def _init_app() -> tuple[gr.Dropdown, ...]:
@@ -67,7 +66,11 @@ with gr.Blocks(title="Ultimate RVC") as app:
     song_dir_dropdowns = [
         gr.Dropdown(
             label="Song directory",
-            info="Directory where intermediate audio files are stored and loaded from locally. When a new song is retrieved, its directory is chosen by default.",
+            info=(
+                "Directory where intermediate audio files are stored and loaded from"
+                " locally. When a new song is retrieved, its directory is chosen by"
+                " default."
+            ),
             render=False,
         )
         for _ in range(7)
@@ -84,7 +87,10 @@ with gr.Blocks(title="Ultimate RVC") as app:
     intermediate_audio_to_delete = gr.Dropdown(
         label="Songs with intermediate audio files",
         multiselect=True,
-        info="Select one or more songs to delete their asssociated intermediate audio files.",
+        info=(
+            "Select one or more songs to delete their asssociated intermediate audio"
+            " files."
+        ),
         render=False,
     )
     output_audio_to_delete = gr.Dropdown(

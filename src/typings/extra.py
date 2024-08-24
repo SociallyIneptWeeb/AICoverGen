@@ -1,4 +1,5 @@
-from typing import TypeVar, Callable, Any, Literal, ParamSpec, TypedDict, Sequence
+from typing import Any, Callable, Literal, ParamSpec, Sequence, TypedDict, TypeVar
+
 from os import PathLike
 
 P = ParamSpec("P")

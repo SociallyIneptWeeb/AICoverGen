@@ -3,24 +3,25 @@ This module contains the code for the "One-click generation" tab.
 """
 
 from typings.extra import RunPipelineHarnessArgs
+
 from functools import partial
 
 import gradio as gr
 
+from backend.generate_song_cover import run_pipeline
+
 from frontend.common import (
+    PROGRESS_BAR,
     EventArgs,
-    setup_consecutive_event_listeners_with_toggled_interactivity,
     exception_harness,
+    setup_consecutive_event_listeners_with_toggled_interactivity,
+    show_hop_slider,
+    toggle_visible_component,
     update_cached_input_songs,
     update_output_audio,
     update_song_cover_name,
-    toggle_visible_component,
-    show_hop_slider,
     update_value,
-    PROGRESS_BAR,
 )
-
-from backend.generate_song_cover import run_pipeline
 
 
 def _run_pipeline_harness(*args: *RunPipelineHarnessArgs) -> tuple[str | None, ...]:
@@ -133,7 +134,10 @@ def render(
                     )
                     song_input = gr.Textbox(
                         label="Song input",
-                        info="Link to a song on YouTube or the full path of a local audio file.",
+                        info=(
+                            "Link to a song on YouTube or the full path of a local"
+                            " audio file."
+                        ),
                     )
                     local_file = gr.Audio(
                         label="Song input", type="filepath", visible=False
@@ -173,7 +177,11 @@ def render(
                         value=0,
                         step=1,
                         label="Pitch shift of vocals",
-                        info="Shift pitch of converted vocals. Measured in octaves. Generally, use 1 for male-to-female conversions and -1 for vice-versa.",
+                        info=(
+                            "Shift pitch of converted vocals. Measured in octaves."
+                            " Generally, use 1 for male-to-female conversions and -1"
+                            " for vice-versa."
+                        ),
                     )
                     pitch_change_all = gr.Slider(
                         -12,
@@ -181,7 +189,11 @@ def render(
                         value=0,
                         step=1,
                         label="Overall pitch shift",
-                        info="Shift pitch of converted vocals, backup vocals and instrumentals. Measured in semi-tones. Altering this slightly reduces sound quality.",
+                        info=(
+                            "Shift pitch of converted vocals, backup vocals and"
+                            " instrumentals. Measured in semi-tones. Altering this"
+                            " slightly reduces sound quality."
+                        ),
                     )
 
         with gr.Accordion("Vocal conversion options", open=False):
@@ -191,7 +203,10 @@ def render(
                     1,
                     value=0.5,
                     label="Index rate",
-                    info="Controls how much of the accent in the voice model to keep in the converted vocals",
+                    info=(
+                        "Controls how much of the accent in the voice model to keep in"
+                        " the converted vocals"
+                    ),
                 )
                 filter_radius = gr.Slider(
                     0,
@@ -199,28 +214,40 @@ def render(
                     value=3,
                     step=1,
                     label="Filter radius",
-                    info="If >=3: apply median filtering to the harvested pitch results. Can reduce breathiness",
+                    info=(
+                        "If >=3: apply median filtering to the harvested pitch results."
+                        " Can reduce breathiness"
+                    ),
                 )
                 rms_mix_rate = gr.Slider(
                     0,
                     1,
                     value=0.25,
                     label="RMS mix rate",
-                    info="Control how much to mimic the loudness (0) of the input vocals or a fixed loudness (1)",
+                    info=(
+                        "Control how much to mimic the loudness (0) of the input vocals"
+                        " or a fixed loudness (1)"
+                    ),
                 )
                 protect = gr.Slider(
                     0,
                     0.5,
                     value=0.33,
                     label="Protect rate",
-                    info="Protect voiceless consonants and breath sounds. Set to 0.5 to disable.",
+                    info=(
+                        "Protect voiceless consonants and breath sounds. Set to 0.5 to"
+                        " disable."
+                    ),
                 )
                 with gr.Column():
                     f0_method = gr.Dropdown(
                         ["rmvpe", "mangio-crepe"],
                         value="rmvpe",
                         label="Pitch detection algorithm",
-                        info="Best option is rmvpe (clarity in vocals), then mangio-crepe (smoother vocals)",
+                        info=(
+                            "Best option is rmvpe (clarity in vocals), then"
+                            " mangio-crepe (smoother vocals)"
+                        ),
                     )
                     crepe_hop_length = gr.Slider(
                         32,
@@ -229,7 +256,10 @@ def render(
                         step=1,
                         visible=False,
                         label="Crepe hop length",
-                        info="Lower values leads to longer conversions and higher risk of voice cracks, but better pitch accuracy.",
+                        info=(
+                            "Lower values leads to longer conversions and higher risk"
+                            " of voice cracks, but better pitch accuracy."
+                        ),
                     )
                     f0_method.change(
                         show_hop_slider,
@@ -280,7 +310,10 @@ def render(
             with gr.Row():
                 output_name = gr.Textbox(
                     label="Output file name",
-                    info="If no name is provided, a suitable name will be generated automatically.",
+                    info=(
+                        "If no name is provided, a suitable name will be generated"
+                        " automatically."
+                    ),
                     placeholder="Ultimate RVC song cover",
                 )
                 output_sr = gr.Dropdown(
@@ -297,7 +330,11 @@ def render(
                 show_intermediate_files = gr.Checkbox(
                     label="Show intermediate audio files",
                     value=False,
-                    info="Show generated intermediate audio files when song cover generation completes. Leave unchecked to optimize performance.",
+                    info=(
+                        "Show generated intermediate audio files when song cover"
+                        " generation completes. Leave unchecked to optimize"
+                        " performance."
+                    ),
                 )
             rvc_model.change(
                 partial(update_song_cover_name, None, update_placeholder=True),

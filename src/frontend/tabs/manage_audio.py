@@ -3,22 +3,24 @@ This module contains the code for the "Delete audio" tab.
 """
 
 from functools import partial
+
 import gradio as gr
 
 from backend.manage_audio import (
+    delete_all_audio,
     delete_all_intermediate_audio,
+    delete_all_output_audio,
     delete_intermediate_audio,
     delete_output_audio,
-    delete_all_output_audio,
-    delete_all_audio,
 )
+
 from frontend.common import (
-    identity,
+    PROGRESS_BAR,
     confirm_box_js,
     confirmation_harness,
+    identity,
     update_cached_input_songs,
     update_output_audio,
-    PROGRESS_BAR,
 )
 
 
@@ -99,7 +101,8 @@ def render(
             inputs=dummy_deletion_checkbox,
             outputs=delete_confirmation,
             js=confirm_box_js(
-                "Are you sure you want to delete intermediate audio files for the selected songs?"
+                "Are you sure you want to delete intermediate audio files for the"
+                " selected songs?"
             ),
             show_progress="hidden",
         ).then(

@@ -1,7 +1,9 @@
 from typing import Literal
-from numpy.typing import NDArray
+
 from os import PathLike
+
 import numpy as np
+from numpy.typing import NDArray
 
 DEFAULT_NDARRAY = NDArray[np.float64 | np.float32 | np.int32 | np.int16]
 

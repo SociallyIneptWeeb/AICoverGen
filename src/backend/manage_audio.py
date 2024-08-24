@@ -3,13 +3,14 @@ This module contains functions to manage audio files.
 """
 
 import os
-from pathlib import PurePath
 import shutil
+from pathlib import PurePath
 
 import gradio as gr
 
+from backend.common import INTERMEDIATE_AUDIO_DIR, OUTPUT_AUDIO_DIR, display_progress
 from backend.exceptions import InputMissingError, InvalidPathError, PathNotFoundError
-from backend.common import display_progress, INTERMEDIATE_AUDIO_DIR, OUTPUT_AUDIO_DIR
+
 from common import GRADIO_TEMP_DIR
 
 
@@ -64,7 +65,8 @@ def delete_intermediate_audio(
     """
     if not song_dirs:
         raise InputMissingError(
-            "Song directories missing! Please provide a non-empty list of song directories."
+            "Song directories missing! Please provide a non-empty list of song"
+            " directories."
         )
     display_progress(
         "[~] Deleting intermediate audio files for selected songs...",
@@ -77,7 +79,8 @@ def delete_intermediate_audio(
 
         if not PurePath(song_dir).parent == PurePath(INTERMEDIATE_AUDIO_DIR):
             raise InvalidPathError(
-                f"Song directory '{song_dir}' is not located in the root of the intermediate audio directory."
+                f"Song directory '{song_dir}' is not located in the root of the"
+                " intermediate audio directory."
             )
         shutil.rmtree(song_dir)
     return "[+] Successfully deleted intermediate audio files for selected songs!"
@@ -142,7 +145,8 @@ def delete_output_audio(
     """
     if not output_audio_files:
         raise InputMissingError(
-            "Output audio files missing! Please provide a non-empty list of output audio files."
+            "Output audio files missing! Please provide a non-empty list of output"
+            " audio files."
         )
     display_progress(
         "[~] Deleting selected output audio files...", percentage, progress_bar
@@ -154,7 +158,8 @@ def delete_output_audio(
             )
         if not PurePath(output_audio_file).parent == PurePath(OUTPUT_AUDIO_DIR):
             raise InvalidPathError(
-                f"Output audio file '{output_audio_file}' is not located in the root of the output audio directory."
+                f"Output audio file '{output_audio_file}' is not located in the root of"
+                " the output audio directory."
             )
         os.remove(output_audio_file)
     return "[+] Successfully deleted selected output audio files!"

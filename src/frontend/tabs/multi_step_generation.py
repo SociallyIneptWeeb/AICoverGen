@@ -8,28 +8,28 @@ from functools import partial
 
 import gradio as gr
 
+from backend.generate_song_cover import (
+    convert_vocals,
+    dereverb_vocals,
+    mix_song_cover,
+    pitch_shift_background,
+    postprocess_vocals,
+    retrieve_song,
+    separate_main_vocals,
+    separate_vocals,
+)
+
 from frontend.common import (
+    PROGRESS_BAR,
     EventArgs,
-    setup_consecutive_event_listeners_with_toggled_interactivity,
     exception_harness,
+    setup_consecutive_event_listeners_with_toggled_interactivity,
+    show_hop_slider,
+    toggle_visible_component,
     update_cached_input_songs,
     update_output_audio,
     update_song_cover_name,
-    toggle_visible_component,
-    show_hop_slider,
     update_value,
-    PROGRESS_BAR,
-)
-
-from backend.generate_song_cover import (
-    retrieve_song,
-    separate_vocals,
-    separate_main_vocals,
-    dereverb_vocals,
-    convert_vocals,
-    postprocess_vocals,
-    pitch_shift_background,
-    mix_song_cover,
 )
 
 

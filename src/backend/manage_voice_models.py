@@ -3,21 +3,24 @@ This module contains functions to manage voice models.
 """
 
 from typings.extra import ModelsTable, ModelsTablePredicate
+
 import os
+import re
 import shutil
-import gradio as gr
 import urllib.request
 import zipfile
-import re
 
-from common import RVC_MODELS_DIR
+import gradio as gr
+
+from backend.common import copy_files_to_new_folder, display_progress, json_load
 from backend.exceptions import (
-    PathNotFoundError,
+    FileTypeError,
     InputMissingError,
     PathExistsError,
-    FileTypeError,
+    PathNotFoundError,
 )
-from backend.common import display_progress, copy_files_to_new_folder, json_load
+
+from common import RVC_MODELS_DIR
 
 PUBLIC_MODELS = json_load(os.path.join(RVC_MODELS_DIR, "public_models.json"))
 
@@ -115,7 +118,8 @@ def filter_public_models_table(
     )
     query_predicate: ModelsTablePredicate = lambda model: (
         query.lower()
-        in f"{model['name']} {model['description']} {' '.join(model['tags'])} {model['credit']} {model['added']}".lower()
+        in f"{model['name']} {model['description']} {' '.join(model['tags'])} {model['credit']} {model['added']}"
+        .lower()
         if query
         else True
     )
@@ -165,7 +169,7 @@ def _extract_model_zip(extraction_folder: str, zip_name: str, remove_zip: bool) 
 
         if not model_filepath:
             raise PathNotFoundError(
-                f"No .pth model file was found in the extracted zip folder."
+                "No .pth model file was found in the extracted zip folder."
             )
         # move model and index file to extraction folder
 
@@ -232,7 +236,8 @@ def download_online_model(
     extraction_folder = os.path.join(RVC_MODELS_DIR, dir_name)
     if os.path.exists(extraction_folder):
         raise PathExistsError(
-            f'Voice model directory "{dir_name}" already exists! Choose a different name for your voice model.'
+            f'Voice model directory "{dir_name}" already exists! Choose a different'
+            " name for your voice model."
         )
     zip_name = url.split("/")[-1].split("?")[0]
 
@@ -254,7 +259,7 @@ def download_online_model(
 
     urllib.request.urlretrieve(url, zip_name)
 
-    display_progress(f"[~] Extracting zip file...", percentages[1], progress_bar)
+    display_progress("[~] Extracting zip file...", percentages[1], progress_bar)
 
     _extract_model_zip(extraction_folder, zip_name, remove_zip=True)
     return f"[+] Model with name '{dir_name}' successfully downloaded!"
@@ -307,7 +312,8 @@ def upload_local_model(
     output_folder = os.path.join(RVC_MODELS_DIR, dir_name)
     if os.path.exists(output_folder):
         raise PathExistsError(
-            f'Voice model directory "{dir_name}" already exists! Choose a different name for your voice model.'
+            f'Voice model directory "{dir_name}" already exists! Choose a different'
+            " name for your voice model."
         )
     if len(input_paths) == 1:
         input_path = input_paths[0]
@@ -387,7 +393,10 @@ def delete_models(
     else:
         first_models = ", ".join(models_names_formatted[:-1])
         last_model = models_names_formatted[-1]
-        return f"[+] Models with names {first_models} and {last_model} successfully deleted!"
+        return (
+            f"[+] Models with names {first_models} and {last_model} successfully"
+            " deleted!"
+        )
 
 
 def delete_all_models(
@@ -414,4 +423,4 @@ def delete_all_models(
         model_dir = os.path.join(RVC_MODELS_DIR, model_name)
         if os.path.isdir(model_dir):
             shutil.rmtree(model_dir)
-    return f"[+] All models successfully deleted!"
+    return "[+] All models successfully deleted!"

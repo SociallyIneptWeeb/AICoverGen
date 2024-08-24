@@ -2,8 +2,10 @@
 This script downloads the models required for running the Ultimmate RVC app.
 """
 
-import requests
 import os
+
+import requests
+
 from common import RVC_MODELS_DIR
 
 RVC_DOWNLOAD_LINK = "https://huggingface.co/lj1995/VoiceConversionWebUI/resolve/main/"

@@ -343,7 +343,7 @@ class VC(object):
             params = {
                 'x': x,
                 'p_len': p_len,
-                'pitch': pitch,
+                'pitch': f0_up_key,
                 'f0_min': f0_min,
                 'f0_max': f0_max,
                 'time_step': time_step,

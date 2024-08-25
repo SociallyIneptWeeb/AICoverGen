@@ -2,24 +2,24 @@
 Module containing common utility functions and classes for the frontend.
 """
 
-from typing import Callable, Literal, Any, Sequence, Concatenate
+from typing import Any, Callable, Concatenate, Literal, Sequence
 from typings.extra import (
-    P,
-    T,
-    F0Method,
+    ComponentVisibilityKwArgs,
     DropdownChoices,
     DropdownValue,
-    UpdateDropdownArgs,
-    ComponentVisibilityKwArgs,
+    F0Method,
+    P,
+    T,
     TextBoxArgs,
+    UpdateDropdownArgs,
 )
+
 from dataclasses import dataclass
 from functools import partial
 
 import gradio as gr
 from gradio.components.base import Component
 from gradio.events import Dependency
-
 
 from backend.generate_song_cover import get_named_song_dirs, get_song_cover_name
 from backend.manage_audio import get_output_audio

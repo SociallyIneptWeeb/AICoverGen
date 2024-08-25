@@ -224,7 +224,10 @@ def render(
                     "Step 7: backup vocals",
                 ],
                 label="Transfer to",
-                info="Select the input track(s) to transfer the output track to once generation completes.",
+                info=(
+                    "Select the input track(s) to transfer the output track to once"
+                    " generation completes."
+                ),
                 render=False,
                 type="index",
                 multiselect=True,
@@ -278,7 +281,10 @@ def render(
                 with gr.Column():
                     song_input = gr.Textbox(
                         label="Song input",
-                        info="Link to a song on YouTube or the full path of a local audio file.",
+                        info=(
+                            "Link to a song on YouTube or the full path of a local"
+                            " audio file."
+                        ),
                     )
                     local_file = gr.Audio(
                         label="Song input", type="filepath", visible=False
@@ -556,7 +562,11 @@ def render(
                     value=0,
                     step=1,
                     label="Pitch shift (octaves)",
-                    info="Shift pitch of converted vocals by number of octaves. Generally, use 1 for male-to-female conversions and -1 for vice-versa.",
+                    info=(
+                        "Shift pitch of converted vocals by number of octaves."
+                        " Generally, use 1 for male-to-female conversions and -1 for"
+                        " vice-versa."
+                    ),
                 )
                 pitch_change_semitones = gr.Slider(
                     -12,
@@ -564,7 +574,10 @@ def render(
                     value=0,
                     step=1,
                     label="Pitch shift (semi-tones)",
-                    info="Shift pitch of converted vocals by number of semi-tones. Altering this slightly reduces sound quality.",
+                    info=(
+                        "Shift pitch of converted vocals by number of semi-tones."
+                        " Altering this slightly reduces sound quality."
+                    ),
                 )
             with gr.Row():
                 index_rate = gr.Slider(
@@ -572,7 +585,10 @@ def render(
                     1,
                     value=0.5,
                     label="Index rate",
-                    info="Controls how much of the accent in the voice model to keep in the converted vocals",
+                    info=(
+                        "Controls how much of the accent in the voice model to keep in"
+                        " the converted vocals"
+                    ),
                 )
                 filter_radius = gr.Slider(
                     0,
@@ -580,28 +596,40 @@ def render(
                     value=3,
                     step=1,
                     label="Filter radius",
-                    info="If >=3: apply median filtering to the harvested pitch results. Can reduce breathiness",
+                    info=(
+                        "If >=3: apply median filtering to the harvested pitch results."
+                        " Can reduce breathiness"
+                    ),
                 )
                 rms_mix_rate = gr.Slider(
                     0,
                     1,
                     value=0.25,
                     label="RMS mix rate",
-                    info="Control how much to mimic the loudness (0) of the input vocals or a fixed loudness (1)",
+                    info=(
+                        "Control how much to mimic the loudness (0) of the input vocals"
+                        " or a fixed loudness (1)"
+                    ),
                 )
                 protect = gr.Slider(
                     0,
                     0.5,
                     value=0.33,
                     label="Protect rate",
-                    info="Protect voiceless consonants and breath sounds. Set to 0.5 to disable.",
+                    info=(
+                        "Protect voiceless consonants and breath sounds. Set to 0.5 to"
+                        " disable."
+                    ),
                 )
                 with gr.Column():
                     f0_method = gr.Dropdown(
                         ["rmvpe", "mangio-crepe"],
                         value="rmvpe",
                         label="Pitch detection algorithm",
-                        info="Best option is rmvpe (clarity in vocals), then mangio-crepe (smoother vocals)",
+                        info=(
+                            "Best option is rmvpe (clarity in vocals), then"
+                            " mangio-crepe (smoother vocals)"
+                        ),
                     )
                     crepe_hop_length = gr.Slider(
                         32,
@@ -610,7 +638,10 @@ def render(
                         step=1,
                         visible=False,
                         label="Crepe hop length",
-                        info="Lower values leads to longer conversions and higher risk of voice cracks, but better pitch accuracy.",
+                        info=(
+                            "Lower values leads to longer conversions and higher risk"
+                            " of voice cracks, but better pitch accuracy."
+                        ),
                     )
                     f0_method.change(
                         show_hop_slider,
@@ -786,7 +817,10 @@ def render(
                 value=0,
                 step=1,
                 label="Pitch shift",
-                info="Shift pitch of instrumentals and backup vocals. Measured in semi-tones.",
+                info=(
+                    "Shift pitch of instrumentals and backup vocals. Measured in"
+                    " semi-tones."
+                ),
             )
             gr.Markdown("**Outputs**")
             with gr.Row():

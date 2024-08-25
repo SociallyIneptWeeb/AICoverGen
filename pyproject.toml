@@ -3,6 +3,7 @@ stubPath = "src/typings"
 pythonVersion = "3.11"
 pythonPlatform = "All"
 typeCheckingMode = "strict"
+ignore = ["**/.venv"]
 
 [tool.black]
 target-version = ['py311']

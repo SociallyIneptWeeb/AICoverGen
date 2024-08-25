@@ -26,13 +26,20 @@ def set_cancel_events(
     cancels: None | dict[str, Any] | list[dict[str, Any]],
 ) -> None: ...
 
-class Dependency(dict):
+class Dependency(dict[Any, Any]):
+
     fn: Callable[..., Any]
     associated_timer: Timer | None
     then: Callable[..., Any]
     success: Callable[..., Any]
+
     def __init__(
-        self, trigger, key_vals, dep_index, fn, associated_timer: Timer | None = ...
+        self,
+        trigger: Any,
+        key_vals: Any,
+        dep_index: int,
+        fn: Callable[..., Any],
+        associated_timer: Timer | None = ...,
     ) -> None:
         """
         The Dependency object is usualy not created directly but is returned when an event listener is set up. It contains the configuration
@@ -43,7 +50,7 @@ class Dependency(dict):
         """
         ...
 
-    def __call__(self, *args, **kwargs) -> Any: ...
+    def __call__(self, *args: Any, **kwargs: Any) -> Any: ...
 
 class EventData:
     """
@@ -69,6 +76,7 @@ class EventData:
 
     target: Block | None
     _data: Any
+
     def __init__(self, target: Block | None, _data: Any) -> None:
         """
         Parameters:
@@ -130,6 +138,7 @@ class KeyUpData(EventData):
 
     key: str
     input_value: str
+
     def __init__(self, target: Block | None, data: Any) -> None: ...
 
 class DeletedFileData(EventData):
@@ -150,6 +159,7 @@ class DeletedFileData(EventData):
     """
 
     file: FileData
+
     def __init__(self, target: Block | None, data: FileDataDict) -> None: ...
 
 class LikeData(EventData):
@@ -174,10 +184,11 @@ class LikeData(EventData):
     Demos: chatbot_core_components_simple
     """
 
-    def __init__(self, target: Block | None, data: Any) -> None:
-        index: int | tuple[int, int]
-        value: Any
-        liked: bool
+    index: int | tuple[int, int]
+    value: Any
+    liked: bool
+
+    def __init__(self, target: Block | None, data: Any) -> None: ...
 
 @dataclasses.dataclass
 class EventListenerMethod:
@@ -187,7 +198,7 @@ class EventListenerMethod:
 if TYPE_CHECKING:
     EventListenerCallable = Callable[
         [
-            Union[Callable, None],
+            Union[Callable[..., Any], None],
             Union[Component, Sequence[Component], None],
             Union[Block, Sequence[Block], Sequence[Component], Component, None],
             Union[str, None, Literal[False]],
@@ -216,18 +227,18 @@ class EventListener(str):
     show_progress: Literal["full", "minimal", "hidden"]
     trigger_after: int | None
     trigger_only_on_success: bool
-    callback: Callable | None
+    callback: Callable[..., Any] | None
     doc: str
     listener: Callable[..., Dependency]
 
-    def __new__(cls, event_name, *_args, **_kwargs) -> Self: ...
+    def __new__(cls, event_name: str, *_args: Any, **_kwargs: Any) -> Self: ...
     def __init__(
         self,
         event_name: str,
         has_trigger: bool = ...,
         config_data: Callable[..., dict[str, Any]] = ...,
         show_progress: Literal["full", "minimal", "hidden"] = ...,
-        callback: Callable | None = ...,
+        callback: Callable[..., Any] | None = ...,
         trigger_after: int | None = ...,
         trigger_only_on_success: bool = ...,
         doc: str = ...,
@@ -246,7 +257,7 @@ class EventListener(str):
 
 def on(
     triggers: Sequence[EventListenerCallable] | EventListenerCallable | None = ...,
-    fn: Callable | None | Literal["decorator"] = ...,
+    fn: Callable[..., Any] | None | Literal["decorator"] = ...,
     inputs: (
         Component
         | BlockContext

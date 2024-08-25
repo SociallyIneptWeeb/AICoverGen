@@ -92,6 +92,17 @@ class VC(object):
         # Else wise return the "cpu" as a torch device,
         return torch.device("cpu")
 
+    # Compute f0 with the rmvpe+ method
+    def get_f0_rmvpe(self, x, f0_min=1, f0_max=40000, *args, **kwargs):
+        if hasattr(self, "model_rmvpe") == False:
+            from rmvpe import RMVPE
+
+            self.model_rmvpe = RMVPE(
+                os.path.join(BASE_DIR, 'rvc_models', 'rmvpe.pt'), is_half=self.is_half, device=self.device
+            )
+        f0 = self.model_rmvpe.infer_from_audio_with_pitch(x, thred=0.03, f0_min=f0_min, f0_max=f0_max)
+        return f0
+
     # Fork Feature: Compute f0 with the crepe method
     def get_f0_crepe_computation(
         self,
@@ -327,6 +338,20 @@ class VC(object):
                     os.path.join(BASE_DIR, 'rvc_models', 'rmvpe.pt'), is_half=self.is_half, device=self.device
                 )
             f0 = self.model_rmvpe.infer_from_audio(x, thred=0.03)
+
+        elif f0_method == "rmvpe+":
+            params = {
+                'x': x,
+                'p_len': p_len,
+                'pitch': pitch,
+                'f0_min': f0_min,
+                'f0_max': f0_max,
+                'time_step': time_step,
+                'filter_radius': filter_radius,
+                'crepe_hop_length': crepe_hop_length,
+                'model': "full"
+            }
+            f0 = self.get_f0_rmvpe(**params)
 
         elif "hybrid" in f0_method:
             # Perform hybrid median pitch estimation

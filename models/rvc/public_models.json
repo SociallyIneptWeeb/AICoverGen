@@ -1,14 +1,35 @@
 {
-    "tags": {
-        "English": "Character speaks English",
-        "Japanese": "Character speaks Japanese",
-        "Other Language": "The character speaks Other Language",
-        "Anime": "Character from anime",
-        "Vtuber": "Character is a vtuber",
-        "Real person": "A person who exists in the real world",
-        "Game character": "A character from the game"
-    },
-    "voice_models": [
+    "tags": [
+        {
+            "name": "English",
+            "description": "Character speaks English"
+        },
+        {
+            "name": "Japanese",
+            "description": "Character speaks Japanese"
+        },
+        {
+            "name": "Other Language",
+            "description": "The character speaks Other Language"
+        },
+        {
+            "name": "Anime",
+            "description": "Character from anime"
+        },
+        {
+            "name": "Vtuber",
+            "description": "Character is a vtuber"
+        },
+        {
+            "name": "Real person",
+            "description": "A person who exists in the real world"
+        },
+        {
+            "name": "Game character",
+            "description": "A character from the game"
+        }
+    ],
+    "models": [
         {
             "name": "Emilia",
             "url": "https://huggingface.co/RinkaEmina/RVC_Sharing/resolve/main/Emilia%20V2%2048000.zip",
@@ -139,7 +160,7 @@
                 "Game character",
                 "English"
             ]
-        }, 
+        },
         {
             "name": "Xinyan",
             "url": "https://huggingface.co/AnimeSessions/rvc_voice_models/resolve/main/XinyanRVC.zip",
@@ -150,7 +171,7 @@
                 "Game character",
                 "English"
             ]
-        }, 
+        },
         {
             "name": "Enterprise",
             "url": "https://huggingface.co/NoIdea4Username/NoIdeaRVCCollection/resolve/main/Enterprise-JP.zip",
@@ -161,7 +182,7 @@
                 "Anime",
                 "Japanese"
             ]
-        }, 
+        },
         {
             "name": "Kurt Cobain",
             "url": "https://huggingface.co/Florstie/Kurt_Cobain_byFlorst/resolve/main/Kurt_Florst.zip",
@@ -172,7 +193,7 @@
                 "Real person",
                 "English"
             ]
-        }, 
+        },
         {
             "name": "Ironmouse",
             "url": "https://huggingface.co/Tempo-Hawk/IronmouseV2/resolve/main/IronmouseV2.zip",
@@ -183,7 +204,7 @@
                 "Vtuber",
                 "English"
             ]
-        }, 
+        },
         {
             "name": "Bratishkinoff",
             "url": "https://huggingface.co/JHmashups/Bratishkinoff/resolve/main/bratishkin.zip",
@@ -194,7 +215,7 @@
                 "Real person",
                 "Other Language"
             ]
-        }, 
+        },
         {
             "name": "Yagami Light",
             "url": "https://huggingface.co/geekdom-tr/Yagami-Light/resolve/main/Yagami-Light.zip",
@@ -228,8 +249,7 @@
                 "Anime",
                 "English"
             ]
-        }
-        ,
+        },
         {
             "name": "Kaeya",
             "url": "https://huggingface.co/nlordqting4444/nlordqtingRVC/resolve/main/Kaeya.zip",
@@ -622,5 +642,5 @@
                 "Other Language"
             ]
         }
-    ]       
+    ]
 }

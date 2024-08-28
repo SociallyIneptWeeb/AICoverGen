@@ -1,5 +1,6 @@
 # General
 lib==4.0.0
+pydantic==2.9.0
 
 # Networking
 requests==2.32.3 #NOTE upgraded from 2.32.0
@@ -38,12 +39,12 @@ tensorboardX
 # numba==0.57.0; sys_platform == 'darwin' or sys_platform == 'win32'
 
 # Audio
-ffmpeg-python>=0.2.0
+typed-ffmpeg==2.0.0
 soundfile==0.12.1
 librosa >=0.10 # NOTE upgraded from 0.9.2
 sox==1.5.0
 pydub==0.25.1
-pydub-stubs
+pydub-stubs==0.25.1.1
 pedalboard==0.9.12
 audio-separator[gpu]==0.18.3
 praat-parselmouth>=0.4.2 # NOTE upgraded from unspecified
@@ -52,4 +53,5 @@ pyworld==0.3.4
 # noisereduce
 # audio_upscaler==0.1.4
 # edge-tts==6.1.9
+# ffmpeg-python>=0.2.0
 # ffmpy==0.3.1

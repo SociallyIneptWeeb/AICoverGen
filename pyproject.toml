@@ -1,5 +1,5 @@
 [tool.pyright]
-stubPath = "src/typings"
+stubPath = "src/stubs"
 pythonVersion = "3.11"
 pythonPlatform = "All"
 typeCheckingMode = "strict"
@@ -18,20 +18,41 @@ required-version = ">=0.5.7"
 
 [tool.ruff.format]
 docstring-code-format = true
+skip-magic-trailing-comma = true
+preview = true
 
 [tool.ruff.lint]
-#select = ["ALL"]
+select = ["ALL"]
 extend-select = ["I"]
-ignore = ["D205", "D203", "D212", "D416"]
+ignore = [
+    # Ignore missing blank before between class name and docstring
+    "D203", 
+    # Do not require a description after summary line in docstring
+    "D205",
+    # Do not require summary line to be located on first physical line of docstring
+    "D212", 
+    # Do not require docstring section names to end with colon
+    "D416",  
+    # Ignore TODO notes
+    "FIX002",
+    "TD002",
+    "TD003",
+    "TD004",
+    # Ignore missing copyright notice
+    "CPY001", 
+    # Ignore function signatures with too many arguments
+    "PLR0913",
+    # ignore function signatures with too many positional arguments
+    "PLR0917", 
+    # Ignore boolean positional argument in function signature
+    "FBT002", 
+    "FBT001",
+]
 unfixable = ["F401"]
 preview = true
 
 [tool.ruff.lint.flake8-annotations]
-ignore-fully-untyped = true
-#suppress-none-returning = true
-
-[tool.ruff.lint.flake8-errmsg]
-#max-string-length = 20
+#ignore-fully-untyped = true
 
 [tool.ruff.lint.isort]
 relative-imports-order = "closest-to-furthest"
@@ -46,15 +67,16 @@ section-order = [
     "audio",
     "visualisation",
     "first-party",
+    "base",
     "vc",
     "backend",
     "frontend",
-    "base",
+    "main",
     "local-folder",
 ]
 
 [tool.ruff.lint.isort.sections]
-"typing" = ["typing", "typing_extensions", "typings"]
+"typing" = ["typing", "typing_extensions"]
 "networking" = [
     "requests",
     "yt_dlp",
@@ -64,7 +86,14 @@ section-order = [
     "beautifulsoup4",
     "pypresence",
 ]
-"data-science" = ["numpy", "scipy", "matplotlib", "tqdm", "pandas", "gradio"]
+"data-science" = [
+    "numpy", 
+    "scipy", 
+    "matplotlib", 
+    "tqdm", 
+    "pandas", 
+    "gradio"
+]
 "machine-learning" = [
     "torch",
     "torchaudio",
@@ -93,13 +122,11 @@ section-order = [
     "edge_tts",
     "ffmpy",
 ]
+"base" = ["common", "typing_extra"]
 "vc" = ["vc"]
 "backend" = ["backend"]
 "frontend" = ["frontend"]
-"base" = ["common", "app", "cli", "init"]
+"main" = ["app", "cli", "init"]
 
 [tool.ruff.lint.pycodestyle]
 max-doc-length = 72
-
-[tool.ruff.lint.pylint]
-# max-args = 10

@@ -1,11 +1,14 @@
 from typing import Any
-from typings.extra import F0Method
+
 from multiprocessing import cpu_count
 from pathlib import Path
 
+from scipy.io import wavfile
+
 import torch
 from fairseq import checkpoint_utils
-from scipy.io import wavfile
+
+from typing_extra import F0Method
 
 from vc.infer_pack.models import (
     SynthesizerTrnMs256NSFsid,
@@ -42,16 +45,17 @@ class Config:
                 print("16 series/10 series P40 forced single precision")
                 self.is_half = False
                 for config_file in ["32k.json", "40k.json", "48k.json"]:
-                    with open(SRC_DIR / "vc" / "configs" / config_file, "r") as f:
+                    with open(SRC_DIR / "vc" / "configs" / config_file) as f:
                         strr = f.read().replace("true", "false")
                     with open(SRC_DIR / "vc" / "configs" / config_file, "w") as f:
                         f.write(strr)
                 with open(
-                    SRC_DIR / "vc" / "trainset_preprocess_pipeline_print.py", "r"
+                    SRC_DIR / "vc" / "trainset_preprocess_pipeline_print.py",
                 ) as f:
                     strr = f.read().replace("3.7", "3.0")
                 with open(
-                    SRC_DIR / "vc" / "trainset_preprocess_pipeline_print.py", "w"
+                    SRC_DIR / "vc" / "trainset_preprocess_pipeline_print.py",
+                    "w",
                 ) as f:
                     f.write(strr)
             else:
@@ -61,15 +65,16 @@ class Config:
                 / 1024
                 / 1024
                 / 1024
-                + 0.4
+                + 0.4,
             )
             if self.gpu_mem <= 4:
                 with open(
-                    SRC_DIR / "vc" / "trainset_preprocess_pipeline_print.py", "r"
+                    SRC_DIR / "vc" / "trainset_preprocess_pipeline_print.py",
                 ) as f:
                     strr = f.read().replace("3.7", "3.0")
                 with open(
-                    SRC_DIR / "vc" / "trainset_preprocess_pipeline_print.py", "w"
+                    SRC_DIR / "vc" / "trainset_preprocess_pipeline_print.py",
+                    "w",
                 ) as f:
                     f.write(strr)
         elif torch.backends.mps.is_available():
@@ -105,31 +110,33 @@ class Config:
         return x_pad, x_query, x_center, x_max
 
 
-def load_hubert(device: str, is_half: bool, model_path: str) -> torch.nn.Module:
+def load_hubert(device: str, model_path: str, *, is_half: bool) -> torch.nn.Module:
     models, _, _ = checkpoint_utils.load_model_ensemble_and_task(
         [model_path],
         suffix="",
     )
     hubert = models[0]
-    hubert = hubert.to(device)
+    hubert.to(device)
 
-    if is_half:
-        hubert = hubert.half()
-    else:
-        hubert = hubert.float()
+    hubert.half() if is_half else hubert.float()
 
     hubert.eval()
     return hubert
 
 
 def get_vc(
-    device: str, is_half: bool, config: Config, model_path: str
+    device: str,
+    config: Config,
+    model_path: str,
+    *,
+    is_half: bool,
 ) -> tuple[dict[str, Any], str, torch.nn.Module, int, VC]:
     cpt = torch.load(model_path, map_location="cpu")
     if "config" not in cpt or "weight" not in cpt:
-        raise ValueError(
-            f"Incorrect format for {model_path}. Use a voice model trained using RVC v2 instead."
+        err_msg = (
+            f"Incorrect format for {model_path}. Use a voice model trained using RVC v2"
         )
+        raise ValueError(err_msg)
 
     tgt_sr = cpt["config"][-1]
     cpt["config"][-3] = cpt["weight"]["emb_g.weight"].shape[0]
@@ -146,15 +153,15 @@ def get_vc(
             net_g = SynthesizerTrnMs768NSFsid(*cpt["config"], is_half=is_half)
         else:
             net_g = SynthesizerTrnMs768NSFsid_nono(*cpt["config"])
+    else:
+        err_msg = f"Unsupported model version: {version}"
+        raise ValueError(err_msg)
 
     del net_g.enc_q
-    print(net_g.load_state_dict(cpt["weight"], strict=False))
+    net_g.load_state_dict(cpt["weight"], strict=False)
     net_g.eval().to(device)
 
-    if is_half:
-        net_g = net_g.half()
-    else:
-        net_g = net_g.float()
+    net_g.half() if is_half else net_g.float()
 
     vc = VC(tgt_sr, config)
     return cpt, version, net_g, tgt_sr, vc

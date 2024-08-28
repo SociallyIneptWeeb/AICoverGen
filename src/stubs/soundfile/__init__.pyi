@@ -1,11 +1,11 @@
-from typing import Literal
+from typing import Literal, TypeAlias
 
 from os import PathLike
 
 import numpy as np
 from numpy.typing import NDArray
 
-DEFAULT_NDARRAY = NDArray[np.float64 | np.float32 | np.int32 | np.int16]
+DEFAULT_NDARRAY: TypeAlias = NDArray[np.float64 | np.float32 | np.int32 | np.int16]
 
 def read(
     file: int | str | PathLike[str] | PathLike[bytes],
@@ -18,7 +18,7 @@ def read(
     out: DEFAULT_NDARRAY | None = None,
     samplerate: int | None = None,
     channels: int | None = None,
-    format: str | None = None,
+    format: str | None = None,  # noqa: A002
     subtype: str | None = None,
     endian: Literal["FILE", "LITTLE", "BIG", "CPU"] | None = None,
     closefd: bool | None = True,
@@ -29,6 +29,6 @@ def write(
     samplerate: int,
     subtype: str | None = None,
     endian: Literal["FILE", "LITTLE", "BIG", "CPU"] | None = None,
-    format: str | None = None,
+    format: str | None = None,  # noqa: A002
     closefd: bool | None = True,
 ) -> None: ...

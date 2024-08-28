@@ -5,7 +5,11 @@ from pathlib import Path
 from numpy.typing import NDArray
 
 class Transformer:
-    def pitch(self, n_semitones: float, quick: bool = False) -> Self: ...
+    def pitch(
+        self,
+        n_semitones: float,
+        quick: bool = False,
+    ) -> Self: ...
     def build_array(
         self,
         input_filepath: str | Path | None = None,

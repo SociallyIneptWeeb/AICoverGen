@@ -1,94 +1,105 @@
-"""
-This module contains functions to manage audio files.
-"""
+"""Module which defines functions to manage audio files."""
 
-import os
+import operator
 import shutil
-from pathlib import PurePath
+from collections.abc import Sequence
+from pathlib import Path
 
 import gradio as gr
 
-from backend.common import INTERMEDIATE_AUDIO_DIR, OUTPUT_AUDIO_DIR, display_progress
-from backend.exceptions import InputMissingError, InvalidPathError, PathNotFoundError
+from exceptions import (
+    Entity,
+    InvalidLocationError,
+    Location,
+    NotFoundError,
+    NotProvidedError,
+    UIMessage,
+)
 
-from common import GRADIO_TEMP_DIR
+from typing_extra import StrPath
+
+from backend.common import (
+    INTERMEDIATE_AUDIO_BASE_DIR,
+    OUTPUT_AUDIO_DIR,
+    display_progress,
+)
 
 
-def get_output_audio() -> list[tuple[str, str]]:
+def get_saved_output_audio() -> list[tuple[str, str]]:
     """
     Get the name and path of all output audio files.
 
     Returns
     -------
-    list[tuple[str, str]]
-        A list of tuples containing the name and path of each output audio file.
+    list[tuple[str, Path]]
+        A list of tuples containing the name and path of each output
+        audio file.
+
     """
-    if os.path.isdir(OUTPUT_AUDIO_DIR):
+    if OUTPUT_AUDIO_DIR.is_dir():
         named_output_files = [
-            (file_name, os.path.join(OUTPUT_AUDIO_DIR, file_name))
-            for file_name in os.listdir(OUTPUT_AUDIO_DIR)
+            (file_path.name, str(file_path)) for file_path in OUTPUT_AUDIO_DIR.iterdir()
         ]
-        return sorted(named_output_files, key=lambda x: x[0])
+        return sorted(named_output_files, key=operator.itemgetter(0))
     return []
 
 
 def delete_intermediate_audio(
-    song_dirs: list[str],
+    directories: Sequence[StrPath],
     progress_bar: gr.Progress | None = None,
-    percentage: float = 0.0,
-) -> str:
+    percentage: float = 0.5,
+) -> None:
     """
-    Delete intermediate audio files in provided song directories.
+    Delete provided directories containing intermediate audio files.
+
+    The provided directories must be located in the root of the
+    intermediate audio base directory.
 
     Parameters
     ----------
-    song_dirs : list[str]
-        Paths of song directories to delete intermediate audio files for.
+    directories : Sequence[StrPath]
+        Paths to directories containing intermediate audio files to
+        delete.
     progress_bar : gr.Progress, optional
         Gradio progress bar to update.
-    percentage : float, default=0.0
+    percentage : float, default=0.5
         Percentage to display in the progress bar.
-
-    Returns
-    -------
-    str
-        Success message.
 
     Raises
     ------
-    InputMissingError
-        If no song directories are provided.
-    PathNotFoundError
-        If a song directory does not exist.
-    InvalidPathError
-        If a song directory is not located in the root of the intermediate audio directory.
+    NotProvidedError
+        If no paths are provided.
+    NotFoundError
+        if a provided path does not point to an existing directory.
+    InvalidLocationError
+        If a provided path does not point to a location in the root of
+        the intermediate audio base directory.
+
     """
-    if not song_dirs:
-        raise InputMissingError(
-            "Song directories missing! Please provide a non-empty list of song"
-            " directories."
-        )
+    if not directories:
+        raise NotProvidedError(entity=Entity.DIRECTORIES, ui_msg=UIMessage.NO_SONG_DIRS)
     display_progress(
-        "[~] Deleting intermediate audio files for selected songs...",
+        "[~] Deleting directories ...",
         percentage,
         progress_bar,
     )
-    for song_dir in song_dirs:
-        if not os.path.isdir(song_dir):
-            raise PathNotFoundError(f"Song directory '{song_dir}' does not exist.")
-
-        if not PurePath(song_dir).parent == PurePath(INTERMEDIATE_AUDIO_DIR):
-            raise InvalidPathError(
-                f"Song directory '{song_dir}' is not located in the root of the"
-                " intermediate audio directory."
+    for directory in directories:
+        dir_path = Path(directory)
+        if not dir_path.is_dir():
+            raise NotFoundError(entity=Entity.DIRECTORY, location=dir_path)
+        if dir_path.parent != INTERMEDIATE_AUDIO_BASE_DIR:
+            raise InvalidLocationError(
+                entity=Entity.DIRECTORY,
+                location=Location.INTERMEDIATE_AUDIO_ROOT,
+                path=dir_path,
             )
-        shutil.rmtree(song_dir)
-    return "[+] Successfully deleted intermediate audio files for selected songs!"
+        shutil.rmtree(dir_path)
 
 
 def delete_all_intermediate_audio(
-    progress_bar: gr.Progress | None = None, percentage: float = 0.0
-) -> str:
+    progress_bar: gr.Progress | None = None,
+    percentage: float = 0.5,
+) -> None:
     """
     Delete all intermediate audio files.
 
@@ -96,78 +107,77 @@ def delete_all_intermediate_audio(
     ----------
     progress_bar : gr.Progress, optional
         Gradio progress bar to update.
-    percentage : float, default=0.0
+    percentage : float, default=0.5
+        Percentage to display in the progress bar.
 
-    Returns
-    -------
-    str
-        Success message.
     """
     display_progress(
-        "[~] Deleting all intermediate audio files...", percentage, progress_bar
+        "[~] Deleting all intermediate audio files...",
+        percentage,
+        progress_bar,
     )
-    if os.path.isdir(INTERMEDIATE_AUDIO_DIR):
-        shutil.rmtree(INTERMEDIATE_AUDIO_DIR)
-
-    return "[+] All intermediate audio files successfully deleted!"
+    if INTERMEDIATE_AUDIO_BASE_DIR.is_dir():
+        shutil.rmtree(INTERMEDIATE_AUDIO_BASE_DIR)
 
 
 def delete_output_audio(
-    output_audio_files: list[str],
+    files: Sequence[StrPath],
     progress_bar: gr.Progress | None = None,
-    percentage: float = 0.0,
-) -> str:
+    percentage: float = 0.5,
+) -> None:
     """
-    Delete selected output audio files.
+    Delete provided output audio files.
+
+    The provided files must be located in the root of the output audio
+    directory.
 
     Parameters
     ----------
-    output_audio_files : list[str]
-        Paths of output audio files to delete.
+    files : Sequence[StrPath]
+        Paths to the output audio files to delete.
     progress_bar : gr.Progress, optional
         Gradio progress bar to update.
-    percentage : float, default=0.0
+    percentage : float, default=0.5
         Percentage to display in the progress bar.
-
-    Returns
-    -------
-    str
-        Success message.
 
     Raises
     ------
-    InputMissingError
-        If no output audio files are provided.
-    PathNotFoundError
-        If an output audio file does not exist.
-    InvalidPathError
-        If an output audio file is not located in the root of the output audio directory.
+    NotProvidedError
+        If no paths are provided.
+    NotFoundError
+        If a provided path does not point to an existing file.
+    InvalidLocationError
+        If a provided path does not point to a location in the root of
+        the output audio directory.
+
     """
-    if not output_audio_files:
-        raise InputMissingError(
-            "Output audio files missing! Please provide a non-empty list of output"
-            " audio files."
+    if not files:
+        raise NotProvidedError(
+            entity=Entity.FILES,
+            ui_msg=UIMessage.NO_OUTPUT_AUDIO_FILES,
         )
     display_progress(
-        "[~] Deleting selected output audio files...", percentage, progress_bar
+        "[~] Deleting output audio files...",
+        percentage,
+        progress_bar,
     )
-    for output_audio_file in output_audio_files:
-        if not os.path.isfile(output_audio_file):
-            raise PathNotFoundError(
-                f"Output audio file '{output_audio_file}' does not exist."
+    for file in files:
+        file_path = Path(file)
+        if not file_path.is_file():
+            raise NotFoundError(entity=Entity.FILE, location=file_path)
+        if file_path.parent != OUTPUT_AUDIO_DIR:
+            raise InvalidLocationError(
+                entity=Entity.FILE,
+                location=Location.OUTPUT_AUDIO_ROOT,
+                path=file_path,
             )
-        if not PurePath(output_audio_file).parent == PurePath(OUTPUT_AUDIO_DIR):
-            raise InvalidPathError(
-                f"Output audio file '{output_audio_file}' is not located in the root of"
-                " the output audio directory."
-            )
-        os.remove(output_audio_file)
-    return "[+] Successfully deleted selected output audio files!"
+        file_path.unlink()
 
 
 def delete_all_output_audio(
-    progress_bar: gr.Progress | None = None, percentage: float = 0.0
-) -> str:
+    progress_bar: gr.Progress | None = None,
+    percentage: float = 0.5,
+) -> None:
     """
     Delete all output audio files.
 
@@ -175,24 +185,19 @@ def delete_all_output_audio(
     ----------
     progress_bar : gr.Progress, optional
         Gradio progress bar to update.
-    percentage : float, default=0.0
+    percentage : float, default=0.5
         Percentage to display in the progress bar.
 
-    Returns
-    -------
-    str
-        Success message.
     """
     display_progress("[~] Deleting all output audio files...", percentage, progress_bar)
-    if os.path.isdir(OUTPUT_AUDIO_DIR):
+    if OUTPUT_AUDIO_DIR.is_dir():
         shutil.rmtree(OUTPUT_AUDIO_DIR)
-
-    return "[+] All output audio files successfully deleted!"
 
 
 def delete_all_audio(
-    progress_bar: gr.Progress | None = None, percentage: float = 0.0
-) -> str:
+    progress_bar: gr.Progress | None = None,
+    percentage: float = 0.5,
+) -> None:
     """
     Delete all audio files.
 
@@ -200,26 +205,12 @@ def delete_all_audio(
     ----------
     progress_bar : gr.Progress, optional
         Gradio progress bar to update.
-    percentage : float, default=0.0
+    percentage : float, default=0.5
         Percentage to display in the progress bar.
 
-    Returns
-    -------
-    str
-        Success message.
     """
     display_progress("[~] Deleting all audio files...", percentage, progress_bar)
-    if os.path.isdir(INTERMEDIATE_AUDIO_DIR):
-        shutil.rmtree(INTERMEDIATE_AUDIO_DIR)
-    if os.path.isdir(OUTPUT_AUDIO_DIR):
+    if INTERMEDIATE_AUDIO_BASE_DIR.is_dir():
+        shutil.rmtree(INTERMEDIATE_AUDIO_BASE_DIR)
+    if OUTPUT_AUDIO_DIR.is_dir():
         shutil.rmtree(OUTPUT_AUDIO_DIR)
-
-    return "[+] All audio files successfully deleted!"
-
-
-def delete_gradio_temp_dir() -> None:
-    """
-    Delete the directory where Gradio stores temporary files.
-    """
-    if os.path.isdir(GRADIO_TEMP_DIR):
-        shutil.rmtree(GRADIO_TEMP_DIR)

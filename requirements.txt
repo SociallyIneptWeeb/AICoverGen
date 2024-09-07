@@ -16,7 +16,7 @@ numpy==1.23.5
 scipy~=1.13.0 # NOTE upgraded from 1.11.1
 matplotlib==3.9.0 #NOTE upgraded from 3.7.2
 tqdm==4.65.0 #NOTE upgraded from unspecified
-gradio==4.42.0
+gradio==4.43.0
 
 # Machine learning
 --find-links https://download.pytorch.org/whl/torch_stable.html

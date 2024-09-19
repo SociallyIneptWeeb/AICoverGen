@@ -12,6 +12,13 @@ rvc_models/rmvpe.pt
 song_output/*/*.wav
 song_output/*/*.mp3
 
+# Replicate
+nb.ipynb
+output.mp3
+*.zip
+*.wav
+rvc_models/*/*.json
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

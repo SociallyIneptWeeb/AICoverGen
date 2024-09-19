@@ -1,4 +1,7 @@
 # AICoverGen
+
+[![Replicate](https://replicate.com/zsxkib/realistic-voice-cloning/badge)](https://replicate.com/zsxkib/realistic-voice-cloning)
+
 An autonomous pipeline to create covers with any RVC v2 trained AI voice from YouTube videos or a local audio file. For developers who may want to add a singing functionality into their AI assistant/chatbot/vtuber, or for people who want to hear their favourite characters sing their favourite song.
 
 Showcase: https://www.youtube.com/watch?v=2qZuE4WM7CM

@@ -1,21 +1,22 @@
 """Common utility functions for the backend."""
 
-from typing import Any
-from typings.extra import StrOrBytesPath
-
 import hashlib
 import json
-import os
 import shutil
+from collections.abc import Sequence
+from pathlib import Path
+
+from pydantic import AnyHttpUrl, TypeAdapter, ValidationError
 
 import gradio as gr
 
-from backend.exceptions import PathNotFoundError
+from exceptions import Entity, HttpUrlError, NotFoundError
 
-from common import AUDIO_DIR, RVC_MODELS_DIR
+from common import AUDIO_DIR, GRADIO_TEMP_DIR
+from typing_extra import Json, StrPath
 
-INTERMEDIATE_AUDIO_DIR = os.path.join(AUDIO_DIR, "intermediate")
-OUTPUT_AUDIO_DIR = os.path.join(AUDIO_DIR, "output")
+INTERMEDIATE_AUDIO_BASE_DIR = AUDIO_DIR / "intermediate"
+OUTPUT_AUDIO_DIR = AUDIO_DIR / "output"
 
 
 def display_progress(
@@ -24,7 +25,8 @@ def display_progress(
     progress_bar: gr.Progress | None = None,
 ) -> None:
     """
-    Display progress message and percentage in console or Gradio progress bar.
+    Display progress message and percentage in console or Gradio
+    progress bar.
 
     Parameters
     ----------
@@ -34,9 +36,10 @@ def display_progress(
         Percentage to display.
     progress_bar : gr.Progress, optional
         The Gradio progress bar to update.
+
     """
     if progress_bar is None:
-        print(message)
+        print(message)  # noqa: T201
     else:
         progress_bar(percentage, desc=message)
 
@@ -56,93 +59,80 @@ def remove_suffix_after(text: str, occurrence: str) -> str:
     -------
     str
         The string with the suffix removed.
+
     """
     location = text.rfind(occurrence)
     if location == -1:
         return text
-    else:
-        return text[: location + len(occurrence)]
+    return text[: location + len(occurrence)]
 
 
-def copy_files_to_new_folder(file_paths: list[str], folder_path: str) -> None:
+def copy_files_to_new_dir(files: Sequence[StrPath], directory: StrPath) -> None:
     """
-    Copy files to a new folder.
+    Copy files to a new directory.
 
     Parameters
     ----------
-    file_paths : list[str]
-        List of file paths to copy.
-    folder_path : str
-        Path of the folder to copy the files to.
+    files : Sequence[StrPath]
+        Paths to the files to copy.
+    directory : StrPath
+        Path to the directory to copy the files to.
 
     Raises
     ------
-    PathNotFoundError
+    NotFoundError
         If a file does not exist.
+
     """
-    os.makedirs(folder_path)
-    for file_path in file_paths:
-        if not os.path.exists(file_path):
-            raise PathNotFoundError(f"File not found: {file_path}")
-        shutil.copyfile(
-            file_path, os.path.join(folder_path, os.path.basename(file_path))
-        )
+    dir_path = Path(directory)
+    dir_path.mkdir(parents=True)
+    for file in files:
+        file_path = Path(file)
+        if not file_path.exists():
+            raise NotFoundError(entity=Entity.FILE, location=file_path)
+        shutil.copyfile(file_path, dir_path / file_path.name)
 
 
-def get_path_stem(path: str) -> str:
+def json_dumps(thing: Json) -> str:
     """
-    Get the stem of a file path.
-
-    The stem is the name of the file that the path points to,
-    not including its extension.
+    Dump a JSON-serializable object to a JSON string.
 
     Parameters
     ----------
-    path : str
-        The file path.
-
-    Returns
-    -------
-    str
-        The stem of the file path.
-    """
-    return os.path.splitext(os.path.basename(path))[0]
-
-
-def json_dumps(thing: Any) -> str:
-    """
-    Dump a Python object to a JSON string.
-
-    Parameters
-    ----------
-    thing : Any
-        The object to dump.
+    thing : Json
+        The JSON-serializable object to dump.
 
     Returns
     -------
     str
         The JSON string representation of the object.
+
     """
     return json.dumps(
-        thing, ensure_ascii=False, sort_keys=True, indent=4, separators=(",", ": ")
+        thing,
+        ensure_ascii=False,
+        sort_keys=True,
+        indent=4,
+        separators=(",", ": "),
     )
 
 
-def json_dump(thing: Any, path: StrOrBytesPath) -> None:
+def json_dump(thing: Json, file: StrPath) -> None:
     """
-    Dump a Python object to a JSON file.
+    Dump a JSON-serializable object to a JSON file.
 
     Parameters
     ----------
-    thing : Any
-        The object to dump.
-    path : str
-        The path of the JSON file.
+    thing : Json
+        The JSON-serializable object to dump.
+    file : StrPath
+        The path to the JSON file.
+
     """
-    with open(path, "w", encoding="utf-8") as file:
+    with Path(file).open("w", encoding="utf-8") as fp:
         json.dump(
             thing,
-            file,
+            fp,
             ensure_ascii=False,
             sort_keys=True,
             indent=4,
@@ -150,57 +140,60 @@ def json_dump(thing: Any, path: StrOrBytesPath) -> None:
         )
 
 
-def json_load(path: StrOrBytesPath, encoding: str = "utf-8") -> Any:
+def json_load(file: StrPath, encoding: str = "utf-8") -> Json:
     """
-    Load a Python object from a JSON file.
+    Load a JSON-serializable object from a JSON file.
 
     Parameters
     ----------
-    path : str
-        The path of the JSON file.
+    file : StrPath
+        The path to the JSON file.
     encoding : str, default='utf-8'
-        The encoding of the file.
+        The encoding of the JSON file.
 
     Returns
     -------
-    Any
-        The Python object loaded from the JSON file.
+    Json
+        The JSON-serializable object loaded from the JSON file.
+
     """
-    with open(path, encoding=encoding) as file:
-        return json.load(file)
+    with Path(file).open(encoding=encoding) as fp:
+        return json.load(fp)
 
 
-def get_hash(thing: Any, size: int = 5) -> str:
+def get_hash(thing: Json, size: int = 5) -> str:
     """
-    Get a hash of a Python object.
+    Get the hash of a JSON-serializable object.
 
     Parameters
     ----------
-    thing : Any
-        The object to hash.
+    thing : Json
+        The JSON-serializable object to hash.
     size : int, default=5
         The size of the hash in bytes.
 
     Returns
     -------
     str
-        The hash of the object.
+        The hash of the JSON-serializable object.
+
     """
     return hashlib.blake2b(
-        json_dumps(thing).encode("utf-8"), digest_size=size
+        json_dumps(thing).encode("utf-8"),
+        digest_size=size,
     ).hexdigest()
 
 
-# TODO consider increasing size to 16
-# otherwise we might have problems with hash collisions
-def get_file_hash(filepath: StrOrBytesPath, size: int = 5) -> str:
+# NOTE consider increasing size to 16 otherwise we might have problems
+# with hash collisions
+def get_file_hash(file: StrPath, size: int = 5) -> str:
     """
     Get the hash of a file.
 
     Parameters
     ----------
-    filepath : str
-        The path of the file.
+    file : StrPath
+        The path to the file.
     size : int, default=5
         The size of the hash in bytes.
 
@@ -208,52 +201,35 @@ def get_file_hash(filepath: StrOrBytesPath, size: int = 5) -> str:
     -------
     str
         The hash of the file.
+
     """
-    with open(filepath, "rb") as f:
-        file_hash = hashlib.file_digest(f, lambda: hashlib.blake2b(digest_size=size))
+    with Path(file).open("rb") as fp:
+        file_hash = hashlib.file_digest(fp, lambda: hashlib.blake2b(digest_size=size))
     return file_hash.hexdigest()
 
 
-def get_rvc_model(voice_model: str) -> tuple[str, str]:
-    """
-    Get the RVC model file and optional index file for a voice model.
+def delete_gradio_temp() -> None:
+    """Delete the directory where Gradio stores temporary files."""
+    if GRADIO_TEMP_DIR.is_dir():
+        shutil.rmtree(GRADIO_TEMP_DIR)
 
-    When no index file exists, an empty string is returned.
+
+def validate_url(url: str) -> None:
+    """
+    Validate a HTTP-based URL.
 
     Parameters
     ----------
-    voice_model : str
-        The name of the voice model.
-
-    Returns
-    -------
-    model_path : str
-        The path of the RVC model file.
-    index_path : str
-        The path of the RVC index file.
+    url : str
+        The URL to validate.
 
     Raises
     ------
-    PathNotFoundError
-        If the directory of the voice model does not exist or
-        if no model file exists in the directory.
+    HttpUrlError
+        If the URL is invalid.
+
     """
-    rvc_model_filename, rvc_index_filename = None, None
-    model_dir = os.path.join(RVC_MODELS_DIR, voice_model)
-    if not os.path.exists(model_dir):
-        raise PathNotFoundError(
-            f"Voice model directory '{voice_model}' does not exist."
-        )
-    for file in os.listdir(model_dir):
-        ext = os.path.splitext(file)[1]
-        if ext == ".pth":
-            rvc_model_filename = file
-        if ext == ".index":
-            rvc_index_filename = file
-
-    if rvc_model_filename is None:
-        raise PathNotFoundError(f"No model file exists in {model_dir}.")
-
-    return os.path.join(model_dir, rvc_model_filename), (
-        os.path.join(model_dir, rvc_index_filename) if rvc_index_filename else ""
-    )
+    try:
+        TypeAdapter(AnyHttpUrl).validate_python(url)
+    except ValidationError:
+        raise HttpUrlError(url) from None

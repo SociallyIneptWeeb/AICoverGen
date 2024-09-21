@@ -1,23 +1,19 @@
-"""
-This module contains the code for the "Manage models" tab.
-"""
+"""Module which defines the code for the "Manage models" tab."""
 
-from typings.extra import DropdownValue
-
+from collections.abc import Sequence
 from functools import partial
 
 import gradio as gr
 import pandas as pd
 
-from backend.manage_voice_models import (
+from backend.manage_models import (
     delete_all_models,
     delete_models,
-    download_online_model,
+    download_model,
     filter_public_models_table,
-    get_current_models,
-    load_public_model_tags,
-    load_public_models_table,
-    upload_local_model,
+    get_public_model_tags,
+    get_saved_model_names,
+    upload_model,
 )
 
 from frontend.common import (
@@ -26,18 +22,23 @@ from frontend.common import (
     confirmation_harness,
     exception_harness,
     identity,
+    render_msg,
     update_dropdowns,
 )
+from frontend.typing_extra import DropdownValue
 
 
-def _update_model_lists(
-    num_components: int, value: DropdownValue = None, value_indices: list[int] = []
+def _update_models(
+    num_components: int,
+    value: DropdownValue = None,
+    value_indices: Sequence[int] = [],
 ) -> gr.Dropdown | tuple[gr.Dropdown, ...]:
     """
-    Updates the choices of one or more dropdown
-    components to the current set of voice models.
+    Update the choices of one or more dropdown components to the set of
+    currently saved voice models.
 
-    Optionally updates the default value of one or more of these components.
+    Optionally updates the default value of one or more of these
+    components.
 
     Parameters
     ----------
@@ -45,258 +46,316 @@ def _update_model_lists(
         Number of dropdown components to update.
     value : DropdownValue, optional
         New value for dropdown components.
-    value_indices : list[int], default=[]
+    value_indices : Sequence[int], default=[]
         Indices of dropdown components to update the value for.
 
     Returns
     -------
     gr.Dropdown | tuple[gr.Dropdown, ...]
         Updated dropdown component or components.
+
     """
-    return update_dropdowns(get_current_models, num_components, value, value_indices)
+    return update_dropdowns(get_saved_model_names, num_components, value, value_indices)
 
 
-def _filter_public_models_table_harness(
-    tags: list[str], query: str, progress_bar: gr.Progress
+def _filter_public_models_table(
+    tags: Sequence[str],
+    query: str,
+    progress_bar: gr.Progress,
 ) -> gr.Dataframe:
     """
-    Filter the public models table based on tags and search query.
+    Filter table containing metadata of public voice models by tags and
+    a search query.
 
     Parameters
     ----------
-    tags : list[str]
-        Tags to filter the table by.
+    tags : Sequence[str]
+        Tags to filter the metadata table by.
     query : str
-        Search query to filter the table by.
+        Search query to filter the metadata table by.
     progress_bar : gr.Progress
         Progress bar to display progress.
 
     Returns
     -------
     gr.Dataframe
-        The filtered public models table rendered in a Gradio dataframe.
+        The filtered table rendered in a Gradio dataframe.
+
     """
     models_table = filter_public_models_table(tags, query, progress_bar)
     return gr.Dataframe(value=models_table)
 
 
-def _pub_dl_autofill(
-    pub_models: pd.DataFrame, event: gr.SelectData
+def _autofill_model_name_and_url(
+    public_models_table: pd.DataFrame,
+    select_event: gr.SelectData,
 ) -> tuple[gr.Textbox, gr.Textbox]:
     """
-    Autofill download link and model name based on selected row in public models table.
+    Autofill two textboxes with respectively the name and URL that is
+    saved in the currently selected row of the public models table.
 
     Parameters
     ----------
-    pub_models : pd.DataFrame
-        Public models table.
-    event : gr.SelectData
-        Event containing the selected row.
+    public_models_table : pd.DataFrame
+        The public models table saved in a Pandas dataframe.
+    select_event : gr.SelectData
+        Event containing the index of the currently selected row in the
+        public models table.
 
     Returns
     -------
-    download_link : gr.Textbox
-        Autofilled download link.
-    model_name : gr.Textbox
-        Autofilled model name.
-    """
-    event_index = event.index[0]
-    url_str = pub_models.loc[event_index, "URL"]
-    model_str = pub_models.loc[event_index, "Model Name"]
+    name : gr.Textbox
+        The textbox containing the model name.
 
-    return gr.Textbox(value=url_str), gr.Textbox(value=model_str)
+    url : gr.Textbox
+        The textbox containing the model URL.
+
+    Raises
+    ------
+    TypeError
+        If the index in the provided event is not a sequence.
+
+    """
+    event_index = select_event.index
+    if not isinstance(event_index, Sequence):
+        err_msg = (
+            f"Expected a sequence of indices but got {type(event_index)} from the"
+            " provided event."
+        )
+        raise TypeError(err_msg)
+    event_index = event_index[0]
+    url = public_models_table.loc[event_index, "URL"]
+    name = public_models_table.loc[event_index, "Name"]
+    if isinstance(url, str) and isinstance(name, str):
+        return gr.Textbox(value=name), gr.Textbox(value=url)
+    err_msg = (
+        "Expected model name and URL to be strings but got"
+        f" {type(name)} and {type(url)} respectively."
+    )
+    raise TypeError(err_msg)
 
 
 def render(
-    dummy_deletion_checkbox: gr.Checkbox,
-    delete_confirmation: gr.State,
-    rvc_models_to_delete: gr.Dropdown,
-    rvc_model_1click: gr.Dropdown,
-    rvc_model_multi: gr.Dropdown,
+    dummy_checkbox: gr.Checkbox,
+    confirmation: gr.State,
+    model_delete: gr.Dropdown,
+    model_1click: gr.Dropdown,
+    model_multi: gr.Dropdown,
 ) -> None:
     """
+
     Render "Manage models" tab.
 
     Parameters
     ----------
-    dummy_deletion_checkbox : gr.Checkbox
-        Dummy component needed for deletion confirmation in the
-        "Manage audio" tab and the "Manage models" tab.
-    delete_confirmation : gr.State
+    dummy_checkbox : gr.Checkbox
+        Dummy checkbox component needed for deletion confirmation in the
+        "Delete audio" tab and the "Delete models" tab.
+    confirmation : gr.State
         Component storing deletion confirmation status in the
-        "Manage audio" tab and the "Manage models" tab.
-    rvc_models_to_delete : gr.Dropdown
-        Dropdown for selecting models to delete in the
-        "Manage models" tab.
-    rvc_model_1click : gr.Dropdown
-        Dropdown for selecting models in the "One-click generation" tab.
-    rvc_model_multi : gr.Dropdown
-        Dropdown for selecting models in the "Multi-step generation" tab.
-    """
+        "Delete audio" tab and the "Delete models" tab.
+    model_delete : gr.Dropdown
+        Dropdown for selecting voice models to delete in the
+        "Delete models" tab.
+    model_1click : gr.Dropdown
+        Dropdown for selecting a voice model to use in the
+        "One-click generation" tab.
+    model_multi : gr.Dropdown
+        Dropdown for selecting a voice model to use in the
+        "Multi-step generation" tab.
 
+    """
     # Download tab
     with gr.Tab("Download model"):
 
         with gr.Accordion("View public models table", open=False):
 
             gr.Markdown("")
-            gr.Markdown("HOW TO USE")
-            gr.Markdown("- Filter models using tags or search bar")
-            gr.Markdown("- Select a row to autofill the download link and model name")
-
-            filter_tags = gr.CheckboxGroup(
-                value=[],
-                label="Show voice models with tags",
-                choices=load_public_model_tags(),
+            gr.Markdown("*HOW TO USE*")
+            gr.Markdown(
+                "- Filter voice models by selecting one or more tags and/or providing a"
+                " search query.",
             )
-            search_query = gr.Textbox(label="Search")
-
-            public_models_table = gr.DataFrame(
-                value=load_public_models_table([]),
-                headers=["Model Name", "Description", "Tags", "Credit", "Added", "URL"],
-                label="Available Public Models",
-                interactive=False,
+            gr.Markdown(
+                "- Select a row in the table to autofill the name and"
+                " URL for the given voice model in the form fields below.",
             )
+            gr.Markdown("")
+            with gr.Row(equal_height=False):
+                tags = gr.CheckboxGroup(
+                    value=[],
+                    label="Tags",
+                    choices=get_public_model_tags(),
+                )
+                search_query = gr.Textbox(label="Search query")
+            with gr.Row():
+                public_models_table = gr.Dataframe(
+                    value=partial(
+                        exception_harness(_filter_public_models_table),
+                        progress_bar=PROGRESS_BAR,
+                    ),
+                    inputs=[tags, search_query],
+                    headers=["Name", "Description", "Tags", "Credit", "Added", "URL"],
+                    label="Public models table",
+                    interactive=False,
+                )
 
         with gr.Row():
-            model_zip_link = gr.Textbox(
-                label="Download link to model",
+            model_url = gr.Textbox(
+                label="Model URL",
                 info=(
-                    "Should point to a zip file containing a .pth model file and an"
-                    " optional .index file."
+                    "Should point to a zip file containing a .pth model file and"
+                    " optionally also an .index file."
                 ),
             )
             model_name = gr.Textbox(
-                label="Model name", info="Enter a unique name for the model."
+                label="Model name",
+                info="Enter a unique name for the voice model.",
             )
 
         with gr.Row():
             download_btn = gr.Button("Download 🌐", variant="primary", scale=19)
-            dl_output_message = gr.Textbox(
-                label="Output message", interactive=False, scale=20
+            download_msg = gr.Textbox(
+                label="Output message",
+                interactive=False,
+                scale=20,
             )
 
-        download_button_click = download_btn.click(
-            partial(
-                exception_harness(download_online_model), progress_bar=PROGRESS_BAR
-            ),
-            inputs=[model_zip_link, model_name],
-            outputs=dl_output_message,
+        public_models_table.select(
+            _autofill_model_name_and_url,
+            inputs=public_models_table,
+            outputs=[model_name, model_url],
+            show_progress="hidden",
         )
 
-        public_models_table.select(
-            _pub_dl_autofill,
-            inputs=public_models_table,
-            outputs=[model_zip_link, model_name],
-            show_progress="hidden",
-        )
-        search_query.change(
+        download_btn_click = download_btn.click(
             partial(
-                exception_harness(_filter_public_models_table_harness),
+                exception_harness(download_model),
                 progress_bar=PROGRESS_BAR,
             ),
-            inputs=[filter_tags, search_query],
-            outputs=public_models_table,
-            show_progress="hidden",
-        )
-        filter_tags.select(
+            inputs=[model_url, model_name],
+            outputs=download_msg,
+        ).success(
             partial(
-                exception_harness(_filter_public_models_table_harness),
-                progress_bar=PROGRESS_BAR,
+                render_msg,
+                "[+] Succesfully downloaded voice model!",
             ),
-            inputs=[filter_tags, search_query],
-            outputs=public_models_table,
+            inputs=model_name,
+            outputs=download_msg,
             show_progress="hidden",
         )
 
     # Upload tab
     with gr.Tab("Upload model"):
         with gr.Accordion("HOW TO USE"):
+            gr.Markdown("")
             gr.Markdown(
-                "- Find locally trained RVC v2 model file (weights folder) and optional"
-                " index file (logs/[name] folder)"
+                "1. Find the .pth file for a locally trained RVC model (e.g. in your"
+                " local weights folder) and optionally also a corresponding .index file"
+                " (e.g. in your logs/[name] folder)",
             )
             gr.Markdown(
-                "- Upload model file and optional index file directly or compress into"
-                " a zip file and upload that"
+                "2. Upload the files directly or save them to a folder, then compress"
+                " that folder and upload the resulting .zip file",
             )
-            gr.Markdown("- Enter a unique name for the model")
-            gr.Markdown("- Click 'Upload model'")
+            gr.Markdown("3. Enter a unique name for the uploaded model")
+            gr.Markdown("4. Click 'Upload'")
 
-        with gr.Row():
-            with gr.Column():
-                model_files = gr.File(label="Files", file_count="multiple")
+        with gr.Row(equal_height=False):
+            model_files = gr.File(
+                label="Files",
+                file_count="multiple",
+                file_types=[".zip", ".pth", ".index"],
+            )
 
             local_model_name = gr.Textbox(label="Model name")
 
         with gr.Row():
-            model_upload_button = gr.Button("Upload model", variant="primary", scale=19)
-            local_upload_output_message = gr.Textbox(
-                label="Output message", interactive=False, scale=20
+            upload_btn = gr.Button("Upload", variant="primary", scale=19)
+            upload_msg = gr.Textbox(
+                label="Output message",
+                interactive=False,
+                scale=20,
             )
-            model_upload_button_click = model_upload_button.click(
-                partial(
-                    exception_harness(upload_local_model), progress_bar=PROGRESS_BAR
-                ),
+            upload_btn_click = upload_btn.click(
+                partial(exception_harness(upload_model), progress_bar=PROGRESS_BAR),
                 inputs=[model_files, local_model_name],
-                outputs=local_upload_output_message,
+                outputs=upload_msg,
+            ).success(
+                partial(
+                    render_msg,
+                    "[+] Successfully uploaded voice model!",
+                ),
+                inputs=local_model_name,
+                outputs=upload_msg,
+                show_progress="hidden",
             )
 
     with gr.Tab("Delete models"):
         with gr.Row():
             with gr.Column():
-                rvc_models_to_delete.render()
+                model_delete.render()
+                delete_btn = gr.Button("Delete selected", variant="secondary")
+                delete_all_btn = gr.Button("Delete all", variant="primary")
             with gr.Column():
-                rvc_models_deleted_message = gr.Textbox(
-                    label="Output message", interactive=False
-                )
-
-        with gr.Row():
-            with gr.Column():
-                delete_models_button = gr.Button(
-                    "Delete selected models", variant="secondary"
-                )
-                delete_all_models_button = gr.Button(
-                    "Delete all models", variant="primary"
-                )
-            with gr.Column():
-                pass
-        delete_models_button_click = delete_models_button.click(
-            # NOTE not sure why, but in order for subsequent event listener
-            # to trigger, changes coming from the js code
-            # have to be routed through an identity function which takes as
-            # input some dummy component of type bool.
-            identity,
-            inputs=dummy_deletion_checkbox,
-            outputs=delete_confirmation,
-            js=confirm_box_js("Are you sure you want to delete the selected models?"),
-            show_progress="hidden",
-        ).then(
-            partial(confirmation_harness(delete_models), progress_bar=PROGRESS_BAR),
-            inputs=[delete_confirmation, rvc_models_to_delete],
-            outputs=rvc_models_deleted_message,
+                delete_msg = gr.Textbox(label="Output message", interactive=False)
+        delete_btn_click = (
+            delete_btn.click(
+                # NOTE not sure why, but in order for subsequent event
+                # listener to trigger, changes coming from the js code
+                # have to be routed through an identity function which
+                # takes as input some dummy component of type bool.
+                identity,
+                inputs=dummy_checkbox,
+                outputs=confirmation,
+                js=confirm_box_js(
+                    "Are you sure you want to delete the selected voice models?",
+                ),
+                show_progress="hidden",
+            )
+            .then(
+                partial(confirmation_harness(delete_models), progress_bar=PROGRESS_BAR),
+                inputs=[confirmation, model_delete],
+                outputs=delete_msg,
+            )
+            .success(
+                partial(render_msg, "[-] Successfully deleted selected voice models!"),
+                outputs=delete_msg,
+                show_progress="hidden",
+            )
         )
 
-        delete_all_models_btn_click = delete_all_models_button.click(
-            identity,
-            inputs=dummy_deletion_checkbox,
-            outputs=delete_confirmation,
-            js=confirm_box_js("Are you sure you want to delete all models?"),
-            show_progress="hidden",
-        ).then(
-            partial(confirmation_harness(delete_all_models), progress_bar=PROGRESS_BAR),
-            inputs=delete_confirmation,
-            outputs=rvc_models_deleted_message,
+        delete_all_btn_click = (
+            delete_all_btn.click(
+                identity,
+                inputs=dummy_checkbox,
+                outputs=confirmation,
+                js=confirm_box_js("Are you sure you want to delete all voice models?"),
+                show_progress="hidden",
+            )
+            .then(
+                partial(
+                    confirmation_harness(delete_all_models),
+                    progress_bar=PROGRESS_BAR,
+                ),
+                inputs=confirmation,
+                outputs=delete_msg,
+            )
+            .success(
+                partial(render_msg, "[-] Successfully deleted all voice models!"),
+                outputs=delete_msg,
+                show_progress="hidden",
+            )
         )
 
     for click_event in [
-        download_button_click,
-        model_upload_button_click,
-        delete_models_button_click,
-        delete_all_models_btn_click,
+        download_btn_click,
+        upload_btn_click,
+        delete_btn_click,
+        delete_all_btn_click,
     ]:
         click_event.success(
-            partial(_update_model_lists, 3, [], [2]),
-            outputs=[rvc_model_1click, rvc_model_multi, rvc_models_to_delete],
+            partial(_update_models, 3, [], [2]),
+            outputs=[model_1click, model_multi, model_delete],
             show_progress="hidden",
         )

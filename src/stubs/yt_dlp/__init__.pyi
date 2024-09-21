@@ -2,7 +2,9 @@ from typing import Any, Self
 
 class YoutubeDL:
     def __init__(
-        self, params: dict[str, Any] | None = None, auto_init: bool = True
+        self,
+        params: dict[str, Any] | None = None,
+        auto_init: bool = True,
     ) -> None: ...
     def extract_info(
         self,
@@ -22,4 +24,4 @@ class YoutubeDL:
         warn: bool = False,
     ) -> str: ...
     def __enter__(self) -> Self: ...
-    def __exit__(self, *args: Any) -> None: ...
+    def __exit__(self, *args: object) -> None: ...

@@ -1,41 +1,45 @@
 """
-This script downloads the models required for running the Ultimmate RVC app.
+Script which downloads the models required for running the Ultimate
+RVC app.
 """
 
-import os
+from pathlib import Path
 
 import requests
 
 from common import RVC_MODELS_DIR
+from typing_extra import StrPath
 
-RVC_DOWNLOAD_LINK = "https://huggingface.co/lj1995/VoiceConversionWebUI/resolve/main/"
+RVC_DOWNLOAD_URL = "https://huggingface.co/lj1995/VoiceConversionWebUI/resolve/main/"
 
 
-def dl_model(link: str, model_name: str, dir_name: str) -> None:
+def download_model(url: str, name: str, directory: StrPath) -> None:
     """
-    Download a model from a link and save it to a directory.
+    Download a model and save it to a directory.
 
     Parameters
     ----------
-    link : str
-        The link to the site where the model is hosted.
-    model_name : str
+    url : str
+        An URL pointing to a location where a model is hosted.
+    name : str
         The name of the model to download.
-    dir_name : str
-        The directory to save the model to.
+    directory : str
+        The path to the directory where the model should be saved.
+
     """
-    with requests.get(f"{link}{model_name}") as r:
+    dir_path = Path(directory)
+    with requests.get(f"{url}{name}", timeout=10) as r:
         r.raise_for_status()
-        with open(os.path.join(dir_name, model_name), "wb") as f:
+        with (dir_path / name).open("wb") as f:
             for chunk in r.iter_content(chunk_size=8192):
                 f.write(chunk)
 
 
 if __name__ == "__main__":
 
-    rvc_model_names = ["hubert_base.pt", "rmvpe.pt"]
-    for model in rvc_model_names:
-        print(f"Downloading {model}...")
-        dl_model(RVC_DOWNLOAD_LINK, model, RVC_MODELS_DIR)
+    model_names = ["hubert_base.pt", "rmvpe.pt"]
+    for model_name in model_names:
+        print(f"Downloading {model_name}...")  # noqa: T201
+        download_model(RVC_DOWNLOAD_URL, model_name, RVC_MODELS_DIR)
 
-    print("All models downloaded!")
+    print("All models downloaded!")  # noqa: T201

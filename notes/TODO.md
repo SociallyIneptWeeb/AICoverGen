@@ -82,6 +82,9 @@
     * In either case output tracks stop loading after some time
     * `h11._util.LocalProtocolError: Too little data for declared Content-Length` is observed on command line
   * Problem is gradio-specific and an issue has been raised [here](https://github.com/gradio-app/gradio/issues/8878)
+* Fix hashes of identical files being different for one-click and multi-step generation (DIFFICULT TO IMPLEMENT)
+  * Seems to work except for when first running one click generation and then multi-step generation
+  * It is related to the bug mentioned above
 
 ### Single step generation
 
@@ -109,12 +112,6 @@
   * We can use `gr.Info` for this
   * We already have a helper function `frontend.common.render_msg` which could be used for this purpose (after some small tweaks)
   * In this case we could also consider removing output message textbox components in the `manage_models` and `manage_audio` tabs
-* Fix hashes of identical files being different for one-click and multi-step generation
-  * This is due to gradio copying input audio to temporary files
-    * so, when we transfer the output of one step to the input of another step using multi-step generation then the input will always be different from what was transfered
-  * Possible solution is to disable temporary files.
-    * This might not work for microphone input though
-    * See [here] for more information(#temporary-gradio-files)
 * Persist state of app (currently selected settings etc.) across re-renders
   * This includes:
     * refreshing a browser windows
@@ -147,21 +144,11 @@
 ### temporary gradio files
 
 * clearing temporary files can be candled with the `delete_cache` parameter
-  * But this parameter does not seem to have any effect when running locally
-  * might also be the case when hosting online, but it is hard to say for now
-* Current solution is to manually delete the temp files on start and teardown of app
-  * current problem: multiple open sessions/tabs (DIFFICULT TO IMPLEMENT)
-    * when the app is replicated in a new tab or window, all temp files are removed
-      * so any instance of the app running in another window or tab loses all their temp files
-    * when a tab is closed then all other tabs also lose their temp files
-    * when a tab is refreshed then all other tabs also lose their temp files
-    * mitigation: force old windows and tabs to also refresh?
-  * When hosting online:
-    * clearing of temporary files should happen after a user logs in and out
-    * and in this case it should only be temporary files for the active user that are cleared
-      * Is that even possible to control?
-* A better solution might just be to disable caching altogether by using `gr.set_static_paths`
-  * input list should be set to the `./audio` directory and maybe also the `./models`directory
+  * Only seems to work if all windows are closed before closing the app process
+* When hosting online:
+  * clearing of temporary files should happen after a user logs in and out
+  * and in this case it should only be temporary files for the active user that are cleared
+    * Is that even possible to control?
 
 ## Back end
 

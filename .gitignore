@@ -1,6 +1,7 @@
 # General
 dependencies
 audio
+temp
 
 # Audio separation models
 models/audio_separator

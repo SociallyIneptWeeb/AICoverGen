@@ -235,7 +235,7 @@ class YoutubeUrlError(OSError):
         """
         suffix = "or playlist" if playlist else ""
         super().__init__(
-            f"URL does not point to a YouTube video {suffix}: {url}",
+            f"Not able to access Youtube video {suffix} at: {url}",
         )
 
 

@@ -12,7 +12,7 @@ import gradio as gr
 
 from exceptions import Entity, HttpUrlError, NotFoundError
 
-from common import AUDIO_DIR, GRADIO_TEMP_DIR
+from common import AUDIO_DIR
 from typing_extra import Json, StrPath
 
 INTERMEDIATE_AUDIO_BASE_DIR = AUDIO_DIR / "intermediate"
@@ -206,12 +206,6 @@ def get_file_hash(file: StrPath, size: int = 5) -> str:
     with Path(file).open("rb") as fp:
         file_hash = hashlib.file_digest(fp, lambda: hashlib.blake2b(digest_size=size))
     return file_hash.hexdigest()
-
-
-def delete_gradio_temp() -> None:
-    """Delete the directory where Gradio stores temporary files."""
-    if GRADIO_TEMP_DIR.is_dir():
-        shutil.rmtree(GRADIO_TEMP_DIR)
 
 
 def validate_url(url: str) -> None:

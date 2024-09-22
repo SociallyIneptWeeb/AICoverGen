@@ -13,9 +13,8 @@ from argparse import ArgumentParser
 
 import gradio as gr
 
-from common import GRADIO_TEMP_DIR
+from common import AUDIO_DIR, MODELS_DIR, TEMP_DIR
 
-from backend.common import delete_gradio_temp
 from backend.generate_song_cover import get_named_song_dirs
 from backend.manage_audio import get_saved_output_audio
 from backend.manage_models import get_saved_model_names
@@ -24,12 +23,12 @@ from frontend.tabs.manage_audio import render as render_manage_audio_tab
 from frontend.tabs.manage_models import render as render_manage_models_tab
 from frontend.tabs.multi_step_generation import render as render_multi_step_tab
 from frontend.tabs.one_click_generation import render as render_one_click_tab
+from frontend.tabs.other_settings import render as render_other_settings_tab
 
 
 def _init_app() -> list[gr.Dropdown]:
     """
-    Initialize app by deleting any existing Gradio temp directory and
-    updating the choices of all dropdowns.
+    Initialize app by updating the choices of all dropdowns.
 
     Returns
     -------
@@ -38,23 +37,29 @@ def _init_app() -> list[gr.Dropdown]:
         and output audio files.
 
     """
-    delete_gradio_temp()
     models = [gr.Dropdown(choices=get_saved_model_names()) for _ in range(3)]
     cached_songs = [gr.Dropdown(choices=get_named_song_dirs()) for _ in range(10)]
     output_audio = [gr.Dropdown(choices=get_saved_output_audio())]
     return models + cached_songs + output_audio
 
 
-os.environ["GRADIO_TEMP_DIR"] = str(GRADIO_TEMP_DIR)
-
 if os.name == "nt":
     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
-css = """
+os.environ["GRADIO_TEMP_DIR"] = str(TEMP_DIR)
+gr.set_static_paths([MODELS_DIR, AUDIO_DIR])
+
+CSS = """
 h1 { text-align: center; margin-top: 20px; margin-bottom: 20px; }
 """
+CACHE_DELETE_FREQUENCY = 86400  # every 24 hours check for files to delete
+CACHE_DELETE_CUTOFF = 86400  # and delete files older than 24 hours
 
-with gr.Blocks(title="Ultimate RVC", css=css) as app:
+with gr.Blocks(
+    title="Ultimate RVC",
+    css=CSS,
+    delete_cache=(CACHE_DELETE_FREQUENCY, CACHE_DELETE_CUTOFF),
+) as app:
 
     gr.HTML("<h1>Ultimate RVC ❤️</h1>")
 
@@ -160,6 +165,8 @@ with gr.Blocks(title="Ultimate RVC", css=css) as app:
             intermediate_audio,
             output_audio,
         )
+    with gr.Tab("Other settings"):
+        render_other_settings_tab()
 
     app.load(
         _init_app,
@@ -175,9 +182,6 @@ with gr.Blocks(title="Ultimate RVC", css=css) as app:
         ],
         show_progress="hidden",
     )
-
-    app.unload(delete_gradio_temp)
-
 
 if __name__ == "__main__":
 

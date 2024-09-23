@@ -60,7 +60,11 @@ from backend.typing_extra import (
     ConvertedVocalsMetaData,
     EffectedVocalsMetaData,
     FileMetaData,
+    MixedSongMetaData,
+    PitchShiftMetaData,
+    SeparatedAudioMetaData,
     SourceType,
+    StereoizedAudioMetaData,
 )
 
 AUDIO_SEPARATOR = Separator(
@@ -863,9 +867,12 @@ def stereoize(
 
     song_info = pydub_utils.mediainfo(str(song_path))
     if song_info["channels"] == "1":
-        args_dict = {
-            "song": {"name": song_path.name, "hash_id": get_file_hash(song_path)},
-        }
+        args_dict = StereoizedAudioMetaData(
+            audio_track=FileMetaData(
+                name=song_path.name,
+                hash_id=get_file_hash(song_path),
+            ),
+        ).model_dump()
 
         paths = [
             get_unique_base_path(
@@ -996,12 +1003,14 @@ def separate_audio(
         [(audio_track, Entity.AUDIO_TRACK), (song_dir, Entity.SONG_DIR)],
     )
 
-    args_dict = {
-        "audio_track": {
-            "name": audio_path.name,
-            "hash_id": get_file_hash(audio_path),
-        },
-    }
+    args_dict = SeparatedAudioMetaData(
+        audio_track=FileMetaData(
+            name=audio_path.name,
+            hash_id=get_file_hash(audio_path),
+        ),
+        model_name=model_name,
+        segment_size=segment_size,
+    ).model_dump()
 
     paths = [
         get_unique_base_path(
@@ -1424,13 +1433,13 @@ def pitch_shift(
 
     if n_semitones != 0:
 
-        args_dict = {
-            "audio_track": {
-                "name": audio_path.name,
-                "hash_id": get_file_hash(audio_path),
-            },
-            "n_semitones": n_semitones,
-        }
+        args_dict = PitchShiftMetaData(
+            audio_track=FileMetaData(
+                name=audio_path.name,
+                hash_id=get_file_hash(audio_path),
+            ),
+            n_semitones=n_semitones,
+        ).model_dump()
 
         paths = [
             get_unique_base_path(
@@ -1629,25 +1638,25 @@ def mix_song_cover(
             ],
         )
     )
-    args_dict = {
-        "main_vocals_track": {
-            "name": main_vocals_path.name,
-            "hash_id": get_file_hash(main_vocals_path),
-        },
-        "instrumentals_track": {
-            "name": instrumentals_path.name,
-            "hash_id": get_file_hash(instrumentals_path),
-        },
-        "backup_vocals_track": {
-            "name": backup_vocals_path.name,
-            "hash_id": get_file_hash(backup_vocals_path),
-        },
-        "main_gain": main_gain,
-        "inst_gain": inst_gain,
-        "backup_gain": backup_gain,
-        "output_sr": output_sr,
-        "output_format": output_format,
-    }
+    args_dict = MixedSongMetaData(
+        main_vocals_track=FileMetaData(
+            name=main_vocals_path.name,
+            hash_id=get_file_hash(main_vocals_path),
+        ),
+        instrumentals_track=FileMetaData(
+            name=instrumentals_path.name,
+            hash_id=get_file_hash(instrumentals_path),
+        ),
+        backup_vocals_track=FileMetaData(
+            name=backup_vocals_path.name,
+            hash_id=get_file_hash(backup_vocals_path),
+        ),
+        main_gain=main_gain,
+        inst_gain=inst_gain,
+        backup_gain=backup_gain,
+        output_sr=output_sr,
+        output_format=output_format,
+    ).model_dump()
 
     paths = [
         get_unique_base_path(

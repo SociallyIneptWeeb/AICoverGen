@@ -153,15 +153,17 @@
 
 ## Back end
 
-### `common.py`
-
-* Define custom order for items in saved JSON files.
-  * Should be the same as the order of items defined in pydantic models?
-
 ### `generate_song_cover.py`
 
-* Implement Pydantic models for the remaining steps in song cover generation pipeline and then instantiate arg dicts by doing `XMetaData.model_dump()`
-  * Should we use `model_dump` with `mode = "json"`to ensure JSON-serializable dicts?
+* find framework for caching intermediate results rather than relying on your homemade system
+
+  * Joblib: <https://medium.com/@yuxuzi/unlocking-efficiency-in-machine-learning-projects-with-joblib-a-python-pipeline-powerhouse-feb0ebfdf4df>
+  * scikit learn: <https://scikit-learn.org/stable/modules/compose.html#pipeline>
+
+  * <https://softwarepatternslexicon.com/machine-learning/infrastructure-and-scalability/workflow-management/pipeline-caching/>
+  * <https://github.com/bmabey/provenance>
+  * <https://docs.sweep.dev/blogs/file-cache>
+
 * Support specific audio formats for intermediate audio file?
   * it might require some more code to support custom output format for all pipeline functions.
 

@@ -970,9 +970,9 @@ def separate_audio(
         The path to the song directory where the separated primary stem
         and secondary stem will be saved.
     primary_prefix : str
-        The prefix to use for the primary stem.
+        The prefix to use for the name of the primary stem.
     secondary_prefix : str
-        The prefix to use for the secondary stem.
+        The prefix to use for the name of the secondary stem.
     model_name : str
         The name of the model to use for audio separation.
     segment_size : int
@@ -1380,6 +1380,79 @@ def postprocess(
     return effected_vocals_path
 
 
+def pitch_shift(
+    audio_track: StrPath,
+    song_dir: StrPath,
+    n_semitones: int,
+    prefix: str,
+    display_msg: str,
+    progress_bar: gr.Progress | None = None,
+    percentage: float = 0.5,
+) -> Path:
+    """
+    Pitch shift an audio track by a given number of semi-tones.
+
+    Parameters
+    ----------
+    audio_track : StrPath
+        The path to the audio track to pitch shift.
+    song_dir : StrPath
+        The path to the song directory where the pitch-shifted audio
+        track will be saved.
+    n_semitones : int
+        The number of semi-tones to pitch-shift the audio track by.
+    prefix : str
+        The prefix to use for the name of the pitch-shifted audio track.
+    display_msg : str
+        The message to display when pitch-shifting the audio track.
+    progress_bar : gr.Progress, optional
+        Gradio progress bar to update.
+    percentage : float, default=0.5
+        Percentage to display in the progress bar.
+
+    Returns
+    -------
+    Path
+        The path to the pitch-shifted audio track.
+
+    """
+    audio_path, song_dir_path = _validate_all_exist(
+        [(audio_track, Entity.AUDIO_TRACK), (song_dir, Entity.SONG_DIR)],
+    )
+
+    shifted_audio_path = audio_path
+
+    if n_semitones != 0:
+
+        args_dict = {
+            "audio_track": {
+                "name": audio_path.name,
+                "hash_id": get_file_hash(audio_path),
+            },
+            "n_semitones": n_semitones,
+        }
+
+        paths = [
+            get_unique_base_path(
+                song_dir_path,
+                prefix,
+                args_dict,
+                progress_bar=progress_bar,
+                percentage=percentage,
+            ).with_suffix(suffix)
+            for suffix in [".wav", ".json"]
+        ]
+
+        shifted_audio_path, shifted_audio_json_path = paths
+
+        if not all(path.exists() for path in paths):
+            display_progress(display_msg, percentage, progress_bar)
+            _pitch_shift(audio_path, shifted_audio_path, n_semitones)
+            json_dump(args_dict, shifted_audio_json_path)
+
+    return shifted_audio_path
+
+
 def pitch_shift_background(
     instrumentals_track: StrPath,
     backup_vocals_track: StrPath,
@@ -1425,77 +1498,25 @@ def pitch_shift_background(
         ],
     )
 
-    shifted_instrumentals_path = instrumentals_path
-    shifted_backup_vocals_path = backup_vocals_path
+    shifted_instrumentals_path = pitch_shift(
+        instrumentals_path,
+        song_dir_path,
+        n_semitones,
+        "6_Instrumentals_Shifted",
+        "[~] Pitch-shifting instrumentals...",
+        progress_bar,
+        percentages[0],
+    )
 
-    if n_semitones != 0:
-        instrumentals_dict = {
-            "instrumentals_track": {
-                "name": instrumentals_path.name,
-                "hash_id": get_file_hash(instrumentals_path),
-            },
-            "n_semitones": n_semitones,
-        }
-        backup_vocals_dict = {
-            "backup_vocals_track": {
-                "name": backup_vocals_path.name,
-                "hash_id": get_file_hash(backup_vocals_path),
-            },
-            "n_semitones": n_semitones,
-        }
-
-        paths = [
-            get_unique_base_path(
-                song_dir_path,
-                prefix,
-                args_dict,
-                progress_bar=progress_bar,
-                percentage=percentages[0],
-            ).with_suffix(suffix)
-            for prefix, args_dict in [
-                ("6_Instrumentals_Shifted", instrumentals_dict),
-                ("6_Vocals_Backup_Shifted", backup_vocals_dict),
-            ]
-            for suffix in [".wav", ".json"]
-        ]
-
-        (
-            shifted_instrumentals_path,
-            shifted_instrumentals_json_path,
-            shifted_backup_vocals_path,
-            shifted_backup_vocals_json_path,
-        ) = paths
-
-        if not (
-            shifted_instrumentals_path.exists()
-            and shifted_instrumentals_json_path.exists()
-        ):
-            display_progress(
-                "[~] Pitch-shifting instrumentals",
-                percentages[0],
-                progress_bar,
-            )
-            _pitch_shift(
-                instrumentals_path,
-                shifted_instrumentals_path,
-                n_semitones,
-            )
-            json_dump(instrumentals_dict, shifted_instrumentals_json_path)
-        if not (
-            shifted_backup_vocals_path.exists()
-            and shifted_backup_vocals_json_path.exists()
-        ):
-            display_progress(
-                "[~] Pitch-shifting backup vocals",
-                percentages[1],
-                progress_bar,
-            )
-            _pitch_shift(
-                backup_vocals_path,
-                shifted_backup_vocals_path,
-                n_semitones,
-            )
-            json_dump(backup_vocals_dict, shifted_backup_vocals_json_path)
+    shifted_backup_vocals_path = pitch_shift(
+        backup_vocals_path,
+        song_dir_path,
+        n_semitones,
+        "6_Backup_Vocals_Shifted",
+        "[~] Pitch-shifting backup vocals...",
+        progress_bar,
+        percentages[1],
+    )
     return shifted_instrumentals_path, shifted_backup_vocals_path
 
 

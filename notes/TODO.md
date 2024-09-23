@@ -171,9 +171,6 @@ case source_type:
 ...
 ```
 
-* split `pitch_shift_background` into
-  * one base function `pitch_shift`
-  * and simple wrapper function `pitch_shift_background` that calls `pitch_shift`two times
 * Implement Pydantic models for the remaining steps in song cover generation pipeline and then instantiate arg dicts by doing `XMetaData.model_dump()`
   * Should we use `model_dump` with `mode = "json"`to ensure JSON-serializable dicts?
 * Support specific audio formats for intermediate audio file?

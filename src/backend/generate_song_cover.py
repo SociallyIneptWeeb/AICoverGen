@@ -865,16 +865,19 @@ def stereoize(
         args_dict = {
             "song": {"name": song_path.name, "hash_id": get_file_hash(song_path)},
         }
-        stereo_base_path = get_unique_base_path(
-            song_dir_path,
-            "0_Stereo",
-            args_dict,
-            progress_bar=progress_bar,
-            percentage=percentage,
-        )
-        stereo_path = stereo_base_path.with_suffix(".wav")
-        stereo_json_path = stereo_base_path.with_suffix(".json")
-        if not (stereo_path.exists() and stereo_json_path.exists()):
+
+        paths = [
+            get_unique_base_path(
+                song_dir_path,
+                "0_Stereo",
+                args_dict,
+                progress_bar=progress_bar,
+                percentage=percentage,
+            ).with_suffix(suffix)
+            for suffix in [".wav", ".json"]
+        ]
+        stereo_path, stereo_json_path = paths
+        if not all(path.exists() for path in paths):
             display_progress(
                 "[~] Converting song to stereo format...",
                 percentage,
@@ -982,33 +985,20 @@ def separate_vocals(
         "song": {"name": song_path.name, "hash_id": get_file_hash(song_path)},
     }
 
-    vocals_base_path = get_unique_base_path(
-        song_dir_path,
-        "1_Vocals",
-        args_dict,
-        progress_bar=progress_bar,
-        percentage=percentage,
-    )
+    paths = [
+        get_unique_base_path(
+            song_dir_path,
+            prefix,
+            args_dict,
+            progress_bar=progress_bar,
+            percentage=percentage,
+        ).with_suffix(suffix)
+        for prefix in ["1_Vocals", "1_Instrumental"]
+        for suffix in [".wav", ".json"]
+    ]
+    vocals_path, vocals_json_path, instrumentals_path, instrumentals_json_path = paths
 
-    instrumentals_base_path = get_unique_base_path(
-        song_dir_path,
-        "1_Instrumental",
-        args_dict,
-        progress_bar=progress_bar,
-        percentage=percentage,
-    )
-
-    vocals_path = vocals_base_path.with_suffix(".wav")
-    vocals_json_path = vocals_base_path.with_suffix(".json")
-    instrumentals_path = instrumentals_base_path.with_suffix(".wav")
-    instrumentals_json_path = instrumentals_base_path.with_suffix(".json")
-
-    if not (
-        vocals_path.exists()
-        and vocals_json_path.exists()
-        and instrumentals_path.exists()
-        and instrumentals_json_path.exists()
-    ):
+    if not all(path.exists() for path in paths):
         display_progress(
             "[~] Separating vocals from instrumentals...",
             percentage,
@@ -1069,33 +1059,25 @@ def separate_main_vocals(
         },
     }
 
-    main_vocals_base_path = get_unique_base_path(
-        song_dir_path,
-        "2_Vocals_Main",
-        args_dict,
-        progress_bar=progress_bar,
-        percentage=percentage,
-    )
+    paths = [
+        get_unique_base_path(
+            song_dir_path,
+            prefix,
+            args_dict,
+            progress_bar=progress_bar,
+            percentage=percentage,
+        ).with_suffix(suffix)
+        for prefix in ["2_Vocals_Main", "2_Vocals_Backup"]
+        for suffix in [".wav", ".json"]
+    ]
 
-    backup_vocals_base_path = get_unique_base_path(
-        song_dir_path,
-        "2_Vocals_Backup",
-        args_dict,
-        progress_bar=progress_bar,
-        percentage=percentage,
-    )
-
-    main_vocals_path = main_vocals_base_path.with_suffix(".wav")
-    main_vocals_json_path = main_vocals_base_path.with_suffix(".json")
-    backup_vocals_path = backup_vocals_base_path.with_suffix(".wav")
-    backup_vocals_json_path = backup_vocals_base_path.with_suffix(".json")
-
-    if not (
-        main_vocals_path.exists()
-        and main_vocals_json_path.exists()
-        and backup_vocals_path.exists()
-        and backup_vocals_json_path.exists()
-    ):
+    (
+        main_vocals_path,
+        main_vocals_json_path,
+        backup_vocals_path,
+        backup_vocals_json_path,
+    ) = paths
+    if not all(path.exists() for path in paths):
         display_progress(
             "[~] Separating main vocals from backup vocals...",
             percentage,
@@ -1155,33 +1137,26 @@ def dereverb(
         },
     }
 
-    vocals_dereverb_base_path = get_unique_base_path(
-        song_dir_path,
-        "3_Vocals_DeReverb",
-        args_dict,
-        progress_bar=progress_bar,
-        percentage=percentage,
-    )
-    vocals_reverb_base_path = get_unique_base_path(
-        song_dir_path,
-        "3_Vocals_Reverb",
-        args_dict,
-        progress_bar=progress_bar,
-        percentage=percentage,
-    )
+    paths = [
+        get_unique_base_path(
+            song_dir_path,
+            prefix,
+            args_dict,
+            progress_bar=progress_bar,
+            percentage=percentage,
+        ).with_suffix(suffix)
+        for prefix in ["3_Vocals_DeReverb", "3_Vocals_Reverb"]
+        for suffix in [".wav", ".json"]
+    ]
 
-    vocals_dereverb_path = vocals_dereverb_base_path.with_suffix(".wav")
-    vocals_dereverb_json_path = vocals_dereverb_base_path.with_suffix(".json")
+    (
+        vocals_dereverb_path,
+        vocals_dereverb_json_path,
+        vocals_reverb_path,
+        vocals_reverb_json_path,
+    ) = paths
 
-    vocals_reverb_path = vocals_reverb_base_path.with_suffix(".wav")
-    vocals_reverb_json_path = vocals_reverb_base_path.with_suffix(".json")
-
-    if not (
-        vocals_dereverb_path.exists()
-        and vocals_dereverb_json_path.exists()
-        and vocals_reverb_path.exists()
-        and vocals_reverb_json_path.exists()
-    ):
+    if not all(path.exists() for path in paths):
         display_progress("[~] De-reverbing vocals...", percentage, progress_bar)
         AUDIO_SEPARATOR.arch_specific_params["MDX"]["segment_size"] = 256
         AUDIO_SEPARATOR.load_model("Reverb_HQ_By_FoxJoy.onnx")
@@ -1280,17 +1255,20 @@ def convert(
         hop_length=hop_length,
     ).model_dump()
 
-    converted_vocals_base_path = get_unique_base_path(
-        song_dir_path,
-        "4_Vocals_Converted",
-        args_dict,
-        progress_bar=progress_bar,
-        percentage=percentage,
-    )
-    converted_vocals_path = converted_vocals_base_path.with_suffix(".wav")
-    converted_vocals_json_path = converted_vocals_base_path.with_suffix(".json")
+    paths = [
+        get_unique_base_path(
+            song_dir_path,
+            "4_Vocals_Converted",
+            args_dict,
+            progress_bar=progress_bar,
+            percentage=percentage,
+        ).with_suffix(suffix)
+        for suffix in [".wav", ".json"]
+    ]
 
-    if not (converted_vocals_path.exists() and converted_vocals_json_path.exists()):
+    converted_vocals_path, converted_vocals_json_path = paths
+
+    if not all(path.exists() for path in paths):
         display_progress("[~] Converting vocals using RVC...", percentage, progress_bar)
         _convert(
             vocals_path,
@@ -1364,18 +1342,20 @@ def postprocess(
         damping=damping,
     ).model_dump()
 
-    effected_vocals_base_path = get_unique_base_path(
-        song_dir_path,
-        "5_Vocals_Effected",
-        args_dict,
-        progress_bar=progress_bar,
-        percentage=percentage,
-    )
+    paths = [
+        get_unique_base_path(
+            song_dir_path,
+            "5_Vocals_Effected",
+            args_dict,
+            progress_bar=progress_bar,
+            percentage=percentage,
+        ).with_suffix(suffix)
+        for suffix in [".wav", ".json"]
+    ]
 
-    effected_vocals_path = effected_vocals_base_path.with_suffix(".wav")
-    effected_vocals_json_path = effected_vocals_base_path.with_suffix(".json")
+    effected_vocals_path, effected_vocals_json_path = paths
 
-    if not (effected_vocals_path.exists() and effected_vocals_json_path.exists()):
+    if not all(path.exists() for path in paths):
         display_progress(
             "[~] Applying audio effects to vocals...",
             percentage,
@@ -1449,21 +1429,35 @@ def pitch_shift_background(
             },
             "n_semitones": n_semitones,
         }
+        backup_vocals_dict = {
+            "backup_vocals_track": {
+                "name": backup_vocals_path.name,
+                "hash_id": get_file_hash(backup_vocals_path),
+            },
+            "n_semitones": n_semitones,
+        }
 
-        shifted_instrumentals_base_path = get_unique_base_path(
-            song_dir_path,
-            "6_Instrumentals_Shifted",
-            instrumentals_dict,
-            progress_bar=progress_bar,
-            percentage=percentages[0],
-        )
+        paths = [
+            get_unique_base_path(
+                song_dir_path,
+                prefix,
+                args_dict,
+                progress_bar=progress_bar,
+                percentage=percentages[0],
+            ).with_suffix(suffix)
+            for prefix, args_dict in [
+                ("6_Instrumentals_Shifted", instrumentals_dict),
+                ("6_Vocals_Backup_Shifted", backup_vocals_dict),
+            ]
+            for suffix in [".wav", ".json"]
+        ]
 
-        shifted_instrumentals_path = shifted_instrumentals_base_path.with_suffix(
-            ".wav",
-        )
-        shifted_instrumentals_json_path = shifted_instrumentals_base_path.with_suffix(
-            ".json",
-        )
+        (
+            shifted_instrumentals_path,
+            shifted_instrumentals_json_path,
+            shifted_backup_vocals_path,
+            shifted_backup_vocals_json_path,
+        ) = paths
 
         if not (
             shifted_instrumentals_path.exists()
@@ -1480,26 +1474,6 @@ def pitch_shift_background(
                 n_semitones,
             )
             json_dump(instrumentals_dict, shifted_instrumentals_json_path)
-
-        backup_vocals_dict = {
-            "backup_vocals_track": {
-                "name": backup_vocals_path.name,
-                "hash_id": get_file_hash(backup_vocals_path),
-            },
-            "n_semitones": n_semitones,
-        }
-
-        shifted_backup_vocals_base_path = get_unique_base_path(
-            song_dir_path,
-            "6_Vocals_Backup_Shifted",
-            backup_vocals_dict,
-            progress_bar=progress_bar,
-            percentage=percentages[1],
-        )
-        shifted_backup_vocals_path = shifted_backup_vocals_base_path.with_suffix(".wav")
-        shifted_backup_vocals_json_path = shifted_backup_vocals_base_path.with_suffix(
-            ".json",
-        )
         if not (
             shifted_backup_vocals_path.exists()
             and shifted_backup_vocals_json_path.exists()
@@ -1647,17 +1621,20 @@ def mix_song_cover(
         "output_format": output_format,
     }
 
-    mix_base_path = get_unique_base_path(
-        song_dir_path,
-        "7_Mix",
-        args_dict,
-        progress_bar=progress_bar,
-        percentage=percentage,
-    )
-    mix_path = mix_base_path.with_suffix("." + output_format)
-    mix_json_path = mix_base_path.with_suffix(".json")
+    paths = [
+        get_unique_base_path(
+            song_dir_path,
+            "7_Mix",
+            args_dict,
+            progress_bar=progress_bar,
+            percentage=percentage,
+        ).with_suffix(suffix)
+        for suffix in ["." + output_format, ".json"]
+    ]
 
-    if not (mix_path.exists() and mix_json_path.exists()):
+    mix_path, mix_json_path = paths
+
+    if not all(path.exists() for path in paths):
         display_progress(
             "[~] Mixing main vocals, instrumentals, and backup vocals...",
             percentage,

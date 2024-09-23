@@ -171,15 +171,6 @@ case source_type:
 ...
 ```
 
-* Use list comprehension to DRY code in cover pipeline functions
-  * Use "double-nested" list comprehension that first makes the necessary calls to `get_unique_base_path` in inner loop and then for each appends `'.wav'` and `'.json'` in outer loop.
-  * Apply `all` to result of previous list-comprehension to simplify file path checks
-* Make helper function for path validation
-  * signature is `validate(files, dirs)`
-  * both `files` and `dirs` should have types `list[StrPath]`
-  * should check that each item in `files` and `dirs`
-    * is not `None`
-    * either points to a valid existing file or directory
 * Make helper function that both calls `AUDIO_SEPARATOR.separate` and moves its result(s) to the right folder
 * split `pitch_shift_background` into
   * one base function `pitch_shift`
@@ -190,9 +181,7 @@ case source_type:
 * Implement Pydantic models for the remaining steps in song cover generation pipeline and then instantiate arg dicts by doing `XMetaData.model_dump()`
   * Should we use `model_dump` with `mode = "json"`to ensure JSON-serializable dicts?
 * Support specific audio formats for intermediate audio file?
-  * We might also want to disable gradio saving input audio to temporary files, as those are always in `.wav` format
-    * See more [here](#temporary-gradio-files)
-  * Also, it might require some more code to support custom output format for all pipeline functions.
+  * it might require some more code to support custom output format for all pipeline functions.
 
 * expand `_get_model_name` so that it can take any audio file in an intermediate audio folder as input (DIFFICULT TO IMPLEMENT)
   * Function should then try to recursively

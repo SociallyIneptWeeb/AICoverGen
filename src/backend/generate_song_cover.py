@@ -126,6 +126,7 @@ def _validate_exists(
                 raise NotFoundError(entity=entity, location=path)
         case (
             Entity.SONG
+            | Entity.AUDIO_TRACK
             | Entity.VOCALS_TRACK
             | Entity.INSTRUMENTALS_TRACK
             | Entity.MAIN_VOCALS_TRACK
@@ -947,6 +948,98 @@ def retrieve_song(
     return song_path, song_dir_path
 
 
+def separate_audio(
+    audio_track: StrPath,
+    song_dir: StrPath,
+    primary_prefix: str,
+    secondary_prefix: str,
+    model_name: str,
+    segment_size: int,
+    display_msg: str,
+    progress_bar: gr.Progress | None = None,
+    percentage: float = 0.5,
+) -> tuple[Path, Path]:
+    """
+    Separate an audio track into a primary stem and a secondary stem.
+
+    Parameters
+    ----------
+    audio_track : StrPath
+        The path to the audio track to separate.
+    song_dir : StrPath
+        The path to the song directory where the separated primary stem
+        and secondary stem will be saved.
+    primary_prefix : str
+        The prefix to use for the primary stem.
+    secondary_prefix : str
+        The prefix to use for the secondary stem.
+    model_name : str
+        The name of the model to use for audio separation.
+    segment_size : int
+        The segment size to use for audio separation.
+    display_msg : str
+        The message to display when separating the audio track.
+    progress_bar : gr.Progress, optional
+        Gradio progress bar to update.
+    percentage : float, default=0.5
+        Percentage to display in the progress bar.
+
+    Returns
+    -------
+    primary_path : Path
+        The path to the separated primary stem.
+    secondary_path : Path
+        The path to the separated secondary stem.
+
+    """
+    audio_path, song_dir_path = _validate_all_exist(
+        [(audio_track, Entity.AUDIO_TRACK), (song_dir, Entity.SONG_DIR)],
+    )
+
+    args_dict = {
+        "audio_track": {
+            "name": audio_path.name,
+            "hash_id": get_file_hash(audio_path),
+        },
+    }
+
+    paths = [
+        get_unique_base_path(
+            song_dir_path,
+            prefix,
+            args_dict,
+            progress_bar=progress_bar,
+            percentage=percentage,
+        ).with_suffix(suffix)
+        for prefix in [primary_prefix, secondary_prefix]
+        for suffix in [".wav", ".json"]
+    ]
+
+    (
+        primary_path,
+        primary_json_path,
+        secondary_path,
+        secondary_json_path,
+    ) = paths
+
+    if not all(path.exists() for path in paths):
+
+        display_progress(display_msg, percentage, progress_bar)
+        AUDIO_SEPARATOR.arch_specific_params["MDX"]["segment_size"] = segment_size
+        AUDIO_SEPARATOR.load_model(model_name)
+        primary_temp_name, secondary_temp_name = AUDIO_SEPARATOR.separate(
+            str(audio_path),
+        )
+        primary_temp_path = INTERMEDIATE_AUDIO_BASE_DIR / primary_temp_name
+        secondary_temp_path = INTERMEDIATE_AUDIO_BASE_DIR / secondary_temp_name
+        primary_temp_path.rename(primary_path)
+        secondary_temp_path.rename(secondary_path)
+        json_dump(args_dict, primary_json_path)
+        json_dump(args_dict, secondary_json_path)
+
+    return primary_path, secondary_path
+
+
 def separate_vocals(
     song: StrPath,
     song_dir: StrPath,
@@ -981,40 +1074,17 @@ def separate_vocals(
         [(song, Entity.SONG), (song_dir, Entity.SONG_DIR)],
     )
 
-    args_dict = {
-        "song": {"name": song_path.name, "hash_id": get_file_hash(song_path)},
-    }
-
-    paths = [
-        get_unique_base_path(
-            song_dir_path,
-            prefix,
-            args_dict,
-            progress_bar=progress_bar,
-            percentage=percentage,
-        ).with_suffix(suffix)
-        for prefix in ["1_Vocals", "1_Instrumental"]
-        for suffix in [".wav", ".json"]
-    ]
-    vocals_path, vocals_json_path, instrumentals_path, instrumentals_json_path = paths
-
-    if not all(path.exists() for path in paths):
-        display_progress(
-            "[~] Separating vocals from instrumentals...",
-            percentage,
-            progress_bar,
-        )
-        AUDIO_SEPARATOR.arch_specific_params["MDX"]["segment_size"] = 512
-        AUDIO_SEPARATOR.load_model("UVR-MDX-NET-Voc_FT.onnx")
-        instrumentals_temp_name, vocals_temp_name = AUDIO_SEPARATOR.separate(
-            str(song_path),
-        )
-        instrumentals_temp_path = INTERMEDIATE_AUDIO_BASE_DIR / instrumentals_temp_name
-        vocals_temp_path = INTERMEDIATE_AUDIO_BASE_DIR / vocals_temp_name
-        instrumentals_temp_path.rename(instrumentals_path)
-        vocals_temp_path.rename(vocals_path)
-        json_dump(args_dict, vocals_json_path)
-        json_dump(args_dict, instrumentals_json_path)
+    instrumentals_path, vocals_path = separate_audio(
+        song_path,
+        song_dir_path,
+        "1_Instrumentals",
+        "1_Vocals",
+        "UVR-MDX-NET-Voc_FT.onnx",
+        512,
+        "[~] Separating vocals from instrumentals...",
+        progress_bar,
+        percentage,
+    )
     return vocals_path, instrumentals_path
 
 
@@ -1052,49 +1122,18 @@ def separate_main_vocals(
     vocals_path, song_dir_path = _validate_all_exist(
         [(vocals_track, Entity.VOCALS_TRACK), (song_dir, Entity.SONG_DIR)],
     )
-    args_dict = {
-        "vocals_track": {
-            "name": vocals_path.name,
-            "hash_id": get_file_hash(vocals_path),
-        },
-    }
 
-    paths = [
-        get_unique_base_path(
-            song_dir_path,
-            prefix,
-            args_dict,
-            progress_bar=progress_bar,
-            percentage=percentage,
-        ).with_suffix(suffix)
-        for prefix in ["2_Vocals_Main", "2_Vocals_Backup"]
-        for suffix in [".wav", ".json"]
-    ]
-
-    (
-        main_vocals_path,
-        main_vocals_json_path,
-        backup_vocals_path,
-        backup_vocals_json_path,
-    ) = paths
-    if not all(path.exists() for path in paths):
-        display_progress(
-            "[~] Separating main vocals from backup vocals...",
-            percentage,
-            progress_bar,
-        )
-        AUDIO_SEPARATOR.arch_specific_params["MDX"]["segment_size"] = 512
-        AUDIO_SEPARATOR.load_model("UVR_MDXNET_KARA_2.onnx")
-        main_vocals_temp_name, backup_vocals_temp_name = AUDIO_SEPARATOR.separate(
-            str(vocals_path),
-        )
-        main_vocals_temp_path = INTERMEDIATE_AUDIO_BASE_DIR / main_vocals_temp_name
-        backup_vocals_temp_path = INTERMEDIATE_AUDIO_BASE_DIR / backup_vocals_temp_name
-        main_vocals_temp_path.rename(main_vocals_path)
-        backup_vocals_temp_path.rename(backup_vocals_path)
-        json_dump(args_dict, main_vocals_json_path)
-        json_dump(args_dict, backup_vocals_json_path)
-    return main_vocals_path, backup_vocals_path
+    return separate_audio(
+        vocals_path,
+        song_dir_path,
+        "2_Vocals_Main",
+        "2_Vocals_Backup",
+        "UVR_MDXNET_KARA_2.onnx",
+        512,
+        "[~] Separating main vocals from backup vocals...",
+        progress_bar,
+        percentage,
+    )
 
 
 def dereverb(
@@ -1130,49 +1169,17 @@ def dereverb(
         [(vocals_track, Entity.VOCALS_TRACK), (song_dir, Entity.SONG_DIR)],
     )
 
-    args_dict = {
-        "vocals_track": {
-            "name": vocals_path.name,
-            "hash_id": get_file_hash(vocals_path),
-        },
-    }
-
-    paths = [
-        get_unique_base_path(
-            song_dir_path,
-            prefix,
-            args_dict,
-            progress_bar=progress_bar,
-            percentage=percentage,
-        ).with_suffix(suffix)
-        for prefix in ["3_Vocals_DeReverb", "3_Vocals_Reverb"]
-        for suffix in [".wav", ".json"]
-    ]
-
-    (
-        vocals_dereverb_path,
-        vocals_dereverb_json_path,
-        vocals_reverb_path,
-        vocals_reverb_json_path,
-    ) = paths
-
-    if not all(path.exists() for path in paths):
-        display_progress("[~] De-reverbing vocals...", percentage, progress_bar)
-        AUDIO_SEPARATOR.arch_specific_params["MDX"]["segment_size"] = 256
-        AUDIO_SEPARATOR.load_model("Reverb_HQ_By_FoxJoy.onnx")
-        vocals_dereverb_temp_name, vocals_reverb_temp_name = AUDIO_SEPARATOR.separate(
-            str(vocals_path),
-        )
-        vocals_dereverb_temp_path = (
-            INTERMEDIATE_AUDIO_BASE_DIR / vocals_dereverb_temp_name
-        )
-        vocals_reverb_temp_path = INTERMEDIATE_AUDIO_BASE_DIR / vocals_reverb_temp_name
-        vocals_dereverb_temp_path.rename(vocals_dereverb_path)
-        vocals_reverb_temp_path.rename(vocals_reverb_path)
-
-        json_dump(args_dict, vocals_dereverb_json_path)
-        json_dump(args_dict, vocals_reverb_json_path)
-    return vocals_dereverb_path, vocals_reverb_path
+    return separate_audio(
+        vocals_path,
+        song_dir_path,
+        "3_Vocals_DeReverb",
+        "3_Vocals_Reverb",
+        "Reverb_HQ_By_FoxJoy.onnx",
+        256,
+        "[~] De-reverbing vocals...",
+        progress_bar,
+        percentage,
+    )
 
 
 def convert(

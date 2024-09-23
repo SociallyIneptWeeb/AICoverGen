@@ -3,7 +3,7 @@
 * test that app works through notebook
 
 * should specify in colab notebook which link in output of last cell should be clicked
-
+* we should make str enum for vocal separation model names and perhaps also for audio stem names?
 * should rename instances of "models" to "voice models"
 
 * have some default models available (ie.e do not need to be downloaded)
@@ -171,13 +171,9 @@ case source_type:
 ...
 ```
 
-* Make helper function that both calls `AUDIO_SEPARATOR.separate` and moves its result(s) to the right folder
 * split `pitch_shift_background` into
   * one base function `pitch_shift`
   * and simple wrapper function `pitch_shift_background` that calls `pitch_shift`two times
-* refactor the three audio separation functions (`separate_vocals`,`separate_main_vocals` and `dereverb`) into
-  * One base function `separate_audio`
-  * Three wrapper functions (`separate_vocals`,`separate_main_vocals` and `dereverb`) that calls `pitch_shift` with simple parameters
 * Implement Pydantic models for the remaining steps in song cover generation pipeline and then instantiate arg dicts by doing `XMetaData.model_dump()`
   * Should we use `model_dump` with `mode = "json"`to ensure JSON-serializable dicts?
 * Support specific audio formats for intermediate audio file?

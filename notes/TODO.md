@@ -90,6 +90,11 @@
 
 * Split components under vocal conversion options into two rows
   * always show "hop length", "detection algorithm" and "protect rate" on second row
+* consider always showing intermediate audio tracks accordion.
+
+* Consider running one click generation as multiple events consecutively instead of one event, so that we can apply the gpu limit to just the steps that are actually using gpu
+  * With this solution we should probably save directly the output of the each step to its corresponding intermediate audio track
+  * An issue is that we might run into the bug with audio components not updating when using a chain of event listeners and having them update the intermediate audio tracks in turn.
 
 ### Common
 
@@ -101,10 +106,6 @@
   * Can output of js function be fed into python function in the same event listener definition?
   * If not possible then try to at least remove dummy input component and dummy/passthrough function in the confirmation event listener
   * See more info here: <https://github.com/gradio-app/gradio/issues/3324>
-* get rid of button blocking by setting `concurrency_id = "gpu"` + `concurrency_count=1` for reach event listener calling a function using the gpu
-  * Need to figure out which backend functions then actually use GPU
-  * In the future we might increase `concurrenct_count` when more GPUs become available
-  * NOTE: we still want to continue to block the checkbox for showing intermediate audio files while the one-click generation is running.
 * use `Block.queue` with parameter `max_size` set to a non-null value and `default_concurrency_limit` increased in order to improve user responsiveness
 * use `Block.launch()` with `max_file_size` to prevent too large uploads
 * experiment with `show_error` parameters on `Block.launch()`
@@ -506,6 +507,9 @@ case source_type:
   * See <https://www.gradio.app/guides/deploying-gradio-with-docker>
 * Host on own web-server with Nginx
   * see <https://www.gradio.app/guides/running-gradio-on-your-web-server-with-nginx>
+
+* Consider having concurrency limit be dynamic, i.e. instead of always being 1 for jobs using gpu consider having it depend upon what resources are available.
+  * We can app set the GPU_CONCURRENCY limit to be os.envrion["GPU_CONCURRENCY_LIMIT] or 1 and then pass GPU_CONCURRENCY as input to places where event listeners are defined
 
 ## Colab notebook
 

@@ -1,7 +1,7 @@
 """Module which defines extra types for the backend."""
 
 from collections.abc import Callable
-from enum import StrEnum
+from enum import StrEnum, auto
 
 from pydantic import BaseModel, ConfigDict
 
@@ -98,9 +98,9 @@ ModelMetaDataList = list[list[str | list[ModelTagName]]]
 class SourceType(StrEnum):
     """The type of source providing the song to generate a cover of."""
 
-    URL = "url"
-    FILE = "file"
-    SONG_DIR = "song_dir"
+    URL = auto()
+    FILE = auto()
+    SONG_DIR = auto()
 
 
 class AudioExtInternal(StrEnum):

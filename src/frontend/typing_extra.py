@@ -3,15 +3,19 @@
 from typing import Any, TypedDict
 
 from collections.abc import Callable, Sequence
-from enum import StrEnum
-
-from typing_extra import AudioExt, F0Method
+from enum import StrEnum, auto
 
 DropdownChoices = Sequence[str | int | float | tuple[str, str | int | float]] | None
 
 DropdownValue = (
     str | int | float | Sequence[str | int | float] | Callable[..., Any] | None
 )
+
+
+class ConcurrencyId(StrEnum):
+    """Enumeration of possible concurrency identifiers."""
+
+    GPU = auto()
 
 
 class SourceType(StrEnum):
@@ -85,28 +89,3 @@ class UpdateAudioKwArgs(TypedDict, total=False):
     """
 
     value: str | None
-
-
-RunPipelineHarnessArgs = tuple[
-    str,  # source
-    str,  # model_name
-    int,  # n_octaves
-    int,  # n_semitones
-    F0Method,  # f0_method
-    float,  # index_rate
-    int,  # filter_radius
-    float,  # rms_mix_rate
-    float,  # protect
-    int,  # hop_length
-    float,  # room_size
-    float,  # wet_level
-    float,  # dry_level
-    float,  # damping
-    int,  # main_gain
-    int,  # inst_gain
-    int,  # backup_gain
-    int,  # output_sr
-    AudioExt,  # output_format
-    str,  # output_name
-    bool,  # return_immediate
-]

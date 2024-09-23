@@ -641,6 +641,8 @@ def init_song_dir(
         raise NotProvidedError(entity=Entity.SOURCE, ui_msg=UIMessage.NO_SOURCE)
     source_path = Path(source)
 
+    display_progress("[~] Initializing song directory...", percentage, progress_bar)
+
     # if source is a path to an existing song directory
     if source_path.is_dir():
         if source_path.parent != INTERMEDIATE_AUDIO_BASE_DIR:
@@ -656,8 +658,6 @@ def init_song_dir(
         )
         source_type = SourceType.SONG_DIR
         return source_path, source_type
-
-    display_progress("[~] Creating new song directory...", percentage, progress_bar)
 
     # if source is a URL
     if urlparse(source).scheme == "https":

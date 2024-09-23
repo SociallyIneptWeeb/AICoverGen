@@ -22,8 +22,6 @@ from backend.generate_song_cover import (
 
 from frontend.common import (
     PROGRESS_BAR,
-    EventArgs,
-    chain_event_listeners,
     exception_harness,
     show_hop_slider,
     toggle_visible_component,
@@ -32,7 +30,7 @@ from frontend.common import (
     update_song_cover_name,
     update_value,
 )
-from frontend.typing_extra import SourceType
+from frontend.typing_extra import ConcurrencyId, SourceType
 
 if TYPE_CHECKING:
     from frontend.typing_extra import UpdateAudioKwArgs
@@ -75,7 +73,6 @@ def _update_audio(
 
 
 def render(
-    generate_btns: Sequence[gr.Button],
     song_dirs: Sequence[gr.Dropdown],
     cached_song_1click: gr.Dropdown,
     cached_song_multi: gr.Dropdown,
@@ -88,9 +85,6 @@ def render(
 
     Parameters
     ----------
-    generate_btns : Sequence[gr.Button]
-        Buttons used for audio generation in the
-        "One-click generation" tab and the "Multi-step generation" tab.
     song_dirs : Sequence[gr.Dropdown]
         Dropdowns for selecting song directories in the
         "Multi-step generation" tab.
@@ -112,17 +106,6 @@ def render(
 
     """
     with gr.Tab("Multi-step generation"):
-        (
-            retrieve_song_btn,
-            separate_vocals_btn,
-            separate_main_vocals_btn,
-            dereverb_vocals_btn,
-            convert_vocals_btn,
-            postprocess_vocals_btn,
-            pitch_shift_background_btn,
-            mix_btn,
-            _,
-        ) = generate_btns
         (
             separate_vocals_dir,
             separate_main_vocals_dir,
@@ -263,17 +246,6 @@ def render(
             for value in transfer_defaults
         ]
 
-        (
-            retrieve_song_reset_btn,
-            separate_vocals_reset_btn,
-            separate_main_vocals_reset_btn,
-            dereverb_vocals_reset_btn,
-            convert_vocals_reset_btn,
-            postprocess_vocals_reset_btn,
-            pitch_shift_background_reset_btn,
-            mix_reset_btn,
-        ) = [gr.Button(value="Reset settings", render=False) for _ in range(8)]
-
         with gr.Accordion("Step 0: song retrieval", open=True):
             gr.Markdown("")
             gr.Markdown("**Inputs**")
@@ -323,53 +295,39 @@ def render(
             gr.Markdown("**Outputs**")
             song_output.render()
             song_transfer.render()
-            retrieve_song_reset_btn.render()
+            retrieve_song_reset_btn = gr.Button("Reset settings")
             retrieve_song_reset_btn.click(
                 lambda: gr.Dropdown(value=song_transfer_default),
                 outputs=song_transfer,
                 show_progress="hidden",
             )
 
-            retrieve_song_btn.render()
+            retrieve_song_btn = gr.Button("Retrieve song", variant="primary")
 
-            retrieve_song_event_args_list = [
-                EventArgs(
+            retrieve_song_btn_click = (
+                retrieve_song_btn.click(
                     partial(
                         exception_harness(retrieve_song),
                         progress_bar=PROGRESS_BAR,
                     ),
-                    inputs=[source],
+                    inputs=source,
                     outputs=[song_output, current_song_dir],
-                ),
-                EventArgs(
+                )
+                .then(
                     partial(
                         update_cached_songs,
                         len(song_dirs) + 2,
                         value_indices=range(len(song_dirs)),
                     ),
-                    inputs=[current_song_dir],
+                    inputs=current_song_dir,
                     outputs=([*song_dirs, cached_song_multi, cached_song_1click]),
-                    name="then",
                     show_progress="hidden",
-                ),
-                EventArgs(
+                )
+                .then(
                     partial(update_cached_songs, 1, [], [0]),
-                    outputs=[intermediate_audio],
-                    name="then",
+                    outputs=intermediate_audio,
                     show_progress="hidden",
-                ),
-                EventArgs(
-                    partial(_update_audio, len(input_tracks)),
-                    inputs=[song_transfer, song_output],
-                    outputs=input_tracks,
-                    name="then",
-                    show_progress="hidden",
-                ),
-            ]
-            chain_event_listeners(
-                retrieve_song_btn,
-                retrieve_song_event_args_list,
-                generate_btns,
+                )
             )
         with gr.Accordion("Step 1: vocals/instrumentals separation", open=False):
             gr.Markdown("")
@@ -386,7 +344,7 @@ def render(
                     instrumentals_track_output.render()
                     instrumentals_transfer.render()
 
-            separate_vocals_reset_btn.render()
+            separate_vocals_reset_btn = gr.Button("Reset settings")
             separate_vocals_reset_btn.click(
                 lambda: [
                     gr.Dropdown(value=vocals_transfer_default),
@@ -395,35 +353,20 @@ def render(
                 outputs=[vocals_transfer, instrumentals_transfer],
                 show_progress="hidden",
             )
-            separate_vocals_btn.render()
+            separate_vocals_btn = gr.Button(
+                "Separate vocals/instrumentals",
+                variant="primary",
+            )
 
-            separate_vocals_event_args_list = [
-                EventArgs(
-                    partial(
-                        exception_harness(separate_vocals),
-                        progress_bar=PROGRESS_BAR,
-                    ),
-                    inputs=[song_input, separate_vocals_dir],
-                    outputs=[vocals_track_output, instrumentals_track_output],
+            separate_vocals_btn_click = separate_vocals_btn.click(
+                partial(
+                    exception_harness(separate_vocals),
+                    progress_bar=PROGRESS_BAR,
                 ),
-                *(
-                    EventArgs(
-                        partial(_update_audio, len(input_tracks)),
-                        inputs=[transfer, output_track],
-                        outputs=input_tracks,
-                        name="then",
-                        show_progress="hidden",
-                    )
-                    for transfer, output_track in [
-                        (vocals_transfer, vocals_track_output),
-                        (instrumentals_transfer, instrumentals_track_output),
-                    ]
-                ),
-            ]
-            chain_event_listeners(
-                separate_vocals_btn,
-                separate_vocals_event_args_list,
-                generate_btns,
+                inputs=[song_input, separate_vocals_dir],
+                outputs=[vocals_track_output, instrumentals_track_output],
+                concurrency_limit=1,
+                concurrency_id=ConcurrencyId.GPU,
             )
 
         with gr.Accordion("Step 2: main vocals/ backup vocals separation", open=False):
@@ -440,7 +383,7 @@ def render(
                     backup_vocals_track_output.render()
                     backup_vocals_transfer.render()
 
-            separate_main_vocals_reset_btn.render()
+            separate_main_vocals_reset_btn = gr.Button("Reset settings")
             separate_main_vocals_reset_btn.click(
                 lambda: [
                     gr.Dropdown(value=main_vocals_transfer_default),
@@ -449,36 +392,20 @@ def render(
                 outputs=[main_vocals_transfer, backup_vocals_transfer],
                 show_progress="hidden",
             )
-            separate_main_vocals_btn.render()
+            separate_main_vocals_btn = gr.Button(
+                "Separate main/backup vocals",
+                variant="primary",
+            )
 
-            separate_main_vocals_event_args_list = [
-                EventArgs(
-                    partial(
-                        exception_harness(separate_main_vocals),
-                        progress_bar=PROGRESS_BAR,
-                    ),
-                    inputs=[vocals_track_input, separate_main_vocals_dir],
-                    outputs=[main_vocals_track_output, backup_vocals_track_output],
+            separate_main_vocals_btn_click = separate_main_vocals_btn.click(
+                partial(
+                    exception_harness(separate_main_vocals),
+                    progress_bar=PROGRESS_BAR,
                 ),
-                *(
-                    EventArgs(
-                        partial(_update_audio, len(input_tracks)),
-                        inputs=[transfer, output_track],
-                        outputs=input_tracks,
-                        name="then",
-                        show_progress="hidden",
-                    )
-                    for transfer, output_track in [
-                        (main_vocals_transfer, main_vocals_track_output),
-                        (backup_vocals_transfer, backup_vocals_track_output),
-                    ]
-                ),
-            ]
-
-            chain_event_listeners(
-                separate_main_vocals_btn,
-                separate_main_vocals_event_args_list,
-                generate_btns,
+                inputs=[vocals_track_input, separate_main_vocals_dir],
+                outputs=[main_vocals_track_output, backup_vocals_track_output],
+                concurrency_limit=1,
+                concurrency_id=ConcurrencyId.GPU,
             )
 
         with gr.Accordion("Step 3: vocal cleanup", open=False):
@@ -495,7 +422,7 @@ def render(
                     reverb_track_output.render()
                     reverb_transfer.render()
 
-            dereverb_vocals_reset_btn.render()
+            dereverb_vocals_reset_btn = gr.Button("Reset settings")
             dereverb_vocals_reset_btn.click(
                 lambda: [
                     gr.Dropdown(value=dereverbed_vocals_transfer_default),
@@ -504,35 +431,17 @@ def render(
                 outputs=[dereverbed_vocals_transfer, reverb_transfer],
                 show_progress="hidden",
             )
-            dereverb_vocals_btn.render()
-            dereverb_vocals_event_args_list = [
-                EventArgs(
-                    partial(
-                        exception_harness(dereverb),
-                        progress_bar=PROGRESS_BAR,
-                    ),
-                    inputs=[main_vocals_track_input, dereverb_vocals_dir],
-                    outputs=[dereverbed_vocals_track_output, reverb_track_output],
-                ),
-                *(
-                    EventArgs(
-                        partial(_update_audio, len(input_tracks)),
-                        inputs=[transfer, output_track],
-                        outputs=input_tracks,
-                        name="then",
-                        show_progress="hidden",
-                    )
-                    for transfer, output_track in [
-                        (dereverbed_vocals_transfer, dereverbed_vocals_track_output),
-                        (reverb_transfer, reverb_track_output),
-                    ]
-                ),
-            ]
+            dereverb_vocals_btn = gr.Button("De-reverb vocals", variant="primary")
 
-            chain_event_listeners(
-                dereverb_vocals_btn,
-                dereverb_vocals_event_args_list,
-                generate_btns,
+            dereverb_vocals_btn_click = dereverb_vocals_btn.click(
+                partial(
+                    exception_harness(dereverb),
+                    progress_bar=PROGRESS_BAR,
+                ),
+                inputs=[main_vocals_track_input, dereverb_vocals_dir],
+                outputs=[dereverbed_vocals_track_output, reverb_track_output],
+                concurrency_limit=1,
+                concurrency_id=ConcurrencyId.GPU,
             )
         with gr.Accordion("Step 4: vocal conversion", open=False):
             gr.Markdown("")
@@ -642,7 +551,7 @@ def render(
             gr.Markdown("**Outputs**")
             converted_vocals_track_output.render()
             converted_vocals_transfer.render()
-            convert_vocals_reset_btn.render()
+            convert_vocals_reset_btn = gr.Button("Reset settings")
             convert_vocals_reset_btn.click(
                 lambda: [
                     0,
@@ -668,43 +577,28 @@ def render(
                 ],
                 show_progress="hidden",
             )
-            convert_vocals_btn.render()
-            convert_vocals_event_args_list = [
-                EventArgs(
-                    partial(
-                        exception_harness(convert),
-                        progress_bar=PROGRESS_BAR,
-                    ),
-                    inputs=[
-                        dereverbed_vocals_track_input,
-                        convert_vocals_dir,
-                        model_multi,
-                        n_octaves,
-                        n_semitones,
-                        f0_method,
-                        index_rate,
-                        filter_radius,
-                        rms_mix_rate,
-                        protect,
-                        hop_length,
-                    ],
-                    outputs=[converted_vocals_track_output],
+            convert_vocals_btn = gr.Button("Convert vocals", variant="primary")
+            convert_vocals_btn_click = convert_vocals_btn.click(
+                partial(
+                    exception_harness(convert),
+                    progress_bar=PROGRESS_BAR,
                 ),
-                EventArgs(
-                    partial(_update_audio, len(input_tracks)),
-                    inputs=[
-                        converted_vocals_transfer,
-                        converted_vocals_track_output,
-                    ],
-                    outputs=input_tracks,
-                    name="then",
-                    show_progress="hidden",
-                ),
-            ]
-            chain_event_listeners(
-                convert_vocals_btn,
-                convert_vocals_event_args_list,
-                generate_btns,
+                inputs=[
+                    dereverbed_vocals_track_input,
+                    convert_vocals_dir,
+                    model_multi,
+                    n_octaves,
+                    n_semitones,
+                    f0_method,
+                    index_rate,
+                    filter_radius,
+                    rms_mix_rate,
+                    protect,
+                    hop_length,
+                ],
+                outputs=converted_vocals_track_output,
+                concurrency_id=ConcurrencyId.GPU,
+                concurrency_limit=1,
             )
         with gr.Accordion("Step 5: vocal post-processing", open=False):
             gr.Markdown("")
@@ -748,7 +642,7 @@ def render(
             effected_vocals_track_output.render()
             effected_vocals_transfer.render()
 
-            postprocess_vocals_reset_btn.render()
+            postprocess_vocals_reset_btn = gr.Button("Reset settings")
             postprocess_vocals_reset_btn.click(
                 lambda: [
                     0.15,
@@ -766,38 +660,21 @@ def render(
                 ],
                 show_progress="hidden",
             )
-            postprocess_vocals_btn.render()
-            postprocess_vocals_event_args_list = [
-                EventArgs(
-                    partial(
-                        exception_harness(postprocess),
-                        progress_bar=PROGRESS_BAR,
-                    ),
-                    inputs=[
-                        converted_vocals_track_input,
-                        postprocess_vocals_dir,
-                        room_size,
-                        wet_level,
-                        dry_level,
-                        damping,
-                    ],
-                    outputs=[effected_vocals_track_output],
+            postprocess_vocals_btn = gr.Button("Post-process vocals", variant="primary")
+            postprocess_vocals_btn_click = postprocess_vocals_btn.click(
+                partial(
+                    exception_harness(postprocess),
+                    progress_bar=PROGRESS_BAR,
                 ),
-                EventArgs(
-                    partial(_update_audio, len(input_tracks)),
-                    inputs=[
-                        effected_vocals_transfer,
-                        effected_vocals_track_output,
-                    ],
-                    outputs=input_tracks,
-                    name="then",
-                    show_progress="hidden",
-                ),
-            ]
-            chain_event_listeners(
-                postprocess_vocals_btn,
-                postprocess_vocals_event_args_list,
-                generate_btns,
+                inputs=[
+                    converted_vocals_track_input,
+                    postprocess_vocals_dir,
+                    room_size,
+                    wet_level,
+                    dry_level,
+                    damping,
+                ],
+                outputs=effected_vocals_track_output,
             )
         with gr.Accordion("Step 6: pitch shift of background tracks", open=False):
             gr.Markdown("")
@@ -826,7 +703,7 @@ def render(
                     shifted_backup_vocals_track_output.render()
                     shifted_backup_vocals_transfer.render()
 
-            pitch_shift_background_reset_btn.render()
+            pitch_shift_background_reset_btn = gr.Button("Reset settings")
             pitch_shift_background_reset_btn.click(
                 lambda: [
                     0,
@@ -840,49 +717,26 @@ def render(
                 ],
                 show_progress="hidden",
             )
-            pitch_shift_background_btn.render()
-            pitch_shift_background_event_args_list = [
-                EventArgs(
-                    partial(
-                        exception_harness(pitch_shift_background),
-                        progress_bar=PROGRESS_BAR,
-                    ),
-                    inputs=[
-                        instrumentals_track_input,
-                        backup_vocals_track_input,
-                        pitch_shift_background_dir,
-                        n_semitones_background,
-                    ],
-                    outputs=[
-                        shifted_instrumentals_track_output,
-                        shifted_backup_vocals_track_output,
-                    ],
-                ),
-                *(
-                    EventArgs(
-                        partial(_update_audio, len(input_tracks)),
-                        inputs=[transfer, output_track],
-                        outputs=input_tracks,
-                        name="then",
-                        show_progress="hidden",
-                    )
-                    for transfer, output_track in [
-                        (
-                            shifted_instrumentals_transfer,
-                            shifted_instrumentals_track_output,
-                        ),
-                        (
-                            shifted_backup_vocals_transfer,
-                            shifted_backup_vocals_track_output,
-                        ),
-                    ]
-                ),
-            ]
+            pitch_shift_background_btn = gr.Button(
+                "Pitch shift background",
+                variant="primary",
+            )
 
-            chain_event_listeners(
-                pitch_shift_background_btn,
-                pitch_shift_background_event_args_list,
-                generate_btns,
+            pitch_shift_background_btn_click = pitch_shift_background_btn.click(
+                partial(
+                    exception_harness(pitch_shift_background),
+                    progress_bar=PROGRESS_BAR,
+                ),
+                inputs=[
+                    instrumentals_track_input,
+                    backup_vocals_track_input,
+                    pitch_shift_background_dir,
+                    n_semitones_background,
+                ],
+                outputs=[
+                    shifted_instrumentals_track_output,
+                    shifted_backup_vocals_track_output,
+                ],
             )
         with gr.Accordion("Step 7: song mixing", open=False):
             gr.Markdown("")
@@ -922,7 +776,7 @@ def render(
             gr.Markdown("**Outputs**")
             song_cover_output.render()
             song_cover_transfer.render()
-            mix_reset_btn.render()
+            mix_reset_btn = gr.Button("Reset settings")
             mix_reset_btn.click(
                 lambda: [
                     0,
@@ -942,44 +796,79 @@ def render(
                 ],
                 show_progress="hidden",
             )
-            mix_btn.render()
-            mix_btn_event_args_list = [
-                EventArgs(
-                    partial(
-                        exception_harness(mix_song_cover),
-                        progress_bar=PROGRESS_BAR,
-                    ),
-                    inputs=[
-                        effected_vocals_track_input,
-                        shifted_instrumentals_track_input,
-                        shifted_backup_vocals_track_input,
-                        mix_dir,
-                        main_gain,
-                        inst_gain,
-                        backup_gain,
-                        output_sr,
-                        output_format,
-                        output_name,
-                    ],
-                    outputs=[song_cover_output],
-                ),
-                EventArgs(
-                    partial(update_output_audio, 1, [], [0]),
-                    outputs=[output_audio],
-                    name="then",
-                    show_progress="hidden",
-                ),
-                EventArgs(
-                    partial(_update_audio, len(input_tracks)),
-                    inputs=[song_cover_transfer, song_cover_output],
-                    outputs=input_tracks,
-                    name="then",
-                    show_progress="hidden",
-                ),
-            ]
-
-            chain_event_listeners(
-                mix_btn,
-                mix_btn_event_args_list,
-                generate_btns,
+            mix_btn = gr.Button("Mix song cover", variant="primary")
+            mix_btn_click = mix_btn.click(
+                partial(exception_harness(mix_song_cover), progress_bar=PROGRESS_BAR),
+                inputs=[
+                    effected_vocals_track_input,
+                    shifted_instrumentals_track_input,
+                    shifted_backup_vocals_track_input,
+                    mix_dir,
+                    main_gain,
+                    inst_gain,
+                    backup_gain,
+                    output_sr,
+                    output_format,
+                    output_name,
+                ],
+                outputs=song_cover_output,
+            ).then(
+                partial(update_output_audio, 1, [], [0]),
+                outputs=output_audio,
+                show_progress="hidden",
             )
+
+        for click_event, transfer_inputs_list in [
+            (retrieve_song_btn_click, [(song_transfer, song_output)]),
+            (
+                separate_vocals_btn_click,
+                [
+                    (vocals_transfer, vocals_track_output),
+                    (instrumentals_transfer, instrumentals_track_output),
+                ],
+            ),
+            (
+                separate_main_vocals_btn_click,
+                [
+                    (main_vocals_transfer, main_vocals_track_output),
+                    (backup_vocals_transfer, backup_vocals_track_output),
+                ],
+            ),
+            (
+                dereverb_vocals_btn_click,
+                [
+                    (dereverbed_vocals_transfer, dereverbed_vocals_track_output),
+                    (reverb_transfer, reverb_track_output),
+                ],
+            ),
+            (
+                convert_vocals_btn_click,
+                [(converted_vocals_transfer, converted_vocals_track_output)],
+            ),
+            (
+                postprocess_vocals_btn_click,
+                [(effected_vocals_transfer, effected_vocals_track_output)],
+            ),
+            (
+                pitch_shift_background_btn_click,
+                [
+                    (
+                        shifted_instrumentals_transfer,
+                        shifted_instrumentals_track_output,
+                    ),
+                    (
+                        shifted_backup_vocals_transfer,
+                        shifted_backup_vocals_track_output,
+                    ),
+                ],
+            ),
+            (mix_btn_click, [(song_cover_transfer, song_cover_output)]),
+        ]:
+            click_event_temp = click_event
+            for transfer_inputs in transfer_inputs_list:
+                click_event_temp = click_event_temp.then(
+                    partial(_update_audio, len(input_tracks)),
+                    inputs=transfer_inputs,
+                    outputs=input_tracks,
+                    show_progress="hidden",
+                )

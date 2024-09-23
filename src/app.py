@@ -111,25 +111,9 @@ with gr.Blocks(
     ]
     model_delete = gr.Dropdown(label="Voice models", multiselect=True, render=False)
 
-    generate_btns = [
-        gr.Button(label, variant="primary", render=False, scale=scale)
-        for label, scale, in [
-            ("Retrieve song", 1),
-            ("Separate vocals/instrumentals", 1),
-            ("Separate main/backup vocals", 1),
-            ("De-reverb vocals", 1),
-            ("Convert vocals", 1),
-            ("Post-process vocals", 1),
-            ("Pitch shift background", 1),
-            ("Mix song", 1),
-            ("Generate", 2),
-        ]
-    ]
-
     # main tab
     with gr.Tab("Generate song covers"):
         render_one_click_tab(
-            generate_btns,
             song_dirs,
             cached_song_1click,
             cached_song_multi,
@@ -138,7 +122,6 @@ with gr.Blocks(
             output_audio,
         )
         render_multi_step_tab(
-            generate_btns,
             song_dirs,
             cached_song_1click,
             cached_song_multi,

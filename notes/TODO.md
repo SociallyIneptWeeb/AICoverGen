@@ -160,17 +160,6 @@
 
 ### `generate_song_cover.py`
 
-* Use a case match expression in `retrieve_song`
-
-```python
-case source_type:
-    match SourceType.SONG_DIR
-        song_path = _get_input_audio_path(song_dir_path)
-    match SourceType.URL
-    ...
-...
-```
-
 * Implement Pydantic models for the remaining steps in song cover generation pipeline and then instantiate arg dicts by doing `XMetaData.model_dump()`
   * Should we use `model_dump` with `mode = "json"`to ensure JSON-serializable dicts?
 * Support specific audio formats for intermediate audio file?

@@ -3,15 +3,11 @@ Module defining common utility functions and classes for the
 frontend.
 """
 
-from typing import Any, Concatenate, Literal
+from typing import Any, Concatenate
 
 from collections.abc import Callable, Sequence
-from dataclasses import dataclass
-from functools import partial
 
 import gradio as gr
-from gradio.components.base import Component
-from gradio.events import Dependency
 
 from exceptions import NotProvidedError
 
@@ -353,32 +349,6 @@ def toggle_visible_component(
             return tuple(gr.update(**update_args) for update_args in update_args_list)
 
 
-def _toggle_component_interactivity(
-    num_components: int,
-    interactive: bool,
-) -> dict[str, Any] | tuple[dict[str, Any], ...]:
-    """
-    Toggle interactivity of one or more components.
-
-    Parameters
-    ----------
-    num_components : int
-        Number of components to toggle interactivity for.
-    interactive : bool
-        Whether to make the components interactive or not.
-
-    Returns
-    -------
-    dict[str, Any] | tuple[dict[Str, Any],...]
-        A single dictionary or a tuple of dictionaries that update the
-        interactivity of the components.
-
-    """
-    if num_components == 1:
-        return gr.update(interactive=interactive)
-    return tuple(gr.update(interactive=interactive) for _ in range(num_components))
-
-
 def show_hop_slider(f0_method: F0Method) -> gr.Slider:
     """
     Show or hide a slider component based on the provided pitch
@@ -449,145 +419,3 @@ def update_song_cover_name(
     else:
         update_args[update_key] = None
     return gr.Textbox(**update_args)
-
-
-@dataclass
-class EventArgs:
-    """
-    Arguments for setting up an event listener.
-
-    Attributes
-    ----------
-    fn : Callable[..., Any]
-        Function to call when an event is triggered.
-    inputs : Sequence[Component], optional
-        Components to serve as inputs to the function.
-    outputs : Sequence[Component], optional
-        Components where outputs of the function are stored.
-    name : Literal["click", "success", "then"], default="success"
-        Name of the type of event to listen for.
-    show_progress : Literal["full", "minimal", "hidden"], default="full"
-        Level of the progress bar animation to show when the event is
-        triggered.
-
-    """
-
-    fn: Callable[..., Any]
-    inputs: Sequence[Component] | None = None
-    outputs: Sequence[Component] | None = None
-    name: Literal["click", "success", "then"] = "success"
-    show_progress: Literal["full", "minimal", "hidden"] = "full"
-
-
-def _chain_event_listeners(
-    component: Component,
-    event_args_seq: Sequence[EventArgs],
-) -> Dependency | Component:
-    """
-    Set up a chain of event listeners on a component.
-
-    Parameters
-    ----------
-    component : Component
-        The component to set up a chain of event listeners on.
-    event_args_seq : Sequence[EventArgs]
-        Sequence of event arguments to set up event listeners with.
-
-    Returns
-    -------
-    Dependency | Component
-        The last dependency in the chain of event listeners.
-
-    Raises
-    ------
-    ValueError
-        If no event arguments are provided.
-
-    """
-    if len(event_args_seq) == 0:
-        err_msg = (
-            "The sequence of event arguments is empty. At least one set of event"
-            " arguments must be provided."
-        )
-        raise ValueError(err_msg)
-    dependency: Component | Dependency = component
-    for event_args in event_args_seq:
-        event_listener = getattr(dependency, event_args.name)
-        dependency = event_listener(
-            event_args.fn,
-            inputs=event_args.inputs,
-            outputs=event_args.outputs,
-            show_progress=event_args.show_progress,
-        )
-    return dependency
-
-
-def chain_event_listeners(
-    component: Component,
-    event_args_seq: Sequence[EventArgs],
-    toggled_components: Sequence[Component],
-) -> Dependency | Component:
-    """
-    Set up a chain of event listeners on a component with interactivity
-    toggled for a set of other components.
-
-    While the chain of event listeners is executing, the other
-    components are made non-interactive. When the chain of event
-    listeners has finished executing, the other components are made
-    interactive again.
-
-    Parameters
-    ----------
-    component : Component
-        The component to set up event listeners on.
-
-    event_args_seq : Sequence[EventArgs]
-        Sequence of event arguments to set up event listeners with.
-
-    toggled_components : Sequence[Component]
-        Components to toggle interactivity for.
-
-    Returns
-    -------
-    Dependency | Component
-        The last dependency in the chain of event listeners.
-
-    Raises
-    ------
-    ValueError
-        If no event arguments are provided.
-
-    """
-    if len(event_args_seq) == 0:
-        err_msg = (
-            "The sequence of event arguments is empty. At least one set of event"
-            " arguments must be provided."
-        )
-        raise ValueError(err_msg)
-
-    disable_event_args = EventArgs(
-        partial(
-            _toggle_component_interactivity,
-            len(toggled_components),
-            interactive=False,
-        ),
-        outputs=toggled_components,
-        name="click",
-        show_progress="hidden",
-    )
-    enable_event_args = EventArgs(
-        partial(
-            _toggle_component_interactivity,
-            len(toggled_components),
-            interactive=True,
-        ),
-        outputs=toggled_components,
-        name="then",
-        show_progress="hidden",
-    )
-    event_args_seq_augmented = [
-        disable_event_args,
-        *event_args_seq,
-        enable_event_args,
-    ]
-    return _chain_event_listeners(component, event_args_seq_augmented)

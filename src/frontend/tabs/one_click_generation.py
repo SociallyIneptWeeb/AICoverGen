@@ -2,7 +2,6 @@
 
 from collections.abc import Sequence
 from functools import partial
-from pathlib import Path
 
 import gradio as gr
 
@@ -12,8 +11,6 @@ from backend.generate_song_cover import run_pipeline
 
 from frontend.common import (
     PROGRESS_BAR,
-    EventArgs,
-    chain_event_listeners,
     exception_harness,
     show_hop_slider,
     toggle_visible_component,
@@ -22,63 +19,31 @@ from frontend.common import (
     update_song_cover_name,
     update_value,
 )
-from frontend.typing_extra import RunPipelineHarnessArgs, SourceType
-
-
-def _run_pipeline_harness(*args: *RunPipelineHarnessArgs) -> tuple[Path | None, ...]:
-    """
-    Run the song cover generation pipeline in a harness which displays
-    a progress bar, re-raises exceptions as Gradio errors, and returns
-    the output of the pipeline.
-
-    If the pipeline outputs only a single path, then that output is
-    extended with a None value for each intermediate audio component.
-
-    Parameters
-    ----------
-    *args : *RunPipelineHarnessArgs
-        Arguments to forward to the song cover generation pipeline.
-
-    Returns
-    -------
-    tuple[str | None, ...]
-        The output of the song cover generation pipeline, potentially
-        extended with None values.
-
-    """
-    res = exception_harness(run_pipeline)(*args, progress_bar=PROGRESS_BAR)
-    if isinstance(res, tuple):
-        return res
-    return (None,) * 11 + (res,)
+from frontend.typing_extra import ConcurrencyId, SourceType
 
 
 def _toggle_intermediate_audio(
     visible: bool,
-) -> list[gr.Accordion | gr.Audio]:
+) -> list[gr.Accordion]:
     """
-    Toggle the visibility of intermediate audio accordions and their
-    associated components.
+    Toggle the visibility of intermediate audio accordions.
 
     Parameters
     ----------
     visible : bool
-        Visibility status of the intermediate audio accordions and
-        their associated components.
+        Visibility status of the intermediate audio accordions.
 
     Returns
     -------
-    list[gr.Accordion | gr.Audio]
-        The intermediate audio accordions and their associated
-        components with updated visibility.
+    list[gr.Accordion]
+        The intermediate audio accordions.
 
     """
-    audio_components = [gr.Audio(value=None) for _ in range(11)]
     accordions = [gr.Accordion(open=False) for _ in range(7)]
-    return [gr.Accordion(visible=visible, open=False), *accordions, *audio_components]
+    return [gr.Accordion(visible=visible, open=False), *accordions]
 
 
 def render(
-    generate_btns: Sequence[gr.Button],
     song_dirs: Sequence[gr.Dropdown],
     cached_song_1click: gr.Dropdown,
     cached_song_multi: gr.Dropdown,
@@ -91,9 +56,6 @@ def render(
 
     Parameters
     ----------
-    generate_btns : Sequence[gr.Button]
-        Buttons used for audio generation in the
-        "One-click generation" tab and the "Multi-step generation" tab.
     song_dirs : Sequence[gr.Dropdown]
         Dropdowns for selecting song directories in the
         "Multi-step generation" tab.
@@ -115,17 +77,6 @@ def render(
 
     """
     with gr.Tab("One-click generation"):
-        (
-            _,
-            _,
-            _,
-            _,
-            _,
-            _,
-            _,
-            _,
-            generate_btn,
-        ) = generate_btns
 
         with gr.Accordion("Main options"), gr.Row():
             with gr.Column():
@@ -341,9 +292,8 @@ def render(
                     label="Show intermediate audio",
                     value=False,
                     info=(
-                        "Show generated intermediate audio tracks when song cover"
-                        " generation completes. Leave unchecked to optimize"
-                        " performance."
+                        "Show intermediate audio tracks generated during song cover"
+                        " generation."
                     ),
                 )
 
@@ -398,7 +348,7 @@ def render(
             backup_vocals_shifted_track,
         ) = intermediate_audio_tracks
         with gr.Accordion(
-            "Access intermediate audio tracks",
+            "Intermediate audio tracks",
             open=False,
             visible=False,
         ) as intermediate_audio_accordion:
@@ -434,71 +384,64 @@ def render(
             outputs=[
                 intermediate_audio_accordion,
                 *intermediate_audio_accordions,
-                *intermediate_audio_tracks,
             ],
             show_progress="hidden",
         )
 
         with gr.Row():
             reset_btn = gr.Button(value="Reset settings", scale=2)
-            generate_btn.render()
+            generate_btn = gr.Button("Generate", scale=2, variant="primary")
             song_cover = gr.Audio(label="Song cover", scale=3)
 
-        generate_event_args_list = [
-            EventArgs(
-                _run_pipeline_harness,
-                inputs=[
-                    source,
-                    model_1click,
-                    n_octaves,
-                    n_semitones,
-                    f0_method,
-                    index_rate,
-                    filter_radius,
-                    rms_mix_rate,
-                    protect,
-                    hop_length,
-                    room_size,
-                    wet_level,
-                    dry_level,
-                    damping,
-                    main_gain,
-                    inst_gain,
-                    backup_gain,
-                    output_sr,
-                    output_format,
-                    output_name,
-                    show_intermediate_audio,
-                ],
-                outputs=[*intermediate_audio_tracks, song_cover],
+        generate_btn.click(
+            partial(
+                exception_harness(run_pipeline),
+                return_intermediate=True,
+                progress_bar=PROGRESS_BAR,
             ),
-            EventArgs(
-                partial(
-                    update_cached_songs,
-                    3 + len(song_dirs),
-                    [],
-                    [2],
-                ),
-                outputs=[
-                    cached_song_1click,
-                    cached_song_multi,
-                    intermediate_audio,
-                    *song_dirs,
-                ],
-                name="then",
-                show_progress="hidden",
+            inputs=[
+                source,
+                model_1click,
+                n_octaves,
+                n_semitones,
+                f0_method,
+                index_rate,
+                filter_radius,
+                rms_mix_rate,
+                protect,
+                hop_length,
+                room_size,
+                wet_level,
+                dry_level,
+                damping,
+                main_gain,
+                inst_gain,
+                backup_gain,
+                output_sr,
+                output_format,
+                output_name,
+            ],
+            outputs=[*intermediate_audio_tracks, song_cover],
+            concurrency_limit=1,
+            concurrency_id=ConcurrencyId.GPU,
+        ).success(
+            partial(
+                update_cached_songs,
+                3 + len(song_dirs),
+                [],
+                [2],
             ),
-            EventArgs(
-                partial(update_output_audio, 1, [], [0]),
-                outputs=[output_audio],
-                name="then",
-                show_progress="hidden",
-            ),
-        ]
-        chain_event_listeners(
-            generate_btn,
-            generate_event_args_list,
-            [*generate_btns, show_intermediate_audio],
+            outputs=[
+                cached_song_1click,
+                cached_song_multi,
+                intermediate_audio,
+                *song_dirs,
+            ],
+            show_progress="hidden",
+        ).then(
+            partial(update_output_audio, 1, [], [0]),
+            outputs=[output_audio],
+            show_progress="hidden",
         )
         reset_btn.click(
             lambda: [

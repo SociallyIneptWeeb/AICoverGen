@@ -924,27 +924,21 @@ def retrieve_song(
     ------
     NotProvidedError
         If no source is provided.
-    NotFoundError
-        if the source type is a song directory and no input audio file
-        is found in that directory.
 
     """
     if not source:
         raise NotProvidedError(entity=Entity.SOURCE, ui_msg=UIMessage.NO_SOURCE)
 
     song_dir_path, source_type = init_song_dir(source, progress_bar, percentage)
+    song_path = _get_input_audio_path(song_dir_path)
 
-    match source_type:
-        case SourceType.SONG_DIR:
-            song_path = _get_input_audio_path(song_dir_path)
-            if not song_path:
-                raise NotFoundError(Entity.SONG, "song directory")
-        case SourceType.URL:
+    if not song_path:
+        if source_type == SourceType.URL:
             display_progress("[~] Downloading song...", percentage, progress_bar)
             song_url = source.split("&")[0]
             song_path = _get_youtube_audio(song_url, song_dir_path)
 
-        case SourceType.FILE:
+        else:
             display_progress("[~] Copying song...", percentage, progress_bar)
             source_path = Path(source)
             song_name = f"0_{source_path.name}"

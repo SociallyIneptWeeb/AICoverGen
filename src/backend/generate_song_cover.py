@@ -6,7 +6,9 @@ using RVC.
 import gc
 import operator
 import shutil
+from collections.abc import Sequence
 from contextlib import suppress
+from itertools import starmap
 from logging import WARNING
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
@@ -74,6 +76,92 @@ AUDIO_SEPARATOR = Separator(
     },
     mdxc_params={"segment_size": 256, "batch_size": 1, "overlap": 2},
 )
+
+
+def _validate_exists(
+    identifier: StrPath,
+    entity: Entity,
+) -> Path:
+    """
+    Validate that the provided identifier is not none and that it
+    identifies an existing entity, which can be either a voice model,
+    a song directory or an audio track.
+
+    Parameters
+    ----------
+    identifier : StrPath
+        The identifier to validate.
+    entity : Entity
+        The entity that the identifier should identify.
+
+    Returns
+    -------
+    Path
+        The path to the identified entity.
+
+    Raises
+    ------
+    NotProvidedError
+        If the identifier is None.
+    NotFoundError
+        If the identifier does not identify an existing entity.
+    VoiceModelNotFoundError
+        If the identifier does not identify an existing voice model.
+    NotImplementedError
+        If the provided entity is not supported.
+
+    """
+    match entity:
+        case Entity.MODEL_NAME:
+            if not identifier:
+                raise NotProvidedError(entity=entity, ui_msg=UIMessage.NO_VOICE_MODEL)
+            path = RVC_MODELS_DIR / identifier
+            if not path.is_dir():
+                raise VoiceModelNotFoundError(str(identifier))
+        case Entity.SONG_DIR:
+            if not identifier:
+                raise NotProvidedError(entity=entity, ui_msg=UIMessage.NO_SONG_DIR)
+            path = Path(identifier)
+            if not path.is_dir():
+                raise NotFoundError(entity=entity, location=path)
+        case (
+            Entity.SONG
+            | Entity.VOCALS_TRACK
+            | Entity.INSTRUMENTALS_TRACK
+            | Entity.MAIN_VOCALS_TRACK
+            | Entity.BACKUP_VOCALS_TRACK
+        ):
+            if not identifier:
+                raise NotProvidedError(entity=entity)
+            path = Path(identifier)
+            if not path.is_file():
+                raise NotFoundError(entity=entity, location=path)
+        case _:
+            error_msg = f"Entity {entity} not supported."
+            raise NotImplementedError(error_msg)
+    return path
+
+
+def _validate_all_exist(
+    identifier_entity_pairs: Sequence[tuple[StrPath, Entity]],
+) -> list[Path]:
+    """
+    Validate that all provided identifiers are not none and that they
+    identify existing entities, which can be either voice models, song
+    directories or audio tracks.
+
+    Parameters
+    ----------
+    identifier_entity_pairs : Sequence[tuple[StrPath, Entity]]
+        The pairs of identifiers and entities to validate.
+
+    Returns
+    -------
+    list[Path]
+        The paths to the identified entities.
+
+    """
+    return list(starmap(_validate_exists, identifier_entity_pairs))
 
 
 def _get_input_audio_path(directory: StrPath) -> Path | None:
@@ -249,16 +337,12 @@ def _get_rvc_files(model_name: str) -> tuple[Path, Path | None]:
 
     Raises
     ------
-    VoiceModelNotFoundError
-        If no voice model with the provided name exists.
     NotFoundError
         If no model file exists in the voice model directory.
 
 
     """
-    model_dir_path = RVC_MODELS_DIR / model_name
-    if not model_dir_path.exists():
-        raise VoiceModelNotFoundError(model_name)
+    model_dir_path = _validate_exists(model_name, Entity.MODEL_NAME)
     file_path_map = {
         ext: path
         for path in model_dir_path.iterdir()
@@ -769,25 +853,10 @@ def stereoize(
     Path
         The path to the song in stereo format.
 
-    Raises
-    ------
-    NotProvidedError
-        If a song path or song directory path is not provided.
-    NotFoundError
-        If the provided path to a song or song directory does not point
-        to an existing file or directory.
-
     """
-    if not song:
-        raise NotProvidedError(entity=Entity.SONG)
-    song_path = Path(song)
-    if not (song_path).is_file():
-        raise NotFoundError(entity=Entity.SONG, location=song_path)
-    if not song_dir:
-        raise NotProvidedError(entity=Entity.SONG_DIR, ui_msg=UIMessage.NO_SONG_DIR)
-    song_dir_path = Path(song_dir)
-    if not song_dir_path.is_dir():
-        raise NotFoundError(entity=Entity.SONG_DIR, location=song_dir_path)
+    song_path, song_dir_path = _validate_all_exist(
+        [(song, Entity.SONG), (song_dir, Entity.SONG_DIR)],
+    )
 
     stereo_path = song_path
 
@@ -903,25 +972,11 @@ def separate_vocals(
     instrumentals_track : Path
         The path to the separated instrumentals track.
 
-    Raises
-    ------
-    NotProvidedError
-        If a song path or song directory path is not provided.
-    NotFoundError
-        If the provided path to a song or song directory does not point
-        to an existing file or directory.
 
     """
-    if not song:
-        raise NotProvidedError(entity=Entity.SONG)
-    song_path = Path(song)
-    if not song_path.is_file():
-        raise NotFoundError(entity=Entity.SONG, location=song_path)
-    if not song_dir:
-        raise NotProvidedError(entity=Entity.SONG_DIR, ui_msg=UIMessage.NO_SONG_DIR)
-    song_dir_path = Path(song_dir)
-    if not song_dir_path.is_dir():
-        raise NotFoundError(entity=Entity.SONG_DIR, location=song_dir_path)
+    song_path, song_dir_path = _validate_all_exist(
+        [(song, Entity.SONG), (song_dir, Entity.SONG_DIR)],
+    )
 
     args_dict = {
         "song": {"name": song_path.name, "hash_id": get_file_hash(song_path)},
@@ -1002,26 +1057,11 @@ def separate_main_vocals(
     backup_vocals_track : Path
         The path to the separated backup vocals track.
 
-    Raises
-    ------
-    NotProvidedError
-        If a vocals track path or song directory path is not provided.
-    NotFoundError
-        If the provided path to a vocals track or song directory
-        does not point to an existing file or directory.
 
     """
-    if not vocals_track:
-        raise NotProvidedError(entity=Entity.VOCALS_TRACK)
-    vocals_path = Path(vocals_track)
-    if not vocals_path.is_file():
-        raise NotFoundError(entity=Entity.VOCALS_TRACK, location=vocals_path)
-    if not song_dir:
-        raise NotProvidedError(entity=Entity.SONG_DIR, ui_msg=UIMessage.NO_SONG_DIR)
-    song_dir_path = Path(song_dir)
-    if not song_dir_path.is_dir():
-        raise NotFoundError(entity=Entity.SONG_DIR, location=song_dir_path)
-
+    vocals_path, song_dir_path = _validate_all_exist(
+        [(vocals_track, Entity.VOCALS_TRACK), (song_dir, Entity.SONG_DIR)],
+    )
     args_dict = {
         "vocals_track": {
             "name": vocals_path.name,
@@ -1103,25 +1143,10 @@ def dereverb(
     vocals_reverb_track : Path
         The path to the vocals reverb track.
 
-    Raises
-    ------
-    NotProvidedError
-        If a vocals track path or a song directory path is not provided.
-    NotFoundError
-        If the provided path to a vocals track or song directory
-        does not point to an existing file or directory.
-
     """
-    if not vocals_track:
-        raise NotProvidedError(entity=Entity.VOCALS_TRACK)
-    vocals_path = Path(vocals_track)
-    if not vocals_path.is_file():
-        raise NotFoundError(entity=Entity.VOCALS_TRACK, location=vocals_path)
-    if not song_dir:
-        raise NotProvidedError(entity=Entity.SONG_DIR, ui_msg=UIMessage.NO_SONG_DIR)
-    song_dir_path = Path(song_dir)
-    if not song_dir_path.is_dir():
-        raise NotFoundError(entity=Entity.SONG_DIR, location=song_dir_path)
+    vocals_path, song_dir_path = _validate_all_exist(
+        [(vocals_track, Entity.VOCALS_TRACK), (song_dir, Entity.SONG_DIR)],
+    )
 
     args_dict = {
         "vocals_track": {
@@ -1229,32 +1254,14 @@ def convert(
     Path
         The path to the converted vocals track.
 
-    Raises
-    ------
-    NotProvidedError
-        If a vocals track path, a song directory path or a model name
-        is not provided.
-    NotFoundError
-        If the provided path to a vocals track or song directory
-        does not point to an existing file or directory.
-
     """
-    if not vocals_track:
-        raise NotProvidedError(entity=Entity.VOCALS_TRACK)
-    vocals_path = Path(vocals_track)
-    if not vocals_path.is_file():
-        raise NotFoundError(entity=Entity.VOCALS_TRACK, location=vocals_path)
-    if not song_dir:
-        raise NotProvidedError(entity=Entity.SONG_DIR, ui_msg=UIMessage.NO_SONG_DIR)
-    song_dir_path = Path(song_dir)
-    if not song_dir_path.is_dir():
-        raise NotFoundError(entity=Entity.SONG_DIR, location=song_dir_path)
-
-    if not model_name:
-        raise NotProvidedError(
-            entity=Entity.MODEL_NAME,
-            ui_msg=UIMessage.NO_VOICE_MODEL,
-        )
+    vocals_path, song_dir_path, _ = _validate_all_exist(
+        [
+            (vocals_track, Entity.VOCALS_TRACK),
+            (song_dir, Entity.SONG_DIR),
+            (model_name, Entity.MODEL_NAME),
+        ],
+    )
 
     n_semitones = n_octaves * 12 + n_semitones
 
@@ -1274,7 +1281,7 @@ def convert(
     ).model_dump()
 
     converted_vocals_base_path = get_unique_base_path(
-        song_dir,
+        song_dir_path,
         "4_Vocals_Converted",
         args_dict,
         progress_bar=progress_bar,
@@ -1341,25 +1348,10 @@ def postprocess(
     Path
         The path to the effected vocals track.
 
-    Raises
-    ------
-    NotProvidedError
-        If a vocals track path or a song directory path is not provided.
-    NotFoundError
-        If the provided path to a vocals track or song directory does
-        not point to an existing file or directory.
-
     """
-    if not vocals_track:
-        raise NotProvidedError(entity=Entity.VOCALS_TRACK)
-    vocals_path = Path(vocals_track)
-    if not vocals_path.is_file():
-        raise NotFoundError(entity=Entity.VOCALS_TRACK, location=vocals_path)
-    if not song_dir:
-        raise NotProvidedError(entity=Entity.SONG_DIR, ui_msg=UIMessage.NO_SONG_DIR)
-    song_dir_path = Path(song_dir)
-    if not song_dir_path.is_dir():
-        raise NotFoundError(entity=Entity.SONG_DIR, location=song_dir_path)
+    vocals_path, song_dir_path = _validate_all_exist(
+        [(vocals_track, Entity.VOCALS_TRACK), (song_dir, Entity.SONG_DIR)],
+    )
 
     args_dict = EffectedVocalsMetaData(
         vocals_track=FileMetaData(
@@ -1373,7 +1365,7 @@ def postprocess(
     ).model_dump()
 
     effected_vocals_base_path = get_unique_base_path(
-        song_dir,
+        song_dir_path,
         "5_Vocals_Effected",
         args_dict,
         progress_bar=progress_bar,
@@ -1437,39 +1429,14 @@ def pitch_shift_background(
     shifted:backup_vocals_track : Path
         The path to the pitch-shifted backup vocals track.
 
-    Raises
-    ------
-    NotProvidedError
-        If a path to an instrumentals track, a backup vocals track or a
-        song directory is not provided.
-    NotFoundError
-        If the provided path to an instrumentals track, a backup vocals
-        track, a main vocals track or a song directory does not point to
-        an existing file or directory.
-
     """
-    if not instrumentals_track:
-        raise NotProvidedError(entity=Entity.INSTRUMENTALS_TRACK)
-    instrumentals_path = Path(instrumentals_track)
-    if not instrumentals_path.is_file():
-        raise NotFoundError(
-            entity=Entity.INSTRUMENTALS_TRACK,
-            location=instrumentals_path,
-        )
-
-    if not backup_vocals_track:
-        raise NotProvidedError(entity=Entity.BACKUP_VOCALS_TRACK)
-    backup_vocals_path = Path(backup_vocals_track)
-    if not backup_vocals_path.is_file():
-        raise NotFoundError(
-            entity=Entity.BACKUP_VOCALS_TRACK,
-            location=backup_vocals_path,
-        )
-    if not song_dir:
-        raise NotProvidedError(entity=Entity.SONG_DIR, ui_msg=UIMessage.NO_SONG_DIR)
-    song_dir_path = Path(song_dir)
-    if not song_dir_path.is_dir():
-        raise NotFoundError(entity=Entity.SONG_DIR, location=song_dir_path)
+    instrumentals_path, backup_vocals_path, song_dir_path = _validate_all_exist(
+        [
+            (instrumentals_track, Entity.INSTRUMENTALS_TRACK),
+            (backup_vocals_track, Entity.BACKUP_VOCALS_TRACK),
+            (song_dir, Entity.SONG_DIR),
+        ],
+    )
 
     shifted_instrumentals_path = instrumentals_path
     shifted_backup_vocals_path = backup_vocals_path
@@ -1648,45 +1615,18 @@ def mix_song_cover(
     Path
         The path to the song cover.
 
-    Raises
-    ------
-    NotProvidedError
-        If a main vocals track path, an instrumentals track path, a
-        backup vocals track path or a song directory path is not
-        provided.
-    NotFoundError
-        If the provided path to a main vocals track, an instrumentals
-        track, a backup vocals track or a song directory does not point
-        to an existing file or directory.
 
     """
-    if not main_vocals_track:
-        raise NotProvidedError(entity=Entity.MAIN_VOCALS_TRACK)
-    main_vocals_path = Path(main_vocals_track)
-    if not main_vocals_path.is_file():
-        raise NotFoundError(entity=Entity.MAIN_VOCALS_TRACK, location=main_vocals_path)
-    if not instrumentals_track:
-        raise NotProvidedError(entity=Entity.INSTRUMENTALS_TRACK)
-    instrumentals_path = Path(instrumentals_track)
-    if not instrumentals_path.is_file():
-        raise NotFoundError(
-            entity=Entity.INSTRUMENTALS_TRACK,
-            location=instrumentals_path,
+    main_vocals_path, instrumentals_path, backup_vocals_path, song_dir_path = (
+        _validate_all_exist(
+            [
+                (main_vocals_track, Entity.MAIN_VOCALS_TRACK),
+                (instrumentals_track, Entity.INSTRUMENTALS_TRACK),
+                (backup_vocals_track, Entity.BACKUP_VOCALS_TRACK),
+                (song_dir, Entity.SONG_DIR),
+            ],
         )
-    if not backup_vocals_track:
-        raise NotProvidedError(entity=Entity.BACKUP_VOCALS_TRACK)
-    backup_vocals_path = Path(backup_vocals_track)
-    if not backup_vocals_path.is_file():
-        raise NotFoundError(
-            entity=Entity.BACKUP_VOCALS_TRACK,
-            location=backup_vocals_path,
-        )
-    if not song_dir:
-        raise NotProvidedError(entity=Entity.SONG_DIR, ui_msg=UIMessage.NO_SONG_DIR)
-    song_dir_path = Path(song_dir)
-    if not song_dir_path.is_dir():
-        raise NotFoundError(entity=Entity.SONG_DIR, location=song_dir_path)
-
+    )
     args_dict = {
         "main_vocals_track": {
             "name": main_vocals_path.name,
@@ -1841,22 +1781,8 @@ def run_pipeline(
         `return_intermediate=True`, also the paths to any intermediate
         audio files that were generated.
 
-    Raises
-    ------
-    NotProvidedError
-        If no model name is provided.
-    VoiceModelNotFoundError
-        If no voice model directory with the provided name exists.
-
     """
-    if not model_name:
-        raise NotProvidedError(
-            entity=Entity.MODEL_NAME,
-            ui_msg=UIMessage.NO_VOICE_MODEL,
-        )
-    model_path = RVC_MODELS_DIR / model_name
-    if not model_path.is_dir():
-        raise VoiceModelNotFoundError(model_name)
+    _validate_exists(model_name, Entity.MODEL_NAME)
     display_progress("[~] Starting song cover generation pipeline...", 0, progress_bar)
     song, song_dir = retrieve_song(
         source,

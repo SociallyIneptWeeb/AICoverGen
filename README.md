@@ -87,6 +87,16 @@ Run the following command to download the required MDXNET vocal separation model
 python src/download_models.py
 ```
 
+## AMD+Linux Setup
+You will need a Python version below 3.11, ffmpeg, and sox installed as mentioned above.
+
+For ROCM specific variables, check out `rocm_vars.txt`. You will need this if you have multiple AMD GPUs in your system.
+
+After that, just run the start script:
+
+```bash
+./start_linux_amd.sh
+```
 
 ## Usage with WebUI
 

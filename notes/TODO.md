@@ -3,7 +3,7 @@
 * test that app works through notebook
 
 * should specify in colab notebook which link in output of last cell should be clicked
-
+* we should make str enum for vocal separation model names and perhaps also for audio stem names?
 * should rename instances of "models" to "voice models"
 
 * have some default models available (ie.e do not need to be downloaded)
@@ -153,46 +153,19 @@
 
 ## Back end
 
-### `common.py`
-
-* Define custom order for items in saved JSON files.
-  * Should be the same as the order of items defined in pydantic models?
-
 ### `generate_song_cover.py`
 
-* Use a case match expression in `retrieve_song`
+* find framework for caching intermediate results rather than relying on your homemade system
 
-```python
-case source_type:
-    match SourceType.SONG_DIR
-        song_path = _get_input_audio_path(song_dir_path)
-    match SourceType.URL
-    ...
-...
-```
+  * Joblib: <https://medium.com/@yuxuzi/unlocking-efficiency-in-machine-learning-projects-with-joblib-a-python-pipeline-powerhouse-feb0ebfdf4df>
+  * scikit learn: <https://scikit-learn.org/stable/modules/compose.html#pipeline>
 
-* Use list comprehension to DRY code in cover pipeline functions
-  * Use "double-nested" list comprehension that first makes the necessary calls to `get_unique_base_path` in inner loop and then for each appends `'.wav'` and `'.json'` in outer loop.
-  * Apply `all` to result of previous list-comprehension to simplify file path checks
-* Make helper function for path validation
-  * signature is `validate(files, dirs)`
-  * both `files` and `dirs` should have types `list[StrPath]`
-  * should check that each item in `files` and `dirs`
-    * is not `None`
-    * either points to a valid existing file or directory
-* Make helper function that both calls `AUDIO_SEPARATOR.separate` and moves its result(s) to the right folder
-* split `pitch_shift_background` into
-  * one base function `pitch_shift`
-  * and simple wrapper function `pitch_shift_background` that calls `pitch_shift`two times
-* refactor the three audio separation functions (`separate_vocals`,`separate_main_vocals` and `dereverb`) into
-  * One base function `separate_audio`
-  * Three wrapper functions (`separate_vocals`,`separate_main_vocals` and `dereverb`) that calls `pitch_shift` with simple parameters
-* Implement Pydantic models for the remaining steps in song cover generation pipeline and then instantiate arg dicts by doing `XMetaData.model_dump()`
-  * Should we use `model_dump` with `mode = "json"`to ensure JSON-serializable dicts?
+  * <https://softwarepatternslexicon.com/machine-learning/infrastructure-and-scalability/workflow-management/pipeline-caching/>
+  * <https://github.com/bmabey/provenance>
+  * <https://docs.sweep.dev/blogs/file-cache>
+
 * Support specific audio formats for intermediate audio file?
-  * We might also want to disable gradio saving input audio to temporary files, as those are always in `.wav` format
-    * See more [here](#temporary-gradio-files)
-  * Also, it might require some more code to support custom output format for all pipeline functions.
+  * it might require some more code to support custom output format for all pipeline functions.
 
 * expand `_get_model_name` so that it can take any audio file in an intermediate audio folder as input (DIFFICULT TO IMPLEMENT)
   * Function should then try to recursively

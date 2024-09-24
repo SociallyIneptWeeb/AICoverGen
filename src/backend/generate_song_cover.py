@@ -6,7 +6,9 @@ using RVC.
 import gc
 import operator
 import shutil
+from collections.abc import Sequence
 from contextlib import suppress
+from itertools import starmap
 from logging import WARNING
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
@@ -58,7 +60,11 @@ from backend.typing_extra import (
     ConvertedVocalsMetaData,
     EffectedVocalsMetaData,
     FileMetaData,
+    MixedSongMetaData,
+    PitchShiftMetaData,
+    SeparatedAudioMetaData,
     SourceType,
+    StereoizedAudioMetaData,
 )
 
 AUDIO_SEPARATOR = Separator(
@@ -74,6 +80,93 @@ AUDIO_SEPARATOR = Separator(
     },
     mdxc_params={"segment_size": 256, "batch_size": 1, "overlap": 2},
 )
+
+
+def _validate_exists(
+    identifier: StrPath,
+    entity: Entity,
+) -> Path:
+    """
+    Validate that the provided identifier is not none and that it
+    identifies an existing entity, which can be either a voice model,
+    a song directory or an audio track.
+
+    Parameters
+    ----------
+    identifier : StrPath
+        The identifier to validate.
+    entity : Entity
+        The entity that the identifier should identify.
+
+    Returns
+    -------
+    Path
+        The path to the identified entity.
+
+    Raises
+    ------
+    NotProvidedError
+        If the identifier is None.
+    NotFoundError
+        If the identifier does not identify an existing entity.
+    VoiceModelNotFoundError
+        If the identifier does not identify an existing voice model.
+    NotImplementedError
+        If the provided entity is not supported.
+
+    """
+    match entity:
+        case Entity.MODEL_NAME:
+            if not identifier:
+                raise NotProvidedError(entity=entity, ui_msg=UIMessage.NO_VOICE_MODEL)
+            path = RVC_MODELS_DIR / identifier
+            if not path.is_dir():
+                raise VoiceModelNotFoundError(str(identifier))
+        case Entity.SONG_DIR:
+            if not identifier:
+                raise NotProvidedError(entity=entity, ui_msg=UIMessage.NO_SONG_DIR)
+            path = Path(identifier)
+            if not path.is_dir():
+                raise NotFoundError(entity=entity, location=path)
+        case (
+            Entity.SONG
+            | Entity.AUDIO_TRACK
+            | Entity.VOCALS_TRACK
+            | Entity.INSTRUMENTALS_TRACK
+            | Entity.MAIN_VOCALS_TRACK
+            | Entity.BACKUP_VOCALS_TRACK
+        ):
+            if not identifier:
+                raise NotProvidedError(entity=entity)
+            path = Path(identifier)
+            if not path.is_file():
+                raise NotFoundError(entity=entity, location=path)
+        case _:
+            error_msg = f"Entity {entity} not supported."
+            raise NotImplementedError(error_msg)
+    return path
+
+
+def _validate_all_exist(
+    identifier_entity_pairs: Sequence[tuple[StrPath, Entity]],
+) -> list[Path]:
+    """
+    Validate that all provided identifiers are not none and that they
+    identify existing entities, which can be either voice models, song
+    directories or audio tracks.
+
+    Parameters
+    ----------
+    identifier_entity_pairs : Sequence[tuple[StrPath, Entity]]
+        The pairs of identifiers and entities to validate.
+
+    Returns
+    -------
+    list[Path]
+        The paths to the identified entities.
+
+    """
+    return list(starmap(_validate_exists, identifier_entity_pairs))
 
 
 def _get_input_audio_path(directory: StrPath) -> Path | None:
@@ -249,16 +342,12 @@ def _get_rvc_files(model_name: str) -> tuple[Path, Path | None]:
 
     Raises
     ------
-    VoiceModelNotFoundError
-        If no voice model with the provided name exists.
     NotFoundError
         If no model file exists in the voice model directory.
 
 
     """
-    model_dir_path = RVC_MODELS_DIR / model_name
-    if not model_dir_path.exists():
-        raise VoiceModelNotFoundError(model_name)
+    model_dir_path = _validate_exists(model_name, Entity.MODEL_NAME)
     file_path_map = {
         ext: path
         for path in model_dir_path.iterdir()
@@ -769,43 +858,34 @@ def stereoize(
     Path
         The path to the song in stereo format.
 
-    Raises
-    ------
-    NotProvidedError
-        If a song path or song directory path is not provided.
-    NotFoundError
-        If the provided path to a song or song directory does not point
-        to an existing file or directory.
-
     """
-    if not song:
-        raise NotProvidedError(entity=Entity.SONG)
-    song_path = Path(song)
-    if not (song_path).is_file():
-        raise NotFoundError(entity=Entity.SONG, location=song_path)
-    if not song_dir:
-        raise NotProvidedError(entity=Entity.SONG_DIR, ui_msg=UIMessage.NO_SONG_DIR)
-    song_dir_path = Path(song_dir)
-    if not song_dir_path.is_dir():
-        raise NotFoundError(entity=Entity.SONG_DIR, location=song_dir_path)
+    song_path, song_dir_path = _validate_all_exist(
+        [(song, Entity.SONG), (song_dir, Entity.SONG_DIR)],
+    )
 
     stereo_path = song_path
 
     song_info = pydub_utils.mediainfo(str(song_path))
     if song_info["channels"] == "1":
-        args_dict = {
-            "song": {"name": song_path.name, "hash_id": get_file_hash(song_path)},
-        }
-        stereo_base_path = get_unique_base_path(
-            song_dir_path,
-            "0_Stereo",
-            args_dict,
-            progress_bar=progress_bar,
-            percentage=percentage,
-        )
-        stereo_path = stereo_base_path.with_suffix(".wav")
-        stereo_json_path = stereo_base_path.with_suffix(".json")
-        if not (stereo_path.exists() and stereo_json_path.exists()):
+        args_dict = StereoizedAudioMetaData(
+            audio_track=FileMetaData(
+                name=song_path.name,
+                hash_id=get_file_hash(song_path),
+            ),
+        ).model_dump()
+
+        paths = [
+            get_unique_base_path(
+                song_dir_path,
+                "0_Stereo",
+                args_dict,
+                progress_bar=progress_bar,
+                percentage=percentage,
+            ).with_suffix(suffix)
+            for suffix in [".wav", ".json"]
+        ]
+        stereo_path, stereo_json_path = paths
+        if not all(path.exists() for path in paths):
             display_progress(
                 "[~] Converting song to stereo format...",
                 percentage,
@@ -875,6 +955,100 @@ def retrieve_song(
     return song_path, song_dir_path
 
 
+def separate_audio(
+    audio_track: StrPath,
+    song_dir: StrPath,
+    primary_prefix: str,
+    secondary_prefix: str,
+    model_name: str,
+    segment_size: int,
+    display_msg: str,
+    progress_bar: gr.Progress | None = None,
+    percentage: float = 0.5,
+) -> tuple[Path, Path]:
+    """
+    Separate an audio track into a primary stem and a secondary stem.
+
+    Parameters
+    ----------
+    audio_track : StrPath
+        The path to the audio track to separate.
+    song_dir : StrPath
+        The path to the song directory where the separated primary stem
+        and secondary stem will be saved.
+    primary_prefix : str
+        The prefix to use for the name of the primary stem.
+    secondary_prefix : str
+        The prefix to use for the name of the secondary stem.
+    model_name : str
+        The name of the model to use for audio separation.
+    segment_size : int
+        The segment size to use for audio separation.
+    display_msg : str
+        The message to display when separating the audio track.
+    progress_bar : gr.Progress, optional
+        Gradio progress bar to update.
+    percentage : float, default=0.5
+        Percentage to display in the progress bar.
+
+    Returns
+    -------
+    primary_path : Path
+        The path to the separated primary stem.
+    secondary_path : Path
+        The path to the separated secondary stem.
+
+    """
+    audio_path, song_dir_path = _validate_all_exist(
+        [(audio_track, Entity.AUDIO_TRACK), (song_dir, Entity.SONG_DIR)],
+    )
+
+    args_dict = SeparatedAudioMetaData(
+        audio_track=FileMetaData(
+            name=audio_path.name,
+            hash_id=get_file_hash(audio_path),
+        ),
+        model_name=model_name,
+        segment_size=segment_size,
+    ).model_dump()
+
+    paths = [
+        get_unique_base_path(
+            song_dir_path,
+            prefix,
+            args_dict,
+            progress_bar=progress_bar,
+            percentage=percentage,
+        ).with_suffix(suffix)
+        for prefix in [primary_prefix, secondary_prefix]
+        for suffix in [".wav", ".json"]
+    ]
+
+    (
+        primary_path,
+        primary_json_path,
+        secondary_path,
+        secondary_json_path,
+    ) = paths
+
+    if not all(path.exists() for path in paths):
+
+        display_progress(display_msg, percentage, progress_bar)
+        AUDIO_SEPARATOR.arch_specific_params["MDX"]["segment_size"] = segment_size
+        AUDIO_SEPARATOR.load_model(model_name)
+        primary_temp_name, secondary_temp_name = AUDIO_SEPARATOR.separate(
+            str(audio_path),
+        )
+        primary_temp_path = INTERMEDIATE_AUDIO_BASE_DIR / primary_temp_name
+        secondary_temp_path = INTERMEDIATE_AUDIO_BASE_DIR / secondary_temp_name
+        primary_temp_path.rename(primary_path)
+        secondary_temp_path.rename(secondary_path)
+        json_dump(args_dict, primary_json_path)
+        json_dump(args_dict, secondary_json_path)
+
+    return primary_path, secondary_path
+
+
 def separate_vocals(
     song: StrPath,
     song_dir: StrPath,
@@ -903,73 +1077,23 @@ def separate_vocals(
     instrumentals_track : Path
         The path to the separated instrumentals track.
 
-    Raises
-    ------
-    NotProvidedError
-        If a song path or song directory path is not provided.
-    NotFoundError
-        If the provided path to a song or song directory does not point
-        to an existing file or directory.
 
     """
-    if not song:
-        raise NotProvidedError(entity=Entity.SONG)
-    song_path = Path(song)
-    if not song_path.is_file():
-        raise NotFoundError(entity=Entity.SONG, location=song_path)
-    if not song_dir:
-        raise NotProvidedError(entity=Entity.SONG_DIR, ui_msg=UIMessage.NO_SONG_DIR)
-    song_dir_path = Path(song_dir)
-    if not song_dir_path.is_dir():
-        raise NotFoundError(entity=Entity.SONG_DIR, location=song_dir_path)
+    song_path, song_dir_path = _validate_all_exist(
+        [(song, Entity.SONG), (song_dir, Entity.SONG_DIR)],
+    )
 
-    args_dict = {
-        "song": {"name": song_path.name, "hash_id": get_file_hash(song_path)},
-    }
-
-    vocals_base_path = get_unique_base_path(
+    instrumentals_path, vocals_path = separate_audio(
+        song_path,
         song_dir_path,
+        "1_Instrumentals",
         "1_Vocals",
-        args_dict,
-        progress_bar=progress_bar,
-        percentage=percentage,
+        "UVR-MDX-NET-Voc_FT.onnx",
+        512,
+        "[~] Separating vocals from instrumentals...",
+        progress_bar,
+        percentage,
     )
-
-    instrumentals_base_path = get_unique_base_path(
-        song_dir_path,
-        "1_Instrumental",
-        args_dict,
-        progress_bar=progress_bar,
-        percentage=percentage,
-    )
-
-    vocals_path = vocals_base_path.with_suffix(".wav")
-    vocals_json_path = vocals_base_path.with_suffix(".json")
-    instrumentals_path = instrumentals_base_path.with_suffix(".wav")
-    instrumentals_json_path = instrumentals_base_path.with_suffix(".json")
-
-    if not (
-        vocals_path.exists()
-        and vocals_json_path.exists()
-        and instrumentals_path.exists()
-        and instrumentals_json_path.exists()
-    ):
-        display_progress(
-            "[~] Separating vocals from instrumentals...",
-            percentage,
-            progress_bar,
-        )
-        AUDIO_SEPARATOR.arch_specific_params["MDX"]["segment_size"] = 512
-        AUDIO_SEPARATOR.load_model("UVR-MDX-NET-Voc_FT.onnx")
-        instrumentals_temp_name, vocals_temp_name = AUDIO_SEPARATOR.separate(
-            str(song_path),
-        )
-        instrumentals_temp_path = INTERMEDIATE_AUDIO_BASE_DIR / instrumentals_temp_name
-        vocals_temp_path = INTERMEDIATE_AUDIO_BASE_DIR / vocals_temp_name
-        instrumentals_temp_path.rename(instrumentals_path)
-        vocals_temp_path.rename(vocals_path)
-        json_dump(args_dict, vocals_json_path)
-        json_dump(args_dict, instrumentals_json_path)
     return vocals_path, instrumentals_path
 
 
@@ -1002,77 +1126,23 @@ def separate_main_vocals(
     backup_vocals_track : Path
         The path to the separated backup vocals track.
 
-    Raises
-    ------
-    NotProvidedError
-        If a vocals track path or song directory path is not provided.
-    NotFoundError
-        If the provided path to a vocals track or song directory
-        does not point to an existing file or directory.
 
     """
-    if not vocals_track:
-        raise NotProvidedError(entity=Entity.VOCALS_TRACK)
-    vocals_path = Path(vocals_track)
-    if not vocals_path.is_file():
-        raise NotFoundError(entity=Entity.VOCALS_TRACK, location=vocals_path)
-    if not song_dir:
-        raise NotProvidedError(entity=Entity.SONG_DIR, ui_msg=UIMessage.NO_SONG_DIR)
-    song_dir_path = Path(song_dir)
-    if not song_dir_path.is_dir():
-        raise NotFoundError(entity=Entity.SONG_DIR, location=song_dir_path)
+    vocals_path, song_dir_path = _validate_all_exist(
+        [(vocals_track, Entity.VOCALS_TRACK), (song_dir, Entity.SONG_DIR)],
+    )
 
-    args_dict = {
-        "vocals_track": {
-            "name": vocals_path.name,
-            "hash_id": get_file_hash(vocals_path),
-        },
-    }
-
-    main_vocals_base_path = get_unique_base_path(
+    return separate_audio(
+        vocals_path,
         song_dir_path,
         "2_Vocals_Main",
-        args_dict,
-        progress_bar=progress_bar,
-        percentage=percentage,
-    )
-
-    backup_vocals_base_path = get_unique_base_path(
-        song_dir_path,
         "2_Vocals_Backup",
-        args_dict,
-        progress_bar=progress_bar,
-        percentage=percentage,
+        "UVR_MDXNET_KARA_2.onnx",
+        512,
+        "[~] Separating main vocals from backup vocals...",
+        progress_bar,
+        percentage,
     )
-
-    main_vocals_path = main_vocals_base_path.with_suffix(".wav")
-    main_vocals_json_path = main_vocals_base_path.with_suffix(".json")
-    backup_vocals_path = backup_vocals_base_path.with_suffix(".wav")
-    backup_vocals_json_path = backup_vocals_base_path.with_suffix(".json")
-
-    if not (
-        main_vocals_path.exists()
-        and main_vocals_json_path.exists()
-        and backup_vocals_path.exists()
-        and backup_vocals_json_path.exists()
-    ):
-        display_progress(
-            "[~] Separating main vocals from backup vocals...",
-            percentage,
-            progress_bar,
-        )
-        AUDIO_SEPARATOR.arch_specific_params["MDX"]["segment_size"] = 512
-        AUDIO_SEPARATOR.load_model("UVR_MDXNET_KARA_2.onnx")
-        main_vocals_temp_name, backup_vocals_temp_name = AUDIO_SEPARATOR.separate(
-            str(vocals_path),
-        )
-        main_vocals_temp_path = INTERMEDIATE_AUDIO_BASE_DIR / main_vocals_temp_name
-        backup_vocals_temp_path = INTERMEDIATE_AUDIO_BASE_DIR / backup_vocals_temp_name
-        main_vocals_temp_path.rename(main_vocals_path)
-        backup_vocals_temp_path.rename(backup_vocals_path)
-        json_dump(args_dict, main_vocals_json_path)
-        json_dump(args_dict, backup_vocals_json_path)
-    return main_vocals_path, backup_vocals_path
 
 
 def dereverb(
@@ -1103,76 +1173,22 @@ def dereverb(
     vocals_reverb_track : Path
         The path to the vocals reverb track.
 
-    Raises
-    ------
-    NotProvidedError
-        If a vocals track path or a song directory path is not provided.
-    NotFoundError
-        If the provided path to a vocals track or song directory
-        does not point to an existing file or directory.
-
     """
-    if not vocals_track:
-        raise NotProvidedError(entity=Entity.VOCALS_TRACK)
-    vocals_path = Path(vocals_track)
-    if not vocals_path.is_file():
-        raise NotFoundError(entity=Entity.VOCALS_TRACK, location=vocals_path)
-    if not song_dir:
-        raise NotProvidedError(entity=Entity.SONG_DIR, ui_msg=UIMessage.NO_SONG_DIR)
-    song_dir_path = Path(song_dir)
-    if not song_dir_path.is_dir():
-        raise NotFoundError(entity=Entity.SONG_DIR, location=song_dir_path)
+    vocals_path, song_dir_path = _validate_all_exist(
+        [(vocals_track, Entity.VOCALS_TRACK), (song_dir, Entity.SONG_DIR)],
+    )
 
-    args_dict = {
-        "vocals_track": {
-            "name": vocals_path.name,
-            "hash_id": get_file_hash(vocals_path),
-        },
-    }
-
-    vocals_dereverb_base_path = get_unique_base_path(
+    return separate_audio(
+        vocals_path,
         song_dir_path,
         "3_Vocals_DeReverb",
-        args_dict,
-        progress_bar=progress_bar,
-        percentage=percentage,
-    )
-    vocals_reverb_base_path = get_unique_base_path(
-        song_dir_path,
         "3_Vocals_Reverb",
-        args_dict,
-        progress_bar=progress_bar,
-        percentage=percentage,
+        "Reverb_HQ_By_FoxJoy.onnx",
+        256,
+        "[~] De-reverbing vocals...",
+        progress_bar,
+        percentage,
     )
-
-    vocals_dereverb_path = vocals_dereverb_base_path.with_suffix(".wav")
-    vocals_dereverb_json_path = vocals_dereverb_base_path.with_suffix(".json")
-
-    vocals_reverb_path = vocals_reverb_base_path.with_suffix(".wav")
-    vocals_reverb_json_path = vocals_reverb_base_path.with_suffix(".json")
-
-    if not (
-        vocals_dereverb_path.exists()
-        and vocals_dereverb_json_path.exists()
-        and vocals_reverb_path.exists()
-        and vocals_reverb_json_path.exists()
-    ):
-        display_progress("[~] De-reverbing vocals...", percentage, progress_bar)
-        AUDIO_SEPARATOR.arch_specific_params["MDX"]["segment_size"] = 256
-        AUDIO_SEPARATOR.load_model("Reverb_HQ_By_FoxJoy.onnx")
-        vocals_dereverb_temp_name, vocals_reverb_temp_name = AUDIO_SEPARATOR.separate(
-            str(vocals_path),
-        )
-        vocals_dereverb_temp_path = (
-            INTERMEDIATE_AUDIO_BASE_DIR / vocals_dereverb_temp_name
-        )
-        vocals_reverb_temp_path = INTERMEDIATE_AUDIO_BASE_DIR / vocals_reverb_temp_name
-        vocals_dereverb_temp_path.rename(vocals_dereverb_path)
-        vocals_reverb_temp_path.rename(vocals_reverb_path)
-
-        json_dump(args_dict, vocals_dereverb_json_path)
-        json_dump(args_dict, vocals_reverb_json_path)
-    return vocals_dereverb_path, vocals_reverb_path
 
 
 def convert(
@@ -1229,32 +1245,14 @@ def convert(
     Path
         The path to the converted vocals track.
 
-    Raises
-    ------
-    NotProvidedError
-        If a vocals track path, a song directory path or a model name
-        is not provided.
-    NotFoundError
-        If the provided path to a vocals track or song directory
-        does not point to an existing file or directory.
-
     """
-    if not vocals_track:
-        raise NotProvidedError(entity=Entity.VOCALS_TRACK)
-    vocals_path = Path(vocals_track)
-    if not vocals_path.is_file():
-        raise NotFoundError(entity=Entity.VOCALS_TRACK, location=vocals_path)
-    if not song_dir:
-        raise NotProvidedError(entity=Entity.SONG_DIR, ui_msg=UIMessage.NO_SONG_DIR)
-    song_dir_path = Path(song_dir)
-    if not song_dir_path.is_dir():
-        raise NotFoundError(entity=Entity.SONG_DIR, location=song_dir_path)
-
-    if not model_name:
-        raise NotProvidedError(
-            entity=Entity.MODEL_NAME,
-            ui_msg=UIMessage.NO_VOICE_MODEL,
-        )
+    vocals_path, song_dir_path, _ = _validate_all_exist(
+        [
+            (vocals_track, Entity.VOCALS_TRACK),
+            (song_dir, Entity.SONG_DIR),
+            (model_name, Entity.MODEL_NAME),
+        ],
+    )
 
     n_semitones = n_octaves * 12 + n_semitones
 
@@ -1273,17 +1271,20 @@ def convert(
         hop_length=hop_length,
     ).model_dump()
 
-    converted_vocals_base_path = get_unique_base_path(
-        song_dir,
-        "4_Vocals_Converted",
-        args_dict,
-        progress_bar=progress_bar,
-        percentage=percentage,
-    )
-    converted_vocals_path = converted_vocals_base_path.with_suffix(".wav")
-    converted_vocals_json_path = converted_vocals_base_path.with_suffix(".json")
+    paths = [
+        get_unique_base_path(
+            song_dir_path,
+            "4_Vocals_Converted",
+            args_dict,
+            progress_bar=progress_bar,
+            percentage=percentage,
+        ).with_suffix(suffix)
+        for suffix in [".wav", ".json"]
+    ]
 
-    if not (converted_vocals_path.exists() and converted_vocals_json_path.exists()):
+    converted_vocals_path, converted_vocals_json_path = paths
+
+    if not all(path.exists() for path in paths):
         display_progress("[~] Converting vocals using RVC...", percentage, progress_bar)
         _convert(
             vocals_path,
@@ -1341,25 +1342,10 @@ def postprocess(
     Path
         The path to the effected vocals track.
 
-    Raises
-    ------
-    NotProvidedError
-        If a vocals track path or a song directory path is not provided.
-    NotFoundError
-        If the provided path to a vocals track or song directory does
-        not point to an existing file or directory.
-
     """
-    if not vocals_track:
-        raise NotProvidedError(entity=Entity.VOCALS_TRACK)
-    vocals_path = Path(vocals_track)
-    if not vocals_path.is_file():
-        raise NotFoundError(entity=Entity.VOCALS_TRACK, location=vocals_path)
-    if not song_dir:
-        raise NotProvidedError(entity=Entity.SONG_DIR, ui_msg=UIMessage.NO_SONG_DIR)
-    song_dir_path = Path(song_dir)
-    if not song_dir_path.is_dir():
-        raise NotFoundError(entity=Entity.SONG_DIR, location=song_dir_path)
+    vocals_path, song_dir_path = _validate_all_exist(
+        [(vocals_track, Entity.VOCALS_TRACK), (song_dir, Entity.SONG_DIR)],
+    )
 
     args_dict = EffectedVocalsMetaData(
         vocals_track=FileMetaData(
@@ -1372,18 +1358,20 @@ def postprocess(
         damping=damping,
     ).model_dump()
 
-    effected_vocals_base_path = get_unique_base_path(
-        song_dir,
-        "5_Vocals_Effected",
-        args_dict,
-        progress_bar=progress_bar,
-        percentage=percentage,
-    )
+    paths = [
+        get_unique_base_path(
+            song_dir_path,
+            "5_Vocals_Effected",
+            args_dict,
+            progress_bar=progress_bar,
+            percentage=percentage,
+        ).with_suffix(suffix)
+        for suffix in [".wav", ".json"]
+    ]
 
-    effected_vocals_path = effected_vocals_base_path.with_suffix(".wav")
-    effected_vocals_json_path = effected_vocals_base_path.with_suffix(".json")
+    effected_vocals_path, effected_vocals_json_path = paths
 
-    if not (effected_vocals_path.exists() and effected_vocals_json_path.exists()):
+    if not all(path.exists() for path in paths):
         display_progress(
             "[~] Applying audio effects to vocals...",
             percentage,
@@ -1399,6 +1387,79 @@ def postprocess(
         )
         json_dump(args_dict, effected_vocals_json_path)
     return effected_vocals_path
+
+
+def pitch_shift(
+    audio_track: StrPath,
+    song_dir: StrPath,
+    n_semitones: int,
+    prefix: str,
+    display_msg: str,
+    progress_bar: gr.Progress | None = None,
+    percentage: float = 0.5,
+) -> Path:
+    """
+    Pitch shift an audio track by a given number of semi-tones.
+
+    Parameters
+    ----------
+    audio_track : StrPath
+        The path to the audio track to pitch shift.
+    song_dir : StrPath
+        The path to the song directory where the pitch-shifted audio
+        track will be saved.
+    n_semitones : int
+        The number of semi-tones to pitch-shift the audio track by.
+    prefix : str
+        The prefix to use for the name of the pitch-shifted audio track.
+    display_msg : str
+        The message to display when pitch-shifting the audio track.
+    progress_bar : gr.Progress, optional
+        Gradio progress bar to update.
+    percentage : float, default=0.5
+        Percentage to display in the progress bar.
+
+    Returns
+    -------
+    Path
+        The path to the pitch-shifted audio track.
+
+    """
+    audio_path, song_dir_path = _validate_all_exist(
+        [(audio_track, Entity.AUDIO_TRACK), (song_dir, Entity.SONG_DIR)],
+    )
+
+    shifted_audio_path = audio_path
+
+    if n_semitones != 0:
+
+        args_dict = PitchShiftMetaData(
+            audio_track=FileMetaData(
+                name=audio_path.name,
+                hash_id=get_file_hash(audio_path),
+            ),
+            n_semitones=n_semitones,
+        ).model_dump()
+
+        paths = [
+            get_unique_base_path(
+                song_dir_path,
+                prefix,
+                args_dict,
+                progress_bar=progress_bar,
+                percentage=percentage,
+            ).with_suffix(suffix)
+            for suffix in [".wav", ".json"]
+        ]
+
+        shifted_audio_path, shifted_audio_json_path = paths
+
+        if not all(path.exists() for path in paths):
+            display_progress(display_msg, percentage, progress_bar)
+            _pitch_shift(audio_path, shifted_audio_path, n_semitones)
+            json_dump(args_dict, shifted_audio_json_path)
+
+    return shifted_audio_path
 
 
 def pitch_shift_background(
@@ -1437,117 +1498,34 @@ def pitch_shift_background(
     shifted:backup_vocals_track : Path
         The path to the pitch-shifted backup vocals track.
 
-    Raises
-    ------
-    NotProvidedError
-        If a path to an instrumentals track, a backup vocals track or a
-        song directory is not provided.
-    NotFoundError
-        If the provided path to an instrumentals track, a backup vocals
-        track, a main vocals track or a song directory does not point to
-        an existing file or directory.
-
     """
-    if not instrumentals_track:
-        raise NotProvidedError(entity=Entity.INSTRUMENTALS_TRACK)
-    instrumentals_path = Path(instrumentals_track)
-    if not instrumentals_path.is_file():
-        raise NotFoundError(
-            entity=Entity.INSTRUMENTALS_TRACK,
-            location=instrumentals_path,
-        )
+    instrumentals_path, backup_vocals_path, song_dir_path = _validate_all_exist(
+        [
+            (instrumentals_track, Entity.INSTRUMENTALS_TRACK),
+            (backup_vocals_track, Entity.BACKUP_VOCALS_TRACK),
+            (song_dir, Entity.SONG_DIR),
+        ],
+    )
 
-    if not backup_vocals_track:
-        raise NotProvidedError(entity=Entity.BACKUP_VOCALS_TRACK)
-    backup_vocals_path = Path(backup_vocals_track)
-    if not backup_vocals_path.is_file():
-        raise NotFoundError(
-            entity=Entity.BACKUP_VOCALS_TRACK,
-            location=backup_vocals_path,
-        )
-    if not song_dir:
-        raise NotProvidedError(entity=Entity.SONG_DIR, ui_msg=UIMessage.NO_SONG_DIR)
-    song_dir_path = Path(song_dir)
-    if not song_dir_path.is_dir():
-        raise NotFoundError(entity=Entity.SONG_DIR, location=song_dir_path)
+    shifted_instrumentals_path = pitch_shift(
+        instrumentals_path,
+        song_dir_path,
+        n_semitones,
+        "6_Instrumentals_Shifted",
+        "[~] Pitch-shifting instrumentals...",
+        progress_bar,
+        percentages[0],
+    )
 
-    shifted_instrumentals_path = instrumentals_path
-    shifted_backup_vocals_path = backup_vocals_path
-
-    if n_semitones != 0:
-        instrumentals_dict = {
-            "instrumentals_track": {
-                "name": instrumentals_path.name,
-                "hash_id": get_file_hash(instrumentals_path),
-            },
-            "n_semitones": n_semitones,
-        }
-
-        shifted_instrumentals_base_path = get_unique_base_path(
-            song_dir_path,
-            "6_Instrumentals_Shifted",
-            instrumentals_dict,
-            progress_bar=progress_bar,
-            percentage=percentages[0],
-        )
-
-        shifted_instrumentals_path = shifted_instrumentals_base_path.with_suffix(
-            ".wav",
-        )
-        shifted_instrumentals_json_path = shifted_instrumentals_base_path.with_suffix(
-            ".json",
-        )
-
-        if not (
-            shifted_instrumentals_path.exists()
-            and shifted_instrumentals_json_path.exists()
-        ):
-            display_progress(
-                "[~] Pitch-shifting instrumentals",
-                percentages[0],
-                progress_bar,
-            )
-            _pitch_shift(
-                instrumentals_path,
-                shifted_instrumentals_path,
-                n_semitones,
-            )
-            json_dump(instrumentals_dict, shifted_instrumentals_json_path)
-
-        backup_vocals_dict = {
-            "backup_vocals_track": {
-                "name": backup_vocals_path.name,
-                "hash_id": get_file_hash(backup_vocals_path),
-            },
-            "n_semitones": n_semitones,
-        }
-
-        shifted_backup_vocals_base_path = get_unique_base_path(
-            song_dir_path,
-            "6_Vocals_Backup_Shifted",
-            backup_vocals_dict,
-            progress_bar=progress_bar,
-            percentage=percentages[1],
-        )
-        shifted_backup_vocals_path = shifted_backup_vocals_base_path.with_suffix(".wav")
-        shifted_backup_vocals_json_path = shifted_backup_vocals_base_path.with_suffix(
-            ".json",
-        )
-        if not (
-            shifted_backup_vocals_path.exists()
-            and shifted_backup_vocals_json_path.exists()
-        ):
-            display_progress(
-                "[~] Pitch-shifting backup vocals",
-                percentages[1],
-                progress_bar,
-            )
-            _pitch_shift(
-                backup_vocals_path,
-                shifted_backup_vocals_path,
-                n_semitones,
-            )
-            json_dump(backup_vocals_dict, shifted_backup_vocals_json_path)
+    shifted_backup_vocals_path = pitch_shift(
+        backup_vocals_path,
+        song_dir_path,
+        n_semitones,
+        "6_Backup_Vocals_Shifted",
+        "[~] Pitch-shifting backup vocals...",
+        progress_bar,
+        percentages[1],
+    )
     return shifted_instrumentals_path, shifted_backup_vocals_path
 
 
@@ -1648,76 +1626,52 @@ def mix_song_cover(
     Path
         The path to the song cover.
 
-    Raises
-    ------
-    NotProvidedError
-        If a main vocals track path, an instrumentals track path, a
-        backup vocals track path or a song directory path is not
-        provided.
-    NotFoundError
-        If the provided path to a main vocals track, an instrumentals
-        track, a backup vocals track or a song directory does not point
-        to an existing file or directory.
 
     """
-    if not main_vocals_track:
-        raise NotProvidedError(entity=Entity.MAIN_VOCALS_TRACK)
-    main_vocals_path = Path(main_vocals_track)
-    if not main_vocals_path.is_file():
-        raise NotFoundError(entity=Entity.MAIN_VOCALS_TRACK, location=main_vocals_path)
-    if not instrumentals_track:
-        raise NotProvidedError(entity=Entity.INSTRUMENTALS_TRACK)
-    instrumentals_path = Path(instrumentals_track)
-    if not instrumentals_path.is_file():
-        raise NotFoundError(
-            entity=Entity.INSTRUMENTALS_TRACK,
-            location=instrumentals_path,
+    main_vocals_path, instrumentals_path, backup_vocals_path, song_dir_path = (
+        _validate_all_exist(
+            [
+                (main_vocals_track, Entity.MAIN_VOCALS_TRACK),
+                (instrumentals_track, Entity.INSTRUMENTALS_TRACK),
+                (backup_vocals_track, Entity.BACKUP_VOCALS_TRACK),
+                (song_dir, Entity.SONG_DIR),
+            ],
         )
-    if not backup_vocals_track:
-        raise NotProvidedError(entity=Entity.BACKUP_VOCALS_TRACK)
-    backup_vocals_path = Path(backup_vocals_track)
-    if not backup_vocals_path.is_file():
-        raise NotFoundError(
-            entity=Entity.BACKUP_VOCALS_TRACK,
-            location=backup_vocals_path,
-        )
-    if not song_dir:
-        raise NotProvidedError(entity=Entity.SONG_DIR, ui_msg=UIMessage.NO_SONG_DIR)
-    song_dir_path = Path(song_dir)
-    if not song_dir_path.is_dir():
-        raise NotFoundError(entity=Entity.SONG_DIR, location=song_dir_path)
-
-    args_dict = {
-        "main_vocals_track": {
-            "name": main_vocals_path.name,
-            "hash_id": get_file_hash(main_vocals_path),
-        },
-        "instrumentals_track": {
-            "name": instrumentals_path.name,
-            "hash_id": get_file_hash(instrumentals_path),
-        },
-        "backup_vocals_track": {
-            "name": backup_vocals_path.name,
-            "hash_id": get_file_hash(backup_vocals_path),
-        },
-        "main_gain": main_gain,
-        "inst_gain": inst_gain,
-        "backup_gain": backup_gain,
-        "output_sr": output_sr,
-        "output_format": output_format,
-    }
-
-    mix_base_path = get_unique_base_path(
-        song_dir_path,
-        "7_Mix",
-        args_dict,
-        progress_bar=progress_bar,
-        percentage=percentage,
     )
-    mix_path = mix_base_path.with_suffix("." + output_format)
-    mix_json_path = mix_base_path.with_suffix(".json")
+    args_dict = MixedSongMetaData(
+        main_vocals_track=FileMetaData(
+            name=main_vocals_path.name,
+            hash_id=get_file_hash(main_vocals_path),
+        ),
+        instrumentals_track=FileMetaData(
+            name=instrumentals_path.name,
+            hash_id=get_file_hash(instrumentals_path),
+        ),
+        backup_vocals_track=FileMetaData(
+            name=backup_vocals_path.name,
+            hash_id=get_file_hash(backup_vocals_path),
+        ),
+        main_gain=main_gain,
+        inst_gain=inst_gain,
+        backup_gain=backup_gain,
+        output_sr=output_sr,
+        output_format=output_format,
+    ).model_dump()
 
-    if not (mix_path.exists() and mix_json_path.exists()):
+    paths = [
+        get_unique_base_path(
+            song_dir_path,
+            "7_Mix",
+            args_dict,
+            progress_bar=progress_bar,
+            percentage=percentage,
+        ).with_suffix(suffix)
+        for suffix in ["." + output_format, ".json"]
+    ]
+
+    mix_path, mix_json_path = paths
+
+    if not all(path.exists() for path in paths):
         display_progress(
             "[~] Mixing main vocals, instrumentals, and backup vocals...",
             percentage,
@@ -1841,22 +1795,8 @@ def run_pipeline(
         `return_intermediate=True`, also the paths to any intermediate
         audio files that were generated.
 
-    Raises
-    ------
-    NotProvidedError
-        If no model name is provided.
-    VoiceModelNotFoundError
-        If no voice model directory with the provided name exists.
-
     """
-    if not model_name:
-        raise NotProvidedError(
-            entity=Entity.MODEL_NAME,
-            ui_msg=UIMessage.NO_VOICE_MODEL,
-        )
-    model_path = RVC_MODELS_DIR / model_name
-    if not model_path.is_dir():
-        raise VoiceModelNotFoundError(model_name)
+    _validate_exists(model_name, Entity.MODEL_NAME)
     display_progress("[~] Starting song cover generation pipeline...", 0, progress_bar)
     song, song_dir = retrieve_song(
         source,

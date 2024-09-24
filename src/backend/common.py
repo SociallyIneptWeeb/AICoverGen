@@ -108,13 +108,7 @@ def json_dumps(thing: Json) -> str:
         The JSON string representation of the object.
 
     """
-    return json.dumps(
-        thing,
-        ensure_ascii=False,
-        sort_keys=True,
-        indent=4,
-        separators=(",", ": "),
-    )
+    return json.dumps(thing, ensure_ascii=False, indent=4)
 
 
 def json_dump(thing: Json, file: StrPath) -> None:
@@ -130,14 +124,7 @@ def json_dump(thing: Json, file: StrPath) -> None:
 
     """
     with Path(file).open("w", encoding="utf-8") as fp:
-        json.dump(
-            thing,
-            fp,
-            ensure_ascii=False,
-            sort_keys=True,
-            indent=4,
-            separators=(",", ": "),
-        )
+        json.dump(thing, fp, ensure_ascii=False, indent=4)
 
 
 def json_load(file: StrPath, encoding: str = "utf-8") -> Json:

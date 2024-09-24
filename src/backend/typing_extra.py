@@ -5,7 +5,7 @@ from enum import StrEnum, auto
 
 from pydantic import BaseModel, ConfigDict
 
-from typing_extra import F0Method
+from typing_extra import AudioExt, F0Method
 
 # Voice model management
 
@@ -131,6 +131,42 @@ class FileMetaData(BaseModel):
     hash_id: str
 
 
+class StereoizedAudioMetaData(BaseModel):
+    """
+    Metadata for a stereoized audio track.
+
+    Attributes
+    ----------
+    audio_track : FileMetaData
+        Metadata for the audio track that was stereoized.
+
+    """
+
+    audio_track: FileMetaData
+
+
+class SeparatedAudioMetaData(BaseModel):
+    """
+    Metadata for a separated audio track.
+
+    Attributes
+    ----------
+    audio_track : FileMetaData
+        Metadata for the audio track that was separated.
+    model_name : str
+        The name of the model used for separation.
+    segment_size : int
+        The segment size used for separation.
+
+    """
+
+    audio_track: FileMetaData
+    model_name: str
+    segment_size: int
+
+    model_config = ConfigDict(protected_namespaces=())
+
+
 class ConvertedVocalsMetaData(BaseModel):
     """
     Metadata for an RVC converted vocals track.
@@ -168,6 +204,7 @@ class ConvertedVocalsMetaData(BaseModel):
     rms_mix_rate: float
     protect: float
     hop_length: int
+
     model_config = ConfigDict(protected_namespaces=())
 
 
@@ -197,3 +234,55 @@ class EffectedVocalsMetaData(BaseModel):
     wet_level: float
     dry_level: float
     damping: float
+
+
+class PitchShiftMetaData(BaseModel):
+    """
+    Metadata for a pitch-shifted audio track.
+
+    Attributes
+    ----------
+    audio_track : FileMetaData
+        Metadata for the audio track that was pitch-shifted.
+    n_semitones : int
+        The number of semitones the audio track was pitch-shifted by.
+
+    """
+
+    audio_track: FileMetaData
+    n_semitones: int
+
+
+class MixedSongMetaData(BaseModel):
+    """
+    Metadata for a mixed song.
+
+    Attributes
+    ----------
+    main_vocals_track : FileMetaData
+        Metadata for the main vocals track that was mixed.
+    instrumentals_track : FileMetaData
+        Metadata for the instrumentals track that was mixed.
+    backup_vocals_track : FileMetaData
+        Metadata for the backup vocals track that was mixed.
+    main_gain : float
+        The gain applied to the main vocals track.
+    inst_gain : float
+        The gain applied to the instrumentals track.
+    backup_gain : float
+        The gain applied to the backup vocals track.
+    output_sr: int
+        The sample rate of the mixed song.
+    output_format: AudioExt
+        The audio format of the mixed song.
+
+    """
+
+    main_vocals_track: FileMetaData
+    instrumentals_track: FileMetaData
+    backup_vocals_track: FileMetaData
+    main_gain: float
+    inst_gain: float
+    backup_gain: float
+    output_sr: int
+    output_format: AudioExt

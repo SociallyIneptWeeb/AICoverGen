@@ -21,6 +21,7 @@ class Entity(StrEnum):
     MODEL_FILE = "model file"
     SOURCE = "source"
     SONG_DIR = "song directory"
+    AUDIO_TRACK = "audio track"
     SONG = "song"
     VOCALS_TRACK = "vocals track"
     INSTRUMENTALS_TRACK = "instrumentals track"

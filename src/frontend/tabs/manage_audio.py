@@ -25,8 +25,6 @@ from frontend.common import (
 
 
 def render(
-    dummy_checkbox: gr.Checkbox,
-    confirmation: gr.State,
     song_dirs: Sequence[gr.Dropdown],
     cached_song_1click: gr.Dropdown,
     cached_song_multi: gr.Dropdown,
@@ -38,12 +36,6 @@ def render(
 
     Parameters
     ----------
-    dummy_checkbox : gr.Checkbox
-        Dummy checkbox component needed for deletion confirmation in the
-        "Delete audio" tab and the "Manage models" tab.
-    confirmation : gr.State
-        Component storing deletion confirmation status in the
-        "Delete audio" tab and the "Manage models" tab.
     song_dirs : Sequence[gr.Dropdown]
         Dropdown components for selecting song directories in the
         "Multi-step generation" tab.
@@ -61,6 +53,8 @@ def render(
         "Delete audio" tab.
 
     """
+    dummy_checkbox = gr.Checkbox(visible=False)
+    confirmation = gr.State(value=False)
     with gr.Tab("Delete audio"):
         with gr.Accordion("Intermediate audio", open=False), gr.Row(equal_height=False):
             with gr.Column():

@@ -22,6 +22,7 @@ class Entity(StrEnum):
     SOURCE = "source"
     SONG_DIR = "song directory"
     AUDIO_TRACK = "audio track"
+    AUDIO_TRACK_GAIN_PAIRS = "pairs of audio track and gain"
     SONG = "song"
     VOCALS_TRACK = "vocals track"
     INSTRUMENTALS_TRACK = "instrumentals track"
@@ -43,6 +44,7 @@ class UIMessage(StrEnum):
     in place of backend exception messages.
     """
 
+    NO_AUDIO_TRACK = "No audio tracks provided."
     NO_SONG_DIR = "No song directory selected."
     NO_SONG_DIRS = (
         "No song directories selected. Please select one or more song directories"

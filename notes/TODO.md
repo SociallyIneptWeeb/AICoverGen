@@ -68,40 +68,40 @@
 
 ### Multi-step generation
 
-* Have reset and generate buttons side by side instead of vertically aligned
-* Have just one audio separation accordion
-* Have just one pitch shift accordion
-* Do not auto-transfer output tracks but instead have buttons that allow user to manually transfer output tracks when clicked
-* Split components under vocal conversion options into two rows
-  * always show "hop length", "detection algorithm" and "protect rate" on second row
-* consider making inputs section of each step accordion into a sub-accordion that is closed by default?
-* consider having buttons under the "convert vocals" accordion and the pitch shift accordion, which set the pitch shift semi-tones value in the other accordion to be equal to the current value in the current accordion.
+* have two inputs and corresponding pitch shift buttons in the pitch shift accordion step, i.e. one for pitch shifting instrumentals and one for pitch shifting instrumentals
+
+* add description describing how to use each accordion and and suggestions for workflows
 * If possible merge two consecutive event listeners using `update_cached_songs` in the song retrieval accordion.
-* optimize rendering of audio tracks in ui so that they load quickly (DIFFICULT TO IMPLEMENT)
-  * Problem seems to mainly affect step 1: song retrieval and step: 5 vocal post-processing
-    * In either case output tracks stop loading after some time
-    * `h11._util.LocalProtocolError: Too little data for declared Content-Length` is observed on command line
-  * Problem is gradio-specific and an issue has been raised [here](https://github.com/gradio-app/gradio/issues/8878)
+* add option for adding more input tracks to the mix song step
+  * new components should be created dynamically based on a textfield with names and a button for creating new component
+  * when creating a new component a new transfer button and dropdown should also be created
+  * and the transfer choices for all dropdowns should be updated to also include the new input track
+  * we need to consider how to want to handle vertical space
+    * should be we make a new row once more than 3 tracks are on one row?
+      * yes and there should be also created the new slider on a new row
+      * right under the first row (which itself is under the row with song dir dropdown)
+
+* should also have the possiblity to add more tracks to the pitch shift accordion.
+
+* add a confirmation box with warning if trying to transfer output track to input track that is not empty.
+  * could also have the possibility to ask the user to transfer to create a new input track and transfer the output track to it. 
+  * this would just be the same pop up confirmation box as before but in addition to yes and cancel options it will also have a "transfer to new input track" option. 
+  * we need custom javasctip for this.
+
 * Fix hashes of identical files being different for one-click and multi-step generation (DIFFICULT TO IMPLEMENT)
   * Seems to work except for when first running one click generation and then multi-step generation
-  * It is related to the bug mentioned above
-
-### Single step generation
-
-* Split components under vocal conversion options into two rows
-  * always show "hop length", "detection algorithm" and "protect rate" on second row
-* consider always showing intermediate audio tracks accordion.
-
-* Consider running one click generation as multiple events consecutively instead of one event, so that we can apply the gpu limit to just the steps that are actually using gpu
-  * With this solution we should probably save directly the output of the each step to its corresponding intermediate audio track
-  * An issue is that we might run into the bug with audio components not updating when using a chain of event listeners and having them update the intermediate audio tracks in turn.
+    * What happens is that when transferring an output track in multi-step generation the transferred output track is re-encoded (or possibly just re-saved) on disk which causes the hash to be different after transfering
+    * This happens only when transfering from the output of step 0 (song retrieval) and step 4 (vocal postprocessing)
+    * curiously, these steps were also the ones causing problems with loading output tracks before when we were auto transfering output tracks. 
+      * Hence the problem with hashing seems to be related to the gradio bug where loading into audio components does not work after a while when using too many consecutive event listeners.
+    * Also, it should be noted that transfering a manually uploaded file from step 0 does not result in reencoding (and hence a new hash)
+      * perhaps this is because a manually uplaoded audio file is already in the correct wav format while a downloaded song might be in a wrong wav format?
 
 ### Common
 
 * save default values for options for song generation in an `SongCoverOptionDefault` enum.
   * then reference this enum across the two tabs
   * and also use `list[SongCoverOptionDefault]` as input to reset settings click event listener in single click generation tab.
-* Do not pass dummy checkbox and confirmation state component but instead define them inline in `manage_audio` and `manage_models` frontend modules.
 * Try to merge event listeners for confirmation and action execution in `frontend.manage_audio` and `frontend.mange_models`
   * Can output of js function be fed into python function in the same event listener definition?
   * If not possible then try to at least remove dummy input component and dummy/passthrough function in the confirmation event listener

@@ -8,6 +8,7 @@ import operator
 import shutil
 from collections.abc import Sequence
 from contextlib import suppress
+from functools import reduce
 from itertools import starmap
 from logging import WARNING
 from pathlib import Path
@@ -41,13 +42,14 @@ from exceptions import (
 )
 
 from common import RVC_MODELS_DIR, SEPARATOR_MODELS_DIR
-from typing_extra import AudioExt, F0Method, Json, StrPath
+from typing_extra import AudioExt, F0Method, Json, SegmentSize, SeparationModel, StrPath
 
 from vc.rvc import Config, get_vc, load_hubert, rvc_infer
 
 from backend.common import (
     INTERMEDIATE_AUDIO_BASE_DIR,
     OUTPUT_AUDIO_DIR,
+    copy_file_safe,
     display_progress,
     get_file_hash,
     get_hash,
@@ -64,6 +66,7 @@ from backend.typing_extra import (
     PitchShiftMetaData,
     SeparatedAudioMetaData,
     SourceType,
+    StagedAudioMetaData,
     StereoizedAudioMetaData,
 )
 
@@ -606,47 +609,33 @@ def _to_internal(audio_ext: AudioExt) -> AudioExtInternal:
 
 
 def _mix_song(
-    main_vocals_track: StrPath,
-    instrumentals_track: StrPath,
-    backup_vocals_track: StrPath,
+    audio_track_gain_pairs: Sequence[tuple[StrPath, int]],
     output_file: StrPath,
-    main_gain: int = 0,
-    inst_gain: int = 0,
-    backup_gain: int = 0,
     output_sr: int = 44100,
     output_format: AudioExt = AudioExt.MP3,
 ) -> None:
     """
-    Mix a main vocals track, an instrumentals track, and a backup vocals
-    track to create a song.
+    Mix multiple audio tracks to create a song.
 
     Parameters
     ----------
-    main_vocals_track : StrPath
-        The path to the main vocals track to mix.
-    backup_vocals_track : StrPath
-        The path to the backup vocals track to mix.
-    instrumentals_track : StrPath
-        The path to the instrumentals track to mix.
+    audio_track_gain_pairs : Sequence[tuple[StrPath, int]]
+        A sequence of pairs each containing the path to an audio track
+        and the gain to apply to it.
     output_file : StrPath
         The path to the file to save the mixed song to.
-    main_gain : int, default=0
-        The gain to apply to the main vocals track.
-    inst_gain : int, default=0
-        The gain to apply to the instrumentals track.
-    backup_gain : int, default=0
-        The gain to apply to the backup vocals track.
     output_sr : int, default=44100
         The sample rate of the mixed song.
     output_format : AudioExt, default=AudioExt.MP3
         The audio format of the mixed song.
 
     """
-    main_vocal_audio = AudioSegment.from_wav(main_vocals_track) + main_gain
-    instrumental_audio = AudioSegment.from_wav(instrumentals_track) + inst_gain
-    backup_vocal_audio = AudioSegment.from_wav(backup_vocals_track) + backup_gain
-    mixed_audio = main_vocal_audio.overlay(backup_vocal_audio).overlay(
-        instrumental_audio,
+    mixed_audio = reduce(
+        lambda a1, a2: a1.overlay(a2),
+        [
+            AudioSegment.from_wav(audio_track) + gain
+            for audio_track, gain in audio_track_gain_pairs
+        ],
     )
     mixed_audio_resampled = mixed_audio.set_frame_rate(output_sr)
     mixed_audio_resampled.export(
@@ -958,11 +947,11 @@ def retrieve_song(
 def separate_audio(
     audio_track: StrPath,
     song_dir: StrPath,
-    primary_prefix: str,
-    secondary_prefix: str,
     model_name: str,
     segment_size: int,
-    display_msg: str,
+    primary_prefix: str = "1_Stem_Primary",
+    secondary_prefix: str = "1_Stem_Secondary",
+    display_msg: str = "[~] Separating audio...",
     progress_bar: gr.Progress | None = None,
     percentage: float = 0.5,
 ) -> tuple[Path, Path]:
@@ -976,14 +965,14 @@ def separate_audio(
     song_dir : StrPath
         The path to the song directory where the separated primary stem
         and secondary stem will be saved.
-    primary_prefix : str
-        The prefix to use for the name of the primary stem.
-    secondary_prefix : str
-        The prefix to use for the name of the secondary stem.
     model_name : str
         The name of the model to use for audio separation.
     segment_size : int
         The segment size to use for audio separation.
+    primary_prefix : str
+        The prefix to use for the name of the primary stem.
+    secondary_prefix : str
+        The prefix to use for the name of the secondary stem.
     display_msg : str
         The message to display when separating the audio track.
     progress_bar : gr.Progress, optional
@@ -1047,148 +1036,6 @@ def separate_audio(
         json_dump(args_dict, secondary_json_path)
 
     return primary_path, secondary_path
-
-
-def separate_vocals(
-    song: StrPath,
-    song_dir: StrPath,
-    progress_bar: gr.Progress | None = None,
-    percentage: float = 0.5,
-) -> tuple[Path, Path]:
-    """
-    Separate a song into a vocals track and an instrumentals track.
-
-    Parameters
-    ----------
-    song : StrPath
-        The path to the song to separate.
-    song_dir : StrPath
-        The path to the song directory where the separated vocals track
-        and instrumentals track will be saved.
-    progress_bar : gr.Progress, optional
-        Gradio progress bar to update.
-    percentage : float, default=0.5
-        Percentage to display in the progress bar.
-
-    Returns
-    -------
-    vocals_track : Path
-        The path to the separated vocals track.
-    instrumentals_track : Path
-        The path to the separated instrumentals track.
-
-
-    """
-    song_path, song_dir_path = _validate_all_exist(
-        [(song, Entity.SONG), (song_dir, Entity.SONG_DIR)],
-    )
-
-    instrumentals_path, vocals_path = separate_audio(
-        song_path,
-        song_dir_path,
-        "1_Instrumentals",
-        "1_Vocals",
-        "UVR-MDX-NET-Voc_FT.onnx",
-        512,
-        "[~] Separating vocals from instrumentals...",
-        progress_bar,
-        percentage,
-    )
-    return vocals_path, instrumentals_path
-
-
-def separate_main_vocals(
-    vocals_track: StrPath,
-    song_dir: StrPath,
-    progress_bar: gr.Progress | None = None,
-    percentage: float = 0.5,
-) -> tuple[Path, Path]:
-    """
-    Separate a vocals track into a main vocals track and a backup vocals
-    track.
-
-    Parameters
-    ----------
-    vocals_track : StrPath
-        The path to the vocals track to separate.
-    song_dir : StrPath
-        The path to the song directory where the separated main vocals
-        track and backup vocals track will be saved.
-    progress_bar : gr.Progress, optional
-        Gradio progress bar to update.
-    percentage : float, default=0.5
-        Percentage to display in the progress bar.
-
-    Returns
-    -------
-    main_vocals_track : Path
-        The path to the separated main vocals track.
-    backup_vocals_track : Path
-        The path to the separated backup vocals track.
-
-
-    """
-    vocals_path, song_dir_path = _validate_all_exist(
-        [(vocals_track, Entity.VOCALS_TRACK), (song_dir, Entity.SONG_DIR)],
-    )
-
-    return separate_audio(
-        vocals_path,
-        song_dir_path,
-        "2_Vocals_Main",
-        "2_Vocals_Backup",
-        "UVR_MDXNET_KARA_2.onnx",
-        512,
-        "[~] Separating main vocals from backup vocals...",
-        progress_bar,
-        percentage,
-    )
-
-
-def dereverb(
-    vocals_track: StrPath,
-    song_dir: StrPath,
-    progress_bar: gr.Progress | None = None,
-    percentage: float = 0.5,
-) -> tuple[Path, Path]:
-    """
-    De-reverb a vocals track.
-
-    Parameters
-    ----------
-    vocals_track : StrPath
-        The path to the vocals track to de-reverb.
-    song_dir : StrPath
-        The path to the song directory where the de-reverbed vocals
-        track will be saved.
-    progress_bar : gr.Progress, optional
-        Gradio progress bar to update.
-    percentage : float, default=0.5
-        Percentage to display in the progress bar.
-
-    Returns
-    -------
-    vocals_dereverb_track : Path
-        The path to the de-reverbed vocals track.
-    vocals_reverb_track : Path
-        The path to the vocals reverb track.
-
-    """
-    vocals_path, song_dir_path = _validate_all_exist(
-        [(vocals_track, Entity.VOCALS_TRACK), (song_dir, Entity.SONG_DIR)],
-    )
-
-    return separate_audio(
-        vocals_path,
-        song_dir_path,
-        "3_Vocals_DeReverb",
-        "3_Vocals_Reverb",
-        "Reverb_HQ_By_FoxJoy.onnx",
-        256,
-        "[~] De-reverbing vocals...",
-        progress_bar,
-        percentage,
-    )
 
 
 def convert(
@@ -1393,8 +1240,8 @@ def pitch_shift(
     audio_track: StrPath,
     song_dir: StrPath,
     n_semitones: int,
-    prefix: str,
-    display_msg: str,
+    prefix: str = "6_Audio_Shifted",
+    display_msg: str = "[~] Pitch-shifting audio...",
     progress_bar: gr.Progress | None = None,
     percentage: float = 0.5,
 ) -> Path:
@@ -1462,73 +1309,6 @@ def pitch_shift(
     return shifted_audio_path
 
 
-def pitch_shift_background(
-    instrumentals_track: StrPath,
-    backup_vocals_track: StrPath,
-    song_dir: StrPath,
-    n_semitones: int = 0,
-    progress_bar: gr.Progress | None = None,
-    percentages: tuple[float, float] = (0.0, 0.5),
-) -> tuple[Path, Path]:
-    """
-    Pitch shift an instrumentals track and a backup vocals track by a
-    given number of semi-tones.
-
-    Parameters
-    ----------
-    instrumentals_track : StrPath
-        The path to the instrumentals track to pitch shift.
-    backup_vocals_track : StrPath
-        The path to the backup vocals track to pitch shift.
-    song_dir : StrPath
-        The path to the directory where the pitch-shifted instrumentals
-        track and backup vocals track will be saved.
-    n_semitones : int, default=0
-        The number of semi-tones to pitch-shift the instrumentals track
-        and backup vocals track by.
-    progress_bar : gr.Progress, optional
-        Gradio progress bar to update.
-    percentages : tuple[float,float], default=(0.0, 0.5)
-        Percentages to display in the progress bar.
-
-    Returns
-    -------
-    shifted_instrumentals_track : Path
-        The path to the pitch-shifted instrumentals track.
-    shifted:backup_vocals_track : Path
-        The path to the pitch-shifted backup vocals track.
-
-    """
-    instrumentals_path, backup_vocals_path, song_dir_path = _validate_all_exist(
-        [
-            (instrumentals_track, Entity.INSTRUMENTALS_TRACK),
-            (backup_vocals_track, Entity.BACKUP_VOCALS_TRACK),
-            (song_dir, Entity.SONG_DIR),
-        ],
-    )
-
-    shifted_instrumentals_path = pitch_shift(
-        instrumentals_path,
-        song_dir_path,
-        n_semitones,
-        "6_Instrumentals_Shifted",
-        "[~] Pitch-shifting instrumentals...",
-        progress_bar,
-        percentages[0],
-    )
-
-    shifted_backup_vocals_path = pitch_shift(
-        backup_vocals_path,
-        song_dir_path,
-        n_semitones,
-        "6_Backup_Vocals_Shifted",
-        "[~] Pitch-shifting backup vocals...",
-        progress_bar,
-        percentages[1],
-    )
-    return shifted_instrumentals_path, shifted_backup_vocals_path
-
-
 def get_song_cover_name(
     effected_vocals_track: StrPath | None = None,
     song_dir: StrPath | None = None,
@@ -1575,47 +1355,34 @@ def get_song_cover_name(
     return f"{song_name} ({model_name} Ver)"
 
 
-def mix_song_cover(
-    main_vocals_track: StrPath,
-    instrumentals_track: StrPath,
-    backup_vocals_track: StrPath,
+def mix_song(
+    audio_track_gain_pairs: Sequence[tuple[StrPath, int]],
     song_dir: StrPath,
-    main_gain: int = 0,
-    inst_gain: int = 0,
-    backup_gain: int = 0,
     output_sr: int = 44100,
     output_format: AudioExt = AudioExt.MP3,
     output_name: str | None = None,
+    display_msg: str = "[~] Mixing audio tracks...",
     progress_bar: gr.Progress | None = None,
     percentage: float = 0.5,
 ) -> Path:
     """
-    Mix a main vocals track, an instrumentals track, and a backup vocals
-    track to create a song cover.
+    Mix multiple audio tracks to create a song.
 
     Parameters
     ----------
-    main_vocals_track : StrPath
-        The path to the main vocals track to mix.
-    instrumentals_track : StrPath
-        The path to the instrumentals track to mix.
-    backup_vocals_track : StrPath
-        The path to the backup vocals track to mix.
+    audio_track_gain_pairs : Sequence[tuple[StrPath, int]]
+        A sequence of pairs each containing the path to an audio track
+        and the gain to apply to it.
     song_dir : StrPath
-        The path to the song directory where the song cover will be
-        saved.
-    main_gain : int, default=0
-        The gain to apply to the main vocals track.
-    inst_gain : int, default=0
-        The gain to apply to the instrumentals track.
-    backup_gain : int, default=0
-        The gain to apply to the backup vocals track.
+        The path to the song directory where the song will be saved.
     output_sr : int, default=44100
-        The sample rate of the song cover.
+        The sample rate of the mixed song.
     output_format : AudioExt, default=AudioExt.MP3
-        The audio format of the song cover.
+        The audio format of the mixed song.
     output_name : str, optional
-        The name of the song cover.
+        The name of the mixed song.
+    display_msg : str, default="[~] Mixing audio tracks..."
+        The message to display when mixing the audio tracks.
     progress_bar : gr.Progress, optional
         Gradio progress bar to update.
     percentage : float, default=0.5
@@ -1626,34 +1393,34 @@ def mix_song_cover(
     Path
         The path to the song cover.
 
+    Raises
+    ------
+    NotProvidedError
+        If no audio tracks are provided.
 
     """
-    main_vocals_path, instrumentals_path, backup_vocals_path, song_dir_path = (
-        _validate_all_exist(
-            [
-                (main_vocals_track, Entity.MAIN_VOCALS_TRACK),
-                (instrumentals_track, Entity.INSTRUMENTALS_TRACK),
-                (backup_vocals_track, Entity.BACKUP_VOCALS_TRACK),
-                (song_dir, Entity.SONG_DIR),
-            ],
+    if not audio_track_gain_pairs:
+        raise NotProvidedError(
+            entity=Entity.AUDIO_TRACK_GAIN_PAIRS,
+            ui_msg=UIMessage.NO_AUDIO_TRACK,
         )
-    )
+
+    audio_path_gain_pairs = [
+        (_validate_exists(audio_track, Entity.AUDIO_TRACK), gain)
+        for audio_track, gain in audio_track_gain_pairs
+    ]
+    song_dir_path = _validate_exists(song_dir, Entity.SONG_DIR)
     args_dict = MixedSongMetaData(
-        main_vocals_track=FileMetaData(
-            name=main_vocals_path.name,
-            hash_id=get_file_hash(main_vocals_path),
-        ),
-        instrumentals_track=FileMetaData(
-            name=instrumentals_path.name,
-            hash_id=get_file_hash(instrumentals_path),
-        ),
-        backup_vocals_track=FileMetaData(
-            name=backup_vocals_path.name,
-            hash_id=get_file_hash(backup_vocals_path),
-        ),
-        main_gain=main_gain,
-        inst_gain=inst_gain,
-        backup_gain=backup_gain,
+        staged_audio_tracks=[
+            StagedAudioMetaData(
+                audio_track=FileMetaData(
+                    name=audio_path.name,
+                    hash_id=get_file_hash(audio_path),
+                ),
+                gain=gain,
+            )
+            for audio_path, gain in audio_path_gain_pairs
+        ],
         output_sr=output_sr,
         output_format=output_format,
     ).model_dump()
@@ -1672,37 +1439,19 @@ def mix_song_cover(
     mix_path, mix_json_path = paths
 
     if not all(path.exists() for path in paths):
-        display_progress(
-            "[~] Mixing main vocals, instrumentals, and backup vocals...",
-            percentage,
-            progress_bar,
-        )
+        display_progress(display_msg, percentage, progress_bar)
 
-        _mix_song(
-            main_vocals_path,
-            instrumentals_path,
-            backup_vocals_path,
-            mix_path,
-            main_gain,
-            inst_gain,
-            backup_gain,
-            output_sr,
-            output_format,
-        )
+        _mix_song(audio_path_gain_pairs, mix_path, output_sr, output_format)
         json_dump(args_dict, mix_json_path)
-
     output_name = output_name or get_song_cover_name(
-        main_vocals_path,
+        audio_path_gain_pairs[0][0],
         song_dir_path,
         None,
         progress_bar,
         percentage,
     )
-    song_cover_path = OUTPUT_AUDIO_DIR / f"{output_name}.{output_format}"
-    OUTPUT_AUDIO_DIR.mkdir(parents=True, exist_ok=True)
-    shutil.copyfile(mix_path, song_cover_path)
-
-    return song_cover_path
+    song_path = OUTPUT_AUDIO_DIR / f"{output_name}.{output_format}"
+    return copy_file_safe(mix_path, song_path)
 
 
 def run_pipeline(
@@ -1803,21 +1552,31 @@ def run_pipeline(
         progress_bar=progress_bar,
         percentage=0 / 9,
     )
-    vocals_track, instrumentals_track = separate_vocals(
+    instrumentals_track, vocals_track = separate_audio(
         song,
         song_dir,
+        SeparationModel.UVR_MDX_NET_VOC_FT,
+        SegmentSize.SEG_512,
+        display_msg="[~] Separating vocals from instrumentals...",
         progress_bar=progress_bar,
         percentage=1 / 9,
     )
-    main_vocals_track, backup_vocals_track = separate_main_vocals(
+    main_vocals_track, backup_vocals_track = separate_audio(
         vocals_track,
         song_dir,
+        SeparationModel.UVR_MDX_NET_KARA_2,
+        SegmentSize.SEG_512,
+        display_msg="[~] Separating main vocals from backup vocals...",
         progress_bar=progress_bar,
         percentage=2 / 9,
     )
-    vocals_dereverb_track, reverb_track = dereverb(
+
+    vocals_dereverb_track, reverb_track = separate_audio(
         main_vocals_track,
         song_dir,
+        SeparationModel.REVERB_HQ_BY_FOXJOY,
+        SegmentSize.SEG_256,
+        display_msg="[~] De-reverbing vocals...",
         progress_bar=progress_bar,
         percentage=3 / 9,
     )
@@ -1836,7 +1595,7 @@ def run_pipeline(
         progress_bar=progress_bar,
         percentage=4 / 9,
     )
-    vocals_mixed_track = postprocess(
+    effected_vocals_track = postprocess(
         converted_vocals_track,
         song_dir,
         room_size,
@@ -1846,26 +1605,35 @@ def run_pipeline(
         progress_bar=progress_bar,
         percentage=5 / 9,
     )
-    instrumentals_shifted_track, backup_vocals_shifted_track = pitch_shift_background(
+    shifted_instrumentals_track = pitch_shift(
         instrumentals_track,
+        song_dir,
+        n_semitones,
+        display_msg="[~] Pitch-shifting instrumentals...",
+        progress_bar=progress_bar,
+        percentage=6 / 9,
+    )
+
+    shifted_backup_vocals_track = pitch_shift(
         backup_vocals_track,
         song_dir,
         n_semitones,
+        display_msg="[~] Pitch-shifting backup vocals...",
         progress_bar=progress_bar,
-        percentages=(6 / 9, 7 / 9),
+        percentage=7 / 9,
     )
 
-    song_cover = mix_song_cover(
-        vocals_mixed_track,
-        instrumentals_shifted_track,
-        backup_vocals_shifted_track,
+    song_cover = mix_song(
+        [
+            (effected_vocals_track, main_gain),
+            (shifted_instrumentals_track, inst_gain),
+            (shifted_backup_vocals_track, backup_gain),
+        ],
         song_dir,
-        main_gain,
-        inst_gain,
-        backup_gain,
         output_sr,
         output_format,
         output_name,
+        display_msg="[~] Mixing main vocals, instrumentals, and backup vocals...",
         progress_bar=progress_bar,
         percentage=8 / 9,
     )
@@ -1879,9 +1647,9 @@ def run_pipeline(
             vocals_dereverb_track,
             reverb_track,
             converted_vocals_track,
-            vocals_mixed_track,
-            instrumentals_shifted_track,
-            backup_vocals_shifted_track,
+            effected_vocals_track,
+            shifted_instrumentals_track,
+            shifted_backup_vocals_track,
             song_cover,
         )
     return song_cover

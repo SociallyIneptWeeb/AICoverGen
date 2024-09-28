@@ -93,6 +93,39 @@ def copy_files_to_new_dir(files: Sequence[StrPath], directory: StrPath) -> None:
         shutil.copyfile(file_path, dir_path / file_path.name)
 
 
+def copy_file_safe(src: StrPath, dest: StrPath) -> Path:
+    """
+    Copy a file to a new location, appending a number if a file with the
+    same name already exists.
+
+    Parameters
+    ----------
+    src : strPath
+        The source file path.
+    dest : strPath
+        The candidate destination file path.
+
+    Returns
+    -------
+    Path
+        The final destination file path.
+
+    """
+    dest_path = Path(dest)
+    src_path = Path(src)
+    dest_dir = dest_path.parent
+    dest_dir.mkdir(parents=True, exist_ok=True)
+    dest_file = dest_path
+    counter = 1
+
+    while dest_file.exists():
+        dest_file = dest_dir / f"{dest_path.stem} ({counter}){src_path.suffix}"
+        counter += 1
+
+    shutil.copyfile(src, dest_file)
+    return dest_file
+
+
 def json_dumps(thing: Json) -> str:
     """
     Dump a JSON-serializable object to a JSON string.

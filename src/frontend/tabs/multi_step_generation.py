@@ -1,29 +1,26 @@
 """Module which defines the code for the "Multi-step generation" tab."""
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from collections.abc import Sequence
 from functools import partial
 
 import gradio as gr
 
-from typing_extra import AudioExt, F0Method, SampleRate
+from typing_extra import AudioExt, F0Method, SampleRate, SegmentSize, SeparationModel
 
 from backend.generate_song_cover import (
     convert,
-    dereverb,
-    mix_song_cover,
-    pitch_shift_background,
+    mix_song,
+    pitch_shift,
     postprocess,
     retrieve_song,
-    separate_main_vocals,
-    separate_vocals,
+    separate_audio,
 )
 
 from frontend.common import (
     PROGRESS_BAR,
     exception_harness,
-    show_hop_slider,
     toggle_visible_component,
     update_cached_songs,
     update_output_audio,
@@ -39,7 +36,8 @@ if TYPE_CHECKING:
 def _update_audio(
     num_components: int,
     output_indices: Sequence[int],
-    track: str,
+    track: str | None,
+    disallow_none: bool = True,
 ) -> gr.Audio | tuple[gr.Audio, ...]:
     """
     Update the value of a subset of `Audio` components to the given
@@ -54,6 +52,9 @@ def _update_audio(
     track : str
         Path pointing to an audio track to update the value of the
         indexed `Audio` components with.
+    disallow_none : bool, default=True
+        Whether to disallow the value of the indexed components to be
+        `None`.
 
     Returns
     -------
@@ -64,12 +65,62 @@ def _update_audio(
     """
     update_args_list: list[UpdateAudioKwArgs] = [{} for _ in range(num_components)]
     for index in output_indices:
-        update_args_list[index]["value"] = track
+        if track or not disallow_none:
+            update_args_list[index]["value"] = track
     match update_args_list:
         case [update_args]:
             return gr.Audio(**update_args)
         case _:
             return tuple(gr.Audio(**update_args) for update_args in update_args_list)
+
+
+def _pair_audio_tracks_and_gain(
+    audio_components: Sequence[gr.Audio],
+    gain_components: Sequence[gr.Slider],
+    data: dict[gr.Audio | gr.Slider, Any],
+) -> list[tuple[str, int]]:
+    """
+    Pair audio tracks and gain levels stored in separate gradio
+    components.
+
+    This function is meant to first be partially applied to the sequence
+    of audio components and the sequence of slider components containing
+    the values that should be combined. The resulting function can then
+    be called by an event listener whose inputs is a set containing
+    those audio and slider components. The `data` parameter in that case
+    will contain a mapping from each of those components to the value
+    that the component stores.
+
+    Parameters
+    ----------
+    audio_components : Sequence[gr.Audio]
+        Audio components to pair with gain levels.
+    gain_components : Sequence[gr.Slider]
+        Gain level components to pair with audio tracks.
+    data : dict[gr.Audio | gr.Slider, Any]
+        Data from the audio and gain components.
+
+    Returns
+    -------
+    list[tuple[str, int]]
+        Paired audio tracks and gain levels.
+
+    Raises
+    ------
+    ValueError
+        If the number of audio tracks and gain levels are not the same.
+
+    """
+    audio_tracks = [data[component] for component in audio_components]
+    gain_levels = [data[component] for component in gain_components]
+    if len(audio_tracks) != len(gain_levels):
+        err_msg = "Number of audio tracks and gain levels must be the same."
+        raise ValueError(err_msg)
+    return [
+        (audio_track, gain_level)
+        for audio_track, gain_level in zip(audio_tracks, gain_levels, strict=True)
+        if audio_track
+    ]
 
 
 def render(
@@ -107,9 +158,7 @@ def render(
     """
     with gr.Tab("Multi-step generation"):
         (
-            separate_vocals_dir,
-            separate_main_vocals_dir,
-            dereverb_vocals_dir,
+            separate_audio_dir,
             convert_vocals_dir,
             postprocess_vocals_dir,
             pitch_shift_background_dir,
@@ -120,9 +169,7 @@ def render(
         input_tracks = [
             gr.Audio(label=label, type="filepath", render=False)
             for label in [
-                "Song",
-                "Vocals",
-                "Vocals",
+                "Audio",
                 "Vocals",
                 "Vocals",
                 "Instrumentals",
@@ -133,26 +180,20 @@ def render(
             ]
         ]
         (
-            song_input,
+            audio_track_input,
             vocals_track_input,
-            main_vocals_track_input,
-            dereverbed_vocals_track_input,
             converted_vocals_track_input,
             instrumentals_track_input,
             backup_vocals_track_input,
-            effected_vocals_track_input,
+            main_vocals_track_input,
             shifted_instrumentals_track_input,
             shifted_backup_vocals_track_input,
         ) = input_tracks
 
         (
             song_output,
-            vocals_track_output,
-            instrumentals_track_output,
-            main_vocals_track_output,
-            backup_vocals_track_output,
-            dereverbed_vocals_track_output,
-            reverb_track_output,
+            primary_stem_output,
+            secondary_stem_output,
             converted_vocals_track_output,
             effected_vocals_track_output,
             shifted_instrumentals_track_output,
@@ -162,14 +203,10 @@ def render(
             gr.Audio(label=label, type="filepath", interactive=False, render=False)
             for label in [
                 "Song",
-                "Vocals",
-                "Instrumentals",
-                "Main vocals",
-                "Backup vocals",
-                "De-reverbed vocals",
-                "Reverb",
+                "Primary stem",
+                "Secondary stem",
                 "Converted vocals",
-                "Post-processed vocals",
+                "Effected vocals",
                 "Pitch-shifted instrumentals",
                 "Pitch-shifted backup vocals",
                 "Song cover",
@@ -177,28 +214,20 @@ def render(
         ]
 
         transfer_defaults = [
-            ["Step 1: song"],
+            ["Step 1: audio"],
+            ["Step 4: instrumentals"],
             ["Step 2: vocals"],
-            ["Step 6: instrumentals"],
             ["Step 3: vocals"],
-            ["Step 6: backup vocals"],
-            ["Step 4: vocals"],
-            [],
-            ["Step 5: vocals"],
-            ["Step 7: main vocals"],
-            ["Step 7: instrumentals"],
-            ["Step 7: backup vocals"],
+            ["Step 5: main vocals"],
+            ["Step 5: instrumentals"],
+            ["Step 5: backup vocals"],
             [],
         ]
 
         (
             song_transfer_default,
-            vocals_transfer_default,
-            instrumentals_transfer_default,
-            main_vocals_transfer_default,
-            backup_vocals_transfer_default,
-            dereverbed_vocals_transfer_default,
-            reverb_transfer_default,
+            primary_stem_transfer_default,
+            secondary_stem_transfer_default,
             converted_vocals_transfer_default,
             effected_vocals_transfer_default,
             shifted_instrumentals_transfer_default,
@@ -208,12 +237,8 @@ def render(
 
         (
             song_transfer,
-            vocals_transfer,
-            instrumentals_transfer,
-            main_vocals_transfer,
-            backup_vocals_transfer,
-            dereverbed_vocals_transfer,
-            reverb_transfer,
+            primary_stem_transfer,
+            secondary_stem_transfer,
             converted_vocals_transfer,
             effected_vocals_transfer,
             shifted_instrumentals_transfer,
@@ -222,28 +247,40 @@ def render(
         ) = [
             gr.Dropdown(
                 [
-                    "Step 1: song",
+                    "Step 1: audio",
                     "Step 2: vocals",
                     "Step 3: vocals",
-                    "Step 4: vocals",
-                    "Step 5: vocals",
-                    "Step 6: instrumentals",
-                    "Step 6: backup vocals",
-                    "Step 7: main vocals",
-                    "Step 7: instrumentals",
-                    "Step 7: backup vocals",
+                    "Step 4: instrumentals",
+                    "Step 4: backup vocals",
+                    "Step 5: main vocals",
+                    "Step 5: instrumentals",
+                    "Step 5: backup vocals",
                 ],
-                label="Transfer to",
+                label=f"{label_prefix} destination",
                 info=(
-                    "Select the input track(s) to transfer the output track to once"
-                    " generation completes."
+                    "Select the input track(s) to transfer the"
+                    f" {label_prefix.lower()} to when the 'Transfer"
+                    f" {label_prefix.lower()}' button is clicked."
                 ),
                 render=False,
                 type="index",
                 multiselect=True,
                 value=value,
             )
-            for value in transfer_defaults
+            for value, label_prefix in zip(
+                transfer_defaults,
+                [
+                    "Song",
+                    "Primary stem",
+                    "Secondary stem",
+                    "Converted vocals",
+                    "Effected vocals",
+                    "Pitch-shifted instrumentals",
+                    "Pitch-shifted backup vocals",
+                    "Song cover",
+                ],
+                strict=True,
+            )
         ]
 
         with gr.Accordion("Step 0: song retrieval", open=True):
@@ -292,164 +329,118 @@ def render(
                     outputs=source,
                     show_progress="hidden",
                 )
+            gr.Markdown("**Settings**")
+            song_transfer.render()
             gr.Markdown("**Outputs**")
             song_output.render()
-            song_transfer.render()
+            gr.Markdown("**Controls**")
+            retrieve_song_btn = gr.Button("Retrieve song", variant="primary")
+            song_transfer_btn = gr.Button("Transfer song")
             retrieve_song_reset_btn = gr.Button("Reset settings")
+
             retrieve_song_reset_btn.click(
                 lambda: gr.Dropdown(value=song_transfer_default),
                 outputs=song_transfer,
                 show_progress="hidden",
             )
-
-            retrieve_song_btn = gr.Button("Retrieve song", variant="primary")
-
-            retrieve_song_btn_click = (
-                retrieve_song_btn.click(
-                    partial(
-                        exception_harness(retrieve_song),
-                        progress_bar=PROGRESS_BAR,
-                    ),
-                    inputs=source,
-                    outputs=[song_output, current_song_dir],
-                )
-                .then(
-                    partial(
-                        update_cached_songs,
-                        len(song_dirs) + 2,
-                        value_indices=range(len(song_dirs)),
-                    ),
-                    inputs=current_song_dir,
-                    outputs=([*song_dirs, cached_song_multi, cached_song_1click]),
-                    show_progress="hidden",
-                )
-                .then(
-                    partial(update_cached_songs, 1, [], [0]),
-                    outputs=intermediate_audio,
-                    show_progress="hidden",
-                )
-            )
-        with gr.Accordion("Step 1: vocals/instrumentals separation", open=False):
-            gr.Markdown("")
-            gr.Markdown("**Inputs**")
-            song_input.render()
-            separate_vocals_dir.render()
-            gr.Markdown("**Outputs**")
-            with gr.Row():
-                with gr.Column():
-                    vocals_track_output.render()
-                    vocals_transfer.render()
-
-                with gr.Column():
-                    instrumentals_track_output.render()
-                    instrumentals_transfer.render()
-
-            separate_vocals_reset_btn = gr.Button("Reset settings")
-            separate_vocals_reset_btn.click(
-                lambda: [
-                    gr.Dropdown(value=vocals_transfer_default),
-                    gr.Dropdown(value=instrumentals_transfer_default),
-                ],
-                outputs=[vocals_transfer, instrumentals_transfer],
-                show_progress="hidden",
-            )
-            separate_vocals_btn = gr.Button(
-                "Separate vocals/instrumentals",
-                variant="primary",
-            )
-
-            separate_vocals_btn_click = separate_vocals_btn.click(
+            retrieve_song_btn.click(
                 partial(
-                    exception_harness(separate_vocals),
+                    exception_harness(retrieve_song),
                     progress_bar=PROGRESS_BAR,
                 ),
-                inputs=[song_input, separate_vocals_dir],
-                outputs=[vocals_track_output, instrumentals_track_output],
+                inputs=source,
+                outputs=[song_output, current_song_dir],
+            ).then(
+                partial(
+                    update_cached_songs,
+                    len(song_dirs) + 2,
+                    value_indices=range(len(song_dirs)),
+                ),
+                inputs=current_song_dir,
+                outputs=([*song_dirs, cached_song_multi, cached_song_1click]),
+                show_progress="hidden",
+            ).then(
+                partial(update_cached_songs, 1, [], [0]),
+                outputs=intermediate_audio,
+                show_progress="hidden",
+            )
+
+        with gr.Accordion("Step 1: vocal separation", open=False):
+            gr.Markdown("")
+            gr.Markdown("**Inputs**")
+            audio_track_input.render()
+            separate_audio_dir.render()
+            gr.Markdown("**Settings**")
+            with gr.Row():
+                separation_model = gr.Dropdown(
+                    list(SeparationModel),
+                    value=SeparationModel.UVR_MDX_NET_VOC_FT,
+                    label="Separation model",
+                    info="The model to use for audio separation.",
+                )
+                segment_size = gr.Radio(
+                    list(SegmentSize),
+                    value=SegmentSize.SEG_512,
+                    label="Segment size",
+                    info=(
+                        "Size of segments into which the audio is split. Larger"
+                        " consumes more resources, but may give better results."
+                    ),
+                )
+            with gr.Row():
+                primary_stem_transfer.render()
+                secondary_stem_transfer.render()
+
+            gr.Markdown("**Outputs**")
+            with gr.Row():
+                primary_stem_output.render()
+                secondary_stem_output.render()
+            gr.Markdown("**Controls**")
+            separate_vocals_btn = gr.Button("Separate vocals", variant="primary")
+            with gr.Row():
+                primary_stem_transfer_btn = gr.Button("Transfer primary stem")
+                secondary_stem_transfer_btn = gr.Button("Transfer secondary stem")
+            separate_audio_reset_btn = gr.Button("Reset settings")
+
+            separate_audio_reset_btn.click(
+                lambda: [
+                    SeparationModel.UVR_MDX_NET_VOC_FT,
+                    SegmentSize.SEG_512,
+                    gr.Dropdown(value=primary_stem_transfer_default),
+                    gr.Dropdown(value=secondary_stem_transfer_default),
+                ],
+                outputs=[
+                    separation_model,
+                    segment_size,
+                    primary_stem_transfer,
+                    secondary_stem_transfer,
+                ],
+                show_progress="hidden",
+            )
+            separate_vocals_btn.click(
+                partial(
+                    exception_harness(separate_audio),
+                    progress_bar=PROGRESS_BAR,
+                ),
+                inputs=[
+                    audio_track_input,
+                    separate_audio_dir,
+                    separation_model,
+                    segment_size,
+                ],
+                outputs=[primary_stem_output, secondary_stem_output],
                 concurrency_limit=1,
                 concurrency_id=ConcurrencyId.GPU,
             )
-
-        with gr.Accordion("Step 2: main vocals/ backup vocals separation", open=False):
+        with gr.Accordion("Step 2: vocal conversion", open=False):
             gr.Markdown("")
             gr.Markdown("**Inputs**")
             vocals_track_input.render()
-            separate_main_vocals_dir.render()
-            gr.Markdown("**Outputs**")
             with gr.Row():
-                with gr.Column():
-                    main_vocals_track_output.render()
-                    main_vocals_transfer.render()
-                with gr.Column():
-                    backup_vocals_track_output.render()
-                    backup_vocals_transfer.render()
-
-            separate_main_vocals_reset_btn = gr.Button("Reset settings")
-            separate_main_vocals_reset_btn.click(
-                lambda: [
-                    gr.Dropdown(value=main_vocals_transfer_default),
-                    gr.Dropdown(value=backup_vocals_transfer_default),
-                ],
-                outputs=[main_vocals_transfer, backup_vocals_transfer],
-                show_progress="hidden",
-            )
-            separate_main_vocals_btn = gr.Button(
-                "Separate main/backup vocals",
-                variant="primary",
-            )
-
-            separate_main_vocals_btn_click = separate_main_vocals_btn.click(
-                partial(
-                    exception_harness(separate_main_vocals),
-                    progress_bar=PROGRESS_BAR,
-                ),
-                inputs=[vocals_track_input, separate_main_vocals_dir],
-                outputs=[main_vocals_track_output, backup_vocals_track_output],
-                concurrency_limit=1,
-                concurrency_id=ConcurrencyId.GPU,
-            )
-
-        with gr.Accordion("Step 3: vocal cleanup", open=False):
-            gr.Markdown("")
-            gr.Markdown("**Inputs**")
-            main_vocals_track_input.render()
-            dereverb_vocals_dir.render()
-            gr.Markdown("**Outputs**")
-            with gr.Row():
-                with gr.Column():
-                    dereverbed_vocals_track_output.render()
-                    dereverbed_vocals_transfer.render()
-                with gr.Column():
-                    reverb_track_output.render()
-                    reverb_transfer.render()
-
-            dereverb_vocals_reset_btn = gr.Button("Reset settings")
-            dereverb_vocals_reset_btn.click(
-                lambda: [
-                    gr.Dropdown(value=dereverbed_vocals_transfer_default),
-                    gr.Dropdown(value=reverb_transfer_default),
-                ],
-                outputs=[dereverbed_vocals_transfer, reverb_transfer],
-                show_progress="hidden",
-            )
-            dereverb_vocals_btn = gr.Button("De-reverb vocals", variant="primary")
-
-            dereverb_vocals_btn_click = dereverb_vocals_btn.click(
-                partial(
-                    exception_harness(dereverb),
-                    progress_bar=PROGRESS_BAR,
-                ),
-                inputs=[main_vocals_track_input, dereverb_vocals_dir],
-                outputs=[dereverbed_vocals_track_output, reverb_track_output],
-                concurrency_limit=1,
-                concurrency_id=ConcurrencyId.GPU,
-            )
-        with gr.Accordion("Step 4: vocal conversion", open=False):
-            gr.Markdown("")
-            gr.Markdown("**Inputs**")
-            dereverbed_vocals_track_input.render()
-            convert_vocals_dir.render()
-            with gr.Row():
+                convert_vocals_dir.render()
                 model_multi.render()
+            gr.Markdown("**Settings**")
+            with gr.Row():
                 n_octaves = gr.Slider(
                     -3,
                     3,
@@ -505,6 +496,7 @@ def render(
                         " fixed loudness (1)."
                     ),
                 )
+            with gr.Row():
                 protect = gr.Slider(
                     0,
                     0.5,
@@ -516,42 +508,38 @@ def render(
                         " to 0.5 to disable."
                     ),
                 )
-                with gr.Column():
-                    f0_method = gr.Dropdown(
-                        list(F0Method),
-                        value=F0Method.RMVPE,
-                        label="Pitch detection algorithm",
-                        info=(
-                            "The method to use for pitch detection. Best option is"
-                            " RMVPE (clarity in vocals), then Mangio-CREPE (smoother"
-                            " vocals)."
-                        ),
-                    )
-                    hop_length = gr.Slider(
-                        32,
-                        320,
-                        value=128,
-                        step=1,
-                        visible=False,
-                        label="Hop length",
-                        info=(
-                            "How often the CREPE-based pitch detection algorithm checks"
-                            " for pitch changes. Measured in milliseconds. Lower values"
-                            " lead to longer conversion times and a higher risk of"
-                            " voice cracks, but better pitch accuracy."
-                        ),
-                    )
-                    f0_method.change(
-                        show_hop_slider,
-                        inputs=f0_method,
-                        outputs=hop_length,
-                        show_progress="hidden",
-                    )
+                f0_method = gr.Dropdown(
+                    list(F0Method),
+                    value=F0Method.RMVPE,
+                    label="Pitch detection algorithm",
+                    info=(
+                        "The method to use for pitch detection. Best option is"
+                        " RMVPE (clarity in vocals), then Mangio-CREPE (smoother"
+                        " vocals)."
+                    ),
+                )
+                hop_length = gr.Slider(
+                    32,
+                    320,
+                    value=128,
+                    step=1,
+                    label="Hop length",
+                    info=(
+                        "How often the CREPE-based pitch detection algorithm checks"
+                        " for pitch changes. Measured in milliseconds. Lower values"
+                        " lead to longer conversion times and a higher risk of"
+                        " voice cracks, but better pitch accuracy."
+                    ),
+                )
 
+            converted_vocals_transfer.render()
             gr.Markdown("**Outputs**")
             converted_vocals_track_output.render()
-            converted_vocals_transfer.render()
+            gr.Markdown("**Controls**")
+            convert_vocals_btn = gr.Button("Convert vocals", variant="primary")
+            converted_vocals_transfer_btn = gr.Button("Transfer converted vocals")
             convert_vocals_reset_btn = gr.Button("Reset settings")
+
             convert_vocals_reset_btn.click(
                 lambda: [
                     0,
@@ -577,14 +565,13 @@ def render(
                 ],
                 show_progress="hidden",
             )
-            convert_vocals_btn = gr.Button("Convert vocals", variant="primary")
-            convert_vocals_btn_click = convert_vocals_btn.click(
+            convert_vocals_btn.click(
                 partial(
                     exception_harness(convert),
                     progress_bar=PROGRESS_BAR,
                 ),
                 inputs=[
-                    dereverbed_vocals_track_input,
+                    vocals_track_input,
                     convert_vocals_dir,
                     model_multi,
                     n_octaves,
@@ -600,11 +587,12 @@ def render(
                 concurrency_id=ConcurrencyId.GPU,
                 concurrency_limit=1,
             )
-        with gr.Accordion("Step 5: vocal post-processing", open=False):
+        with gr.Accordion("Step 3: vocal post-processing", open=False):
             gr.Markdown("")
             gr.Markdown("**Inputs**")
             converted_vocals_track_input.render()
             postprocess_vocals_dir.render()
+            gr.Markdown("**Settings**")
             with gr.Row():
                 room_size = gr.Slider(
                     0,
@@ -616,6 +604,7 @@ def render(
                         " longer reverb time."
                     ),
                 )
+            with gr.Row():
                 wet_level = gr.Slider(
                     0,
                     1,
@@ -637,12 +626,19 @@ def render(
                     label="Damping level",
                     info="Absorption of high frequencies in reverb effect.",
                 )
+
+            effected_vocals_transfer.render()
             gr.Markdown("**Outputs**")
 
             effected_vocals_track_output.render()
-            effected_vocals_transfer.render()
-
+            gr.Markdown("**Controls**")
+            postprocess_vocals_btn = gr.Button(
+                "Post-process vocals",
+                variant="primary",
+            )
+            effected_vocals_transfer_btn = gr.Button("Transfer effected vocals")
             postprocess_vocals_reset_btn = gr.Button("Reset settings")
+
             postprocess_vocals_reset_btn.click(
                 lambda: [
                     0.15,
@@ -660,8 +656,7 @@ def render(
                 ],
                 show_progress="hidden",
             )
-            postprocess_vocals_btn = gr.Button("Post-process vocals", variant="primary")
-            postprocess_vocals_btn_click = postprocess_vocals_btn.click(
+            postprocess_vocals_btn.click(
                 partial(
                     exception_harness(postprocess),
                     progress_bar=PROGRESS_BAR,
@@ -676,84 +671,137 @@ def render(
                 ],
                 outputs=effected_vocals_track_output,
             )
-        with gr.Accordion("Step 6: pitch shift of background tracks", open=False):
+        with gr.Accordion("Step 4: pitch shift of background audio", open=False):
             gr.Markdown("")
             gr.Markdown("**Inputs**")
             with gr.Row():
                 instrumentals_track_input.render()
                 backup_vocals_track_input.render()
             pitch_shift_background_dir.render()
-            n_semitones_background = gr.Slider(
-                -12,
-                12,
-                value=0,
-                step=1,
-                label="Pitch shift",
-                info=(
-                    "The number of semi-tones to pitch-shift the instrumentals and"
-                    " backup vocals by."
-                ),
-            )
+            gr.Markdown("**Settings**")
+            with gr.Row():
+                n_semitones_instrumentals = gr.Slider(
+                    -12,
+                    12,
+                    value=0,
+                    step=1,
+                    label="Instrumental pitch shift",
+                    info="The number of semi-tones to pitch-shift the instrumentals by",
+                )
+                n_semitones_backup_vocals = gr.Slider(
+                    -12,
+                    12,
+                    value=0,
+                    step=1,
+                    label="Backup vocal pitch shift",
+                    info="The number of semi-tones to pitch-shift the backup vocals by",
+                )
+            with gr.Row():
+                shifted_instrumentals_transfer.render()
+                shifted_backup_vocals_transfer.render()
+
             gr.Markdown("**Outputs**")
             with gr.Row():
-                with gr.Column():
-                    shifted_instrumentals_track_output.render()
-                    shifted_instrumentals_transfer.render()
-                with gr.Column():
-                    shifted_backup_vocals_track_output.render()
-                    shifted_backup_vocals_transfer.render()
-
+                shifted_instrumentals_track_output.render()
+                shifted_backup_vocals_track_output.render()
+            gr.Markdown("**Controls**")
+            with gr.Row():
+                pitch_shift_instrumentals_btn = gr.Button(
+                    "Pitch shift instrumentals",
+                    variant="primary",
+                )
+                pitch_shift_backup_vocals_btn = gr.Button(
+                    "Pitch shift backup vocals",
+                    variant="primary",
+                )
+            with gr.Row():
+                shifted_instrumentals_transfer_btn = gr.Button(
+                    "Transfer pitch-shifted instrumentals",
+                )
+                shifted_backup_vocals_transfer_btn = gr.Button(
+                    "Transfer pitch-shifted backup vocals",
+                )
             pitch_shift_background_reset_btn = gr.Button("Reset settings")
+
             pitch_shift_background_reset_btn.click(
                 lambda: [
+                    0,
                     0,
                     gr.Dropdown(value=shifted_instrumentals_transfer_default),
                     gr.Dropdown(value=shifted_backup_vocals_transfer_default),
                 ],
                 outputs=[
-                    n_semitones_background,
+                    n_semitones_instrumentals,
+                    n_semitones_backup_vocals,
                     shifted_instrumentals_transfer,
                     shifted_backup_vocals_transfer,
                 ],
                 show_progress="hidden",
             )
-            pitch_shift_background_btn = gr.Button(
-                "Pitch shift background",
-                variant="primary",
-            )
-
-            pitch_shift_background_btn_click = pitch_shift_background_btn.click(
+            pitch_shift_instrumentals_btn.click(
                 partial(
-                    exception_harness(pitch_shift_background),
+                    exception_harness(pitch_shift),
                     progress_bar=PROGRESS_BAR,
+                    display_msg="Pitch shifting instrumentals...",
                 ),
                 inputs=[
                     instrumentals_track_input,
+                    pitch_shift_background_dir,
+                    n_semitones_instrumentals,
+                ],
+                outputs=shifted_instrumentals_track_output,
+            )
+            pitch_shift_backup_vocals_btn.click(
+                partial(
+                    exception_harness(pitch_shift),
+                    progress_bar=PROGRESS_BAR,
+                    display_msg="Pitch shifting backup vocals...",
+                ),
+                inputs=[
                     backup_vocals_track_input,
                     pitch_shift_background_dir,
-                    n_semitones_background,
+                    n_semitones_backup_vocals,
                 ],
-                outputs=[
-                    shifted_instrumentals_track_output,
-                    shifted_backup_vocals_track_output,
-                ],
+                outputs=shifted_backup_vocals_track_output,
             )
-        with gr.Accordion("Step 7: song mixing", open=False):
+        with gr.Accordion("Step 5: song mixing", open=False):
             gr.Markdown("")
             gr.Markdown("**Inputs**")
             with gr.Row():
-                effected_vocals_track_input.render()
+                main_vocals_track_input.render()
                 shifted_instrumentals_track_input.render()
                 shifted_backup_vocals_track_input.render()
             mix_dir.render()
+            gr.Markdown("**Settings**")
             with gr.Row():
-                main_gain = gr.Slider(-20, 20, value=0, step=1, label="Main vocals")
-                inst_gain = gr.Slider(-20, 20, value=0, step=1, label="Instrumentals")
-                backup_gain = gr.Slider(-20, 20, value=0, step=1, label="Backup vocals")
+                main_gain = gr.Slider(
+                    -20,
+                    20,
+                    value=0,
+                    step=1,
+                    label="Main gain",
+                    info="The gain to apply to the main vocals.",
+                )
+                inst_gain = gr.Slider(
+                    -20,
+                    20,
+                    value=0,
+                    step=1,
+                    label="Instrumentals gain",
+                    info="The gain to apply to the instrumentals.",
+                )
+                backup_gain = gr.Slider(
+                    -20,
+                    20,
+                    value=0,
+                    step=1,
+                    label="Backup gain",
+                    info="The gain to apply to the backup vocals.",
+                )
             with gr.Row():
                 output_name = gr.Textbox(
                     value=update_song_cover_name,
-                    inputs=[effected_vocals_track_input, mix_dir],
+                    inputs=[main_vocals_track_input, mix_dir],
                     label="Output name",
                     placeholder="Ultimate RVC song cover",
                     info=(
@@ -773,10 +821,14 @@ def render(
                     label="Output format",
                     info="The format to save the generated song in.",
                 )
+            song_cover_transfer.render()
             gr.Markdown("**Outputs**")
             song_cover_output.render()
-            song_cover_transfer.render()
+            gr.Markdown("**Controls**")
+            mix_btn = gr.Button("Mix song cover", variant="primary")
+            song_cover_transfer_btn = gr.Button("Transfer song cover")
             mix_reset_btn = gr.Button("Reset settings")
+
             mix_reset_btn.click(
                 lambda: [
                     0,
@@ -796,17 +848,31 @@ def render(
                 ],
                 show_progress="hidden",
             )
-            mix_btn = gr.Button("Mix song cover", variant="primary")
-            mix_btn_click = mix_btn.click(
-                partial(exception_harness(mix_song_cover), progress_bar=PROGRESS_BAR),
-                inputs=[
-                    effected_vocals_track_input,
+            temp_audio_gains = gr.State()
+            mix_btn.click(
+                partial(
+                    _pair_audio_tracks_and_gain,
+                    [
+                        main_vocals_track_input,
+                        shifted_instrumentals_track_input,
+                        shifted_backup_vocals_track_input,
+                    ],
+                    [main_gain, inst_gain, backup_gain],
+                ),
+                inputs={
+                    main_vocals_track_input,
                     shifted_instrumentals_track_input,
                     shifted_backup_vocals_track_input,
-                    mix_dir,
                     main_gain,
                     inst_gain,
                     backup_gain,
+                },
+                outputs=temp_audio_gains,
+            ).then(
+                partial(exception_harness(mix_song), progress_bar=PROGRESS_BAR),
+                inputs=[
+                    temp_audio_gains,
+                    mix_dir,
                     output_sr,
                     output_format,
                     output_name,
@@ -818,57 +884,39 @@ def render(
                 show_progress="hidden",
             )
 
-        for click_event, transfer_inputs_list in [
-            (retrieve_song_btn_click, [(song_transfer, song_output)]),
+        for btn, transfer, output in [
+            (song_transfer_btn, song_transfer, song_output),
+            (primary_stem_transfer_btn, primary_stem_transfer, primary_stem_output),
             (
-                separate_vocals_btn_click,
-                [
-                    (vocals_transfer, vocals_track_output),
-                    (instrumentals_transfer, instrumentals_track_output),
-                ],
+                secondary_stem_transfer_btn,
+                secondary_stem_transfer,
+                secondary_stem_output,
             ),
             (
-                separate_main_vocals_btn_click,
-                [
-                    (main_vocals_transfer, main_vocals_track_output),
-                    (backup_vocals_transfer, backup_vocals_track_output),
-                ],
+                converted_vocals_transfer_btn,
+                converted_vocals_transfer,
+                converted_vocals_track_output,
             ),
             (
-                dereverb_vocals_btn_click,
-                [
-                    (dereverbed_vocals_transfer, dereverbed_vocals_track_output),
-                    (reverb_transfer, reverb_track_output),
-                ],
+                effected_vocals_transfer_btn,
+                effected_vocals_transfer,
+                effected_vocals_track_output,
             ),
             (
-                convert_vocals_btn_click,
-                [(converted_vocals_transfer, converted_vocals_track_output)],
+                shifted_instrumentals_transfer_btn,
+                shifted_instrumentals_transfer,
+                shifted_instrumentals_track_output,
             ),
             (
-                postprocess_vocals_btn_click,
-                [(effected_vocals_transfer, effected_vocals_track_output)],
+                shifted_backup_vocals_transfer_btn,
+                shifted_backup_vocals_transfer,
+                shifted_backup_vocals_track_output,
             ),
-            (
-                pitch_shift_background_btn_click,
-                [
-                    (
-                        shifted_instrumentals_transfer,
-                        shifted_instrumentals_track_output,
-                    ),
-                    (
-                        shifted_backup_vocals_transfer,
-                        shifted_backup_vocals_track_output,
-                    ),
-                ],
-            ),
-            (mix_btn_click, [(song_cover_transfer, song_cover_output)]),
+            (song_cover_transfer_btn, song_cover_transfer, song_cover_output),
         ]:
-            click_event_temp = click_event
-            for transfer_inputs in transfer_inputs_list:
-                click_event_temp = click_event_temp.then(
-                    partial(_update_audio, len(input_tracks)),
-                    inputs=transfer_inputs,
-                    outputs=input_tracks,
-                    show_progress="hidden",
-                )
+            btn.click(
+                partial(_update_audio, len(input_tracks)),
+                inputs=[transfer, output],
+                outputs=input_tracks,
+                show_progress="hidden",
+            )

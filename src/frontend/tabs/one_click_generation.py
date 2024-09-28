@@ -12,7 +12,6 @@ from backend.generate_song_cover import run_pipeline
 from frontend.common import (
     PROGRESS_BAR,
     exception_harness,
-    show_hop_slider,
     toggle_visible_component,
     update_cached_songs,
     update_output_audio,
@@ -143,51 +142,52 @@ def render(
                     ),
                 )
 
-        with gr.Accordion("Vocal conversion options", open=False), gr.Row():
-            index_rate = gr.Slider(
-                0,
-                1,
-                value=0.5,
-                label="Index rate",
-                info=(
-                    "How much of the accent in the voice model to keep in the converted"
-                    " vocals. Increase to bias the conversion towards the accent of the"
-                    " voice model."
-                ),
-            )
-            filter_radius = gr.Slider(
-                0,
-                7,
-                value=3,
-                step=1,
-                label="Filter radius",
-                info=(
-                    "If >=3: apply median filtering to harvested pitch results."
-                    " Can help reduce breathiness in the converted vocals."
-                ),
-            )
-            rms_mix_rate = gr.Slider(
-                0,
-                1,
-                value=0.25,
-                label="RMS mix rate",
-                info=(
-                    "How much to mimic the loudness (0) of the input vocals or a fixed"
-                    " loudness (1)."
-                ),
-            )
-            protect = gr.Slider(
-                0,
-                0.5,
-                value=0.33,
-                label="Protect rate",
-                info=(
-                    "Protection of voiceless consonants and breath sounds. Decrease to"
-                    " increase protection at the cost of indexing accuracy. Set to 0.5"
-                    " to disable."
-                ),
-            )
-            with gr.Column():
+        with gr.Accordion("Vocal conversion options", open=False):
+            with gr.Row():
+                index_rate = gr.Slider(
+                    0,
+                    1,
+                    value=0.5,
+                    label="Index rate",
+                    info=(
+                        "How much of the accent in the voice model to keep in the"
+                        " converted vocals. Increase to bias the conversion towards the"
+                        " accent of the voice model."
+                    ),
+                )
+                filter_radius = gr.Slider(
+                    0,
+                    7,
+                    value=3,
+                    step=1,
+                    label="Filter radius",
+                    info=(
+                        "If >=3: apply median filtering to harvested pitch results."
+                        " Can help reduce breathiness in the converted vocals."
+                    ),
+                )
+                rms_mix_rate = gr.Slider(
+                    0,
+                    1,
+                    value=0.25,
+                    label="RMS mix rate",
+                    info=(
+                        "How much to mimic the loudness (0) of the input vocals or a"
+                        " fixed loudness (1)."
+                    ),
+                )
+            with gr.Row():
+                protect = gr.Slider(
+                    0,
+                    0.5,
+                    value=0.33,
+                    label="Protect rate",
+                    info=(
+                        "Protection of voiceless consonants and breath sounds. Decrease"
+                        " to increase protection at the cost of indexing accuracy. Set"
+                        " to 0.5 to disable."
+                    ),
+                )
                 f0_method = gr.Dropdown(
                     list(F0Method),
                     value=F0Method.RMVPE,
@@ -202,7 +202,6 @@ def render(
                     320,
                     value=128,
                     step=1,
-                    visible=False,
                     label="Hop length",
                     info=(
                         "How often the CREPE-based pitch detection algorithm checks for"
@@ -211,15 +210,9 @@ def render(
                         " but better pitch accuracy."
                     ),
                 )
-                f0_method.change(
-                    show_hop_slider,
-                    inputs=f0_method,
-                    outputs=hop_length,
-                    show_progress="hidden",
-                )
         with gr.Accordion("Audio mixing options", open=False):
             gr.Markdown("")
-            gr.Markdown("### Reverb control on converted vocals")
+            gr.Markdown("**Reverb control on converted vocals**")
             with gr.Row():
                 room_size = gr.Slider(
                     0,
@@ -231,6 +224,7 @@ def render(
                         " longer reverb time."
                     ),
                 )
+            with gr.Row():
                 wet_level = gr.Slider(
                     0,
                     1,
@@ -254,7 +248,7 @@ def render(
                 )
 
             gr.Markdown("")
-            gr.Markdown("### Volume controls (dB)")
+            gr.Markdown("**Volume controls (dB)**")
             with gr.Row():
                 main_gain = gr.Slider(-20, 20, value=0, step=1, label="Main vocals")
                 inst_gain = gr.Slider(-20, 20, value=0, step=1, label="Instrumentals")
@@ -301,12 +295,12 @@ def render(
             gr.Accordion(label, open=False, render=False)
             for label in [
                 "Step 0: song retrieval",
-                "Step 1: vocals/instrumentals separation",
-                "Step 2: main vocals/ backup vocals separation",
-                "Step 3: main vocals cleanup",
-                "Step 4: conversion of main vocals",
-                "Step 5: post-processing of converted vocals",
-                "Step 6: pitch shift of background tracks",
+                "Step 1a: vocals/instrumentals separation",
+                "Step 1b: main vocals/ backup vocals separation",
+                "Step 1c: main vocals cleanup",
+                "Step 2: conversion of main vocals",
+                "Step 3: post-processing of converted vocals",
+                "Step 4: pitch shift of background tracks",
             ]
         ]
         (

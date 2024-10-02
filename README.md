@@ -51,7 +51,7 @@ For those without a powerful enough NVIDIA GPU, you may try AICoverGen out using
 
 For those who face issues with Google Colab notebook disconnecting after a few minutes, here's an alternative that doesn't use the WebUI.
 
-[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/ardha27/AICoverGen-NoUI-Colab/blob/main/CoverGen_No_UI.ipynb)
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/kindahex/CoverGen-No-UI/blob/main/CoverGen_No_UI.ipynb)
 
 For those who want to run this locally, follow the setup guide below.
 

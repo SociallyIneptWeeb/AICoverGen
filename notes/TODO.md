@@ -68,8 +68,6 @@
 
 ### Multi-step generation
 
-* have two inputs and corresponding pitch shift buttons in the pitch shift accordion step, i.e. one for pitch shifting instrumentals and one for pitch shifting instrumentals
-
 * add description describing how to use each accordion and and suggestions for workflows
 * If possible merge two consecutive event listeners using `update_cached_songs` in the song retrieval accordion.
 * add option for adding more input tracks to the mix song step
@@ -102,10 +100,6 @@
 * save default values for options for song generation in an `SongCoverOptionDefault` enum.
   * then reference this enum across the two tabs
   * and also use `list[SongCoverOptionDefault]` as input to reset settings click event listener in single click generation tab.
-* Try to merge event listeners for confirmation and action execution in `frontend.manage_audio` and `frontend.mange_models`
-  * Can output of js function be fed into python function in the same event listener definition?
-  * If not possible then try to at least remove dummy input component and dummy/passthrough function in the confirmation event listener
-  * See more info here: <https://github.com/gradio-app/gradio/issues/3324>
 * use `Block.queue` with parameter `max_size` set to a non-null value and `default_concurrency_limit` increased in order to improve user responsiveness
 * use `Block.launch()` with `max_file_size` to prevent too large uploads
 * experiment with `show_error` parameters on `Block.launch()`

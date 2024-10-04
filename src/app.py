@@ -38,7 +38,7 @@ def _init_app() -> list[gr.Dropdown]:
 
     """
     models = [gr.Dropdown(choices=get_saved_model_names()) for _ in range(3)]
-    cached_songs = [gr.Dropdown(choices=get_named_song_dirs()) for _ in range(10)]
+    cached_songs = [gr.Dropdown(choices=get_named_song_dirs()) for _ in range(8)]
     output_audio = [gr.Dropdown(choices=get_saved_output_audio())]
     return models + cached_songs + output_audio
 

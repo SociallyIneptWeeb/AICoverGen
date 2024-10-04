@@ -10,7 +10,6 @@ from frontend.common import (
     PROGRESS_BAR,
     confirm_box_js,
     confirmation_harness,
-    identity,
     render_msg,
 )
 
@@ -18,7 +17,6 @@ from frontend.common import (
 def render() -> None:
     """Render "Other settings" tab."""
     dummy_checkbox = gr.Checkbox(visible=False)
-    confirmation = gr.State(value=False)
 
     gr.Markdown("")
     with gr.Accordion("Temporary files", open=True):
@@ -28,22 +26,17 @@ def render() -> None:
             temporary_files_msg = gr.Textbox(label="Output message", interactive=False)
 
     temporary_files_btn.click(
-        identity,
+        partial(
+            confirmation_harness(delete_temp_files),
+            progress_bar=PROGRESS_BAR,
+        ),
         inputs=dummy_checkbox,
-        outputs=confirmation,
+        outputs=temporary_files_msg,
         js=confirm_box_js(
             "Are you sure you want to delete all temporary files? Any files uploaded"
             " directly via the UI will not be available for further processing until"
             " they are re-uploaded.",
         ),
-        show_progress="hidden",
-    ).then(
-        partial(
-            confirmation_harness(delete_temp_files),
-            progress_bar=PROGRESS_BAR,
-        ),
-        inputs=confirmation,
-        outputs=temporary_files_msg,
     ).success(
         partial(
             render_msg,

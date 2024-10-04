@@ -17,7 +17,6 @@ from frontend.common import (
     PROGRESS_BAR,
     confirm_box_js,
     confirmation_harness,
-    identity,
     render_msg,
     update_cached_songs,
     update_output_audio,
@@ -54,7 +53,6 @@ def render(
 
     """
     dummy_checkbox = gr.Checkbox(visible=False)
-    confirmation = gr.State(value=False)
     with gr.Tab("Delete audio"):
         with gr.Accordion("Intermediate audio", open=False), gr.Row(equal_height=False):
             with gr.Column():
@@ -92,136 +90,91 @@ def render(
             all_audio_btn = gr.Button("Delete", variant="primary")
             all_audio_msg = gr.Textbox(label="Output message", interactive=False)
 
-        intermediate_audio_click = (
-            intermediate_audio_btn.click(
-                identity,
-                inputs=dummy_checkbox,
-                outputs=confirmation,
-                js=confirm_box_js(
-                    "Are you sure you want to delete the selected song directories?",
-                ),
-                show_progress="hidden",
-            )
-            .then(
-                partial(
-                    confirmation_harness(delete_intermediate_audio),
-                    progress_bar=PROGRESS_BAR,
-                ),
-                inputs=[confirmation, intermediate_audio],
-                outputs=intermediate_audio_msg,
-            )
-            .success(
-                partial(
-                    render_msg,
-                    "[-] Successfully deleted the selected song directories!",
-                ),
-                outputs=intermediate_audio_msg,
-                show_progress="hidden",
-            )
+        intermediate_audio_click = intermediate_audio_btn.click(
+            partial(
+                confirmation_harness(delete_intermediate_audio),
+                progress_bar=PROGRESS_BAR,
+            ),
+            inputs=[dummy_checkbox, intermediate_audio],
+            outputs=intermediate_audio_msg,
+            js=confirm_box_js(
+                "Are you sure you want to delete the selected song directories?",
+            ),
+        ).success(
+            partial(
+                render_msg,
+                "[-] Successfully deleted the selected song directories!",
+            ),
+            outputs=intermediate_audio_msg,
+            show_progress="hidden",
         )
 
-        all_intermediate_audio_click = (
-            all_intermediate_audio_btn.click(
-                identity,
-                inputs=dummy_checkbox,
-                outputs=confirmation,
-                js=confirm_box_js(
-                    "Are you sure you want to delete all intermediate audio files?",
-                ),
-                show_progress="hidden",
-            )
-            .then(
-                partial(
-                    confirmation_harness(delete_all_intermediate_audio),
-                    progress_bar=PROGRESS_BAR,
-                ),
-                inputs=confirmation,
-                outputs=intermediate_audio_msg,
-            )
-            .success(
-                partial(
-                    render_msg,
-                    "[-] Successfully deleted all intermediate audio files!",
-                ),
-                outputs=intermediate_audio_msg,
-                show_progress="hidden",
-            )
+        all_intermediate_audio_click = all_intermediate_audio_btn.click(
+            partial(
+                confirmation_harness(delete_all_intermediate_audio),
+                progress_bar=PROGRESS_BAR,
+            ),
+            inputs=dummy_checkbox,
+            outputs=intermediate_audio_msg,
+            js=confirm_box_js(
+                "Are you sure you want to delete all intermediate audio files?",
+            ),
+        ).success(
+            partial(
+                render_msg,
+                "[-] Successfully deleted all intermediate audio files!",
+            ),
+            outputs=intermediate_audio_msg,
+            show_progress="hidden",
         )
 
-        output_audio_click = (
-            output_audio_btn.click(
-                identity,
-                inputs=dummy_checkbox,
-                outputs=confirmation,
-                js=confirm_box_js(
-                    "Are you sure you want to delete the selected output audio files?",
-                ),
-                show_progress="hidden",
-            )
-            .then(
-                partial(
-                    confirmation_harness(delete_output_audio),
-                    progress_bar=PROGRESS_BAR,
-                ),
-                inputs=[confirmation, output_audio],
-                outputs=output_audio_msg,
-            )
-            .success(
-                partial(
-                    render_msg,
-                    "[-] Successfully deleted the selected output audio files!",
-                ),
-                outputs=output_audio_msg,
-                show_progress="hidden",
-            )
+        output_audio_click = output_audio_btn.click(
+            partial(
+                confirmation_harness(delete_output_audio),
+                progress_bar=PROGRESS_BAR,
+            ),
+            inputs=[dummy_checkbox, output_audio],
+            outputs=output_audio_msg,
+            js=confirm_box_js(
+                "Are you sure you want to delete the selected output audio files?",
+            ),
+        ).success(
+            partial(
+                render_msg,
+                "[-] Successfully deleted the selected output audio files!",
+            ),
+            outputs=output_audio_msg,
+            show_progress="hidden",
         )
 
-        all_output_audio_click = (
-            all_output_audio_btn.click(
-                identity,
-                inputs=dummy_checkbox,
-                outputs=confirmation,
-                js=confirm_box_js(
-                    "Are you sure you want to delete all output audio files?",
-                ),
-                show_progress="hidden",
-            )
-            .then(
-                partial(
-                    confirmation_harness(delete_all_output_audio),
-                    progress_bar=PROGRESS_BAR,
-                ),
-                inputs=confirmation,
-                outputs=output_audio_msg,
-            )
-            .success(
-                partial(render_msg, "[-] Successfully deleted all output audio files!"),
-                outputs=output_audio_msg,
-                show_progress="hidden",
-            )
+        all_output_audio_click = all_output_audio_btn.click(
+            partial(
+                confirmation_harness(delete_all_output_audio),
+                progress_bar=PROGRESS_BAR,
+            ),
+            inputs=dummy_checkbox,
+            outputs=output_audio_msg,
+            js=confirm_box_js(
+                "Are you sure you want to delete all output audio files?",
+            ),
+        ).success(
+            partial(render_msg, "[-] Successfully deleted all output audio files!"),
+            outputs=output_audio_msg,
+            show_progress="hidden",
         )
 
-        all_audio_click = (
-            all_audio_btn.click(
-                identity,
-                inputs=dummy_checkbox,
-                outputs=confirmation,
-                js=confirm_box_js("Are you sure you want to delete all audio files?"),
-                show_progress="hidden",
-            )
-            .then(
-                partial(
-                    confirmation_harness(delete_all_audio),
-                    progress_bar=PROGRESS_BAR,
-                ),
-                inputs=confirmation,
-                outputs=all_audio_msg,
-            )
-            .success(
-                partial(render_msg, "[-] Successfully deleted all audio files!"),
-                outputs=all_audio_msg,
-                show_progress="hidden",
-            )
+        all_audio_click = all_audio_btn.click(
+            partial(
+                confirmation_harness(delete_all_audio),
+                progress_bar=PROGRESS_BAR,
+            ),
+            inputs=dummy_checkbox,
+            outputs=all_audio_msg,
+            js=confirm_box_js("Are you sure you want to delete all audio files?"),
+        ).success(
+            partial(render_msg, "[-] Successfully deleted all audio files!"),
+            outputs=all_audio_msg,
+            show_progress="hidden",
         )
 
         _, _, all_audio_update = [

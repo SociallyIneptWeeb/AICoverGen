@@ -120,39 +120,27 @@ def render_msg(
 
 def confirm_box_js(msg: str) -> str:
     """
-    Generate JavaScript code for a confirmation box.
+    Generate a JavaScript code snippet which:
+      * defines an anonymous function that takes one named parameter and
+      zero or more unnamed parameters
+      * renders a confirmation box
+      * returns the choice selected by the user in that confirmation
+      box in addition to any unnamed parameters passed to the function.
 
     Parameters
     ----------
     msg : str
-        Message to display in the confirmation box.
+        Message to display in the confirmation box rendered by the
+        JavaScript code snippet.
 
     Returns
     -------
     str
-        JavaScript code for the confirmation box.
+        The JavaScript code snippet.
 
     """
     formatted_msg = f"'{msg}'"
-    return f"(x) => confirm({formatted_msg})"
-
-
-def identity(x: T) -> T:
-    """
-    Identity function.
-
-    Parameters
-    ----------
-    x : T
-        Value to return.
-
-    Returns
-    -------
-    T
-        The value.
-
-    """
-    return x
+    return f"(x, ...args) => [confirm({formatted_msg}), ...args]"
 
 
 def update_value(x: str) -> dict[str, Any]:

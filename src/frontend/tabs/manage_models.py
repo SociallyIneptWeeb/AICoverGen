@@ -21,7 +21,6 @@ from frontend.common import (
     confirm_box_js,
     confirmation_harness,
     exception_harness,
-    identity,
     render_msg,
     update_dropdowns,
 )
@@ -160,7 +159,6 @@ def render(
     # Download tab
 
     dummy_checkbox = gr.Checkbox(visible=False)
-    confirmation = gr.State(value=False)
     with gr.Tab("Download model"):
 
         with gr.Accordion("View public models table", open=False):
@@ -294,53 +292,31 @@ def render(
                 delete_all_btn = gr.Button("Delete all", variant="primary")
             with gr.Column():
                 delete_msg = gr.Textbox(label="Output message", interactive=False)
-        delete_btn_click = (
-            delete_btn.click(
-                # NOTE not sure why, but in order for subsequent event
-                # listener to trigger, changes coming from the js code
-                # have to be routed through an identity function which
-                # takes as input some dummy component of type bool.
-                identity,
-                inputs=dummy_checkbox,
-                outputs=confirmation,
-                js=confirm_box_js(
-                    "Are you sure you want to delete the selected voice models?",
-                ),
-                show_progress="hidden",
-            )
-            .then(
-                partial(confirmation_harness(delete_models), progress_bar=PROGRESS_BAR),
-                inputs=[confirmation, model_delete],
-                outputs=delete_msg,
-            )
-            .success(
-                partial(render_msg, "[-] Successfully deleted selected voice models!"),
-                outputs=delete_msg,
-                show_progress="hidden",
-            )
+        delete_btn_click = delete_btn.click(
+            partial(confirmation_harness(delete_models), progress_bar=PROGRESS_BAR),
+            inputs=[dummy_checkbox, model_delete],
+            outputs=delete_msg,
+            js=confirm_box_js(
+                "Are you sure you want to delete the selected voice models?",
+            ),
+        ).success(
+            partial(render_msg, "[-] Successfully deleted selected voice models!"),
+            outputs=delete_msg,
+            show_progress="hidden",
         )
 
-        delete_all_btn_click = (
-            delete_all_btn.click(
-                identity,
-                inputs=dummy_checkbox,
-                outputs=confirmation,
-                js=confirm_box_js("Are you sure you want to delete all voice models?"),
-                show_progress="hidden",
-            )
-            .then(
-                partial(
-                    confirmation_harness(delete_all_models),
-                    progress_bar=PROGRESS_BAR,
-                ),
-                inputs=confirmation,
-                outputs=delete_msg,
-            )
-            .success(
-                partial(render_msg, "[-] Successfully deleted all voice models!"),
-                outputs=delete_msg,
-                show_progress="hidden",
-            )
+        delete_all_btn_click = delete_all_btn.click(
+            partial(
+                confirmation_harness(delete_all_models),
+                progress_bar=PROGRESS_BAR,
+            ),
+            inputs=dummy_checkbox,
+            outputs=delete_msg,
+            js=confirm_box_js("Are you sure you want to delete all voice models?"),
+        ).success(
+            partial(render_msg, "[-] Successfully deleted all voice models!"),
+            outputs=delete_msg,
+            show_progress="hidden",
         )
 
     for click_event in [

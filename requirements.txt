@@ -20,9 +20,10 @@ tqdm==4.65.0 #NOTE upgraded from unspecified
 gradio==4.43.0
 
 # Machine learning
---find-links https://download.pytorch.org/whl/torch_stable.html
-torch==2.1.1+cu121 # NOTE upgraded from 2.0.1+cu118
-torchaudio==2.1.1+cu121
+--find-links https://download.pytorch.org/whl/torch/
+torch==2.4.1+cu121
+--find-links https://download.pytorch.org/whl/torchaudio/
+torchaudio==2.4.1+cu121
 torchcrepe==0.0.23 # NOTE upgraded from 0.0.20
 ./dependencies/fairseq-0.12.2-cp311-cp311-linux_x86_64.whl; sys_platform == 'linux'
 ./dependencies/fairseq-0.12.3.1-cp311-cp311-win_amd64.whl; sys_platform == 'win32'
@@ -46,7 +47,7 @@ sox==1.5.0
 pydub==0.25.1
 pydub-stubs==0.25.1.1
 pedalboard==0.9.12
-audio-separator[gpu]==0.18.3
+audio-separator[gpu]==0.21.1
 praat-parselmouth>=0.4.2 # NOTE upgraded from unspecified
 pyworld==0.3.4
 #TODO add the later

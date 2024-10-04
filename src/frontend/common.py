@@ -11,7 +11,7 @@ import gradio as gr
 
 from exceptions import NotProvidedError
 
-from typing_extra import F0Method, P, T
+from typing_extra import P, T
 
 from backend.generate_song_cover import get_named_song_dirs, get_song_cover_name
 from backend.manage_audio import get_saved_output_audio
@@ -347,26 +347,6 @@ def toggle_visible_component(
             return gr.update(**update_args)
         case _:
             return tuple(gr.update(**update_args) for update_args in update_args_list)
-
-
-def show_hop_slider(f0_method: F0Method) -> gr.Slider:
-    """
-    Show or hide a slider component based on the provided pitch
-    detection method.
-
-    Parameters
-    ----------
-    f0_method : F0Method
-        Pitch detection algorithm to determine visibility of the
-        slider.
-
-    Returns
-    -------
-    gr.Slider
-        Slider component with visibility set accordingly.
-
-    """
-    return gr.Slider(visible=f0_method == F0Method.MANGIO_CREPE)
 
 
 def update_song_cover_name(

@@ -136,8 +136,6 @@ def _autofill_model_name_and_url(
 
 
 def render(
-    dummy_checkbox: gr.Checkbox,
-    confirmation: gr.State,
     model_delete: gr.Dropdown,
     model_1click: gr.Dropdown,
     model_multi: gr.Dropdown,
@@ -148,12 +146,6 @@ def render(
 
     Parameters
     ----------
-    dummy_checkbox : gr.Checkbox
-        Dummy checkbox component needed for deletion confirmation in the
-        "Delete audio" tab and the "Delete models" tab.
-    confirmation : gr.State
-        Component storing deletion confirmation status in the
-        "Delete audio" tab and the "Delete models" tab.
     model_delete : gr.Dropdown
         Dropdown for selecting voice models to delete in the
         "Delete models" tab.
@@ -166,6 +158,9 @@ def render(
 
     """
     # Download tab
+
+    dummy_checkbox = gr.Checkbox(visible=False)
+    confirmation = gr.State(value=False)
     with gr.Tab("Download model"):
 
         with gr.Accordion("View public models table", open=False):

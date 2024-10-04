@@ -253,36 +253,39 @@ class PitchShiftMetaData(BaseModel):
     n_semitones: int
 
 
+class StagedAudioMetaData(BaseModel):
+    """
+    Metadata for a staged audio track.
+
+    Attributes
+    ----------
+    audio_track : FileMetaData
+        Metadata for the audio track that was staged.
+    gain : float
+        The gain applied to the audio track.
+
+    """
+
+    audio_track: FileMetaData
+    gain: float
+
+
 class MixedSongMetaData(BaseModel):
     """
     Metadata for a mixed song.
 
     Attributes
     ----------
-    main_vocals_track : FileMetaData
-        Metadata for the main vocals track that was mixed.
-    instrumentals_track : FileMetaData
-        Metadata for the instrumentals track that was mixed.
-    backup_vocals_track : FileMetaData
-        Metadata for the backup vocals track that was mixed.
-    main_gain : float
-        The gain applied to the main vocals track.
-    inst_gain : float
-        The gain applied to the instrumentals track.
-    backup_gain : float
-        The gain applied to the backup vocals track.
-    output_sr: int
+    staged_audio_tracks : list[StagedAudioMetaData]
+        Metadata for the staged audio tracks that were mixed.
+
+    output_sr : int
         The sample rate of the mixed song.
-    output_format: AudioExt
-        The audio format of the mixed song.
+    output_format : AudioExt
+        The audio file format of the mixed song.
 
     """
 
-    main_vocals_track: FileMetaData
-    instrumentals_track: FileMetaData
-    backup_vocals_track: FileMetaData
-    main_gain: float
-    inst_gain: float
-    backup_gain: float
+    staged_audio_tracks: list[StagedAudioMetaData]
     output_sr: int
     output_format: AudioExt

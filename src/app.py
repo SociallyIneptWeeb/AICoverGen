@@ -62,9 +62,6 @@ with gr.Blocks(
 ) as app:
 
     gr.HTML("<h1>Ultimate RVC ❤️</h1>")
-
-    dummy_checkbox = gr.Checkbox(visible=False)
-    confirmation = gr.State(value=False)
     song_dirs = [
         gr.Dropdown(
             label="Song directory",
@@ -75,7 +72,7 @@ with gr.Blocks(
             ),
             render=False,
         )
-        for _ in range(7)
+        for _ in range(5)
     ]
     cached_song_1click, cached_song_multi = [
         gr.Dropdown(
@@ -131,8 +128,6 @@ with gr.Blocks(
         )
     with gr.Tab("Manage models"):
         render_manage_models_tab(
-            dummy_checkbox,
-            confirmation,
             model_delete,
             model_1click,
             model_multi,
@@ -140,8 +135,6 @@ with gr.Blocks(
     with gr.Tab("Manage audio"):
 
         render_manage_audio_tab(
-            dummy_checkbox,
-            confirmation,
             song_dirs,
             cached_song_1click,
             cached_song_multi,

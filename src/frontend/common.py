@@ -27,7 +27,10 @@ from frontend.typing_extra import (
 PROGRESS_BAR = gr.Progress()
 
 
-def exception_harness(fn: Callable[P, T]) -> Callable[P, T]:
+def exception_harness(
+    fn: Callable[P, T],
+    info_msg: str | None = None,
+) -> Callable[P, T]:
     """
     Wrap a function in a harness that catches exceptions and re-raises
     them as instances of `gradio.Error`.
@@ -36,6 +39,10 @@ def exception_harness(fn: Callable[P, T]) -> Callable[P, T]:
     ----------
     fn : Callable[P, T]
         The function to wrap.
+
+    info_msg : str, optional
+        Message to display in an info-box pop-up after the function
+        executes successfully.
 
     Returns
     -------
@@ -46,7 +53,7 @@ def exception_harness(fn: Callable[P, T]) -> Callable[P, T]:
 
     def _wrapped_fn(*args: P.args, **kwargs: P.kwargs) -> T:
         try:
-            return fn(*args, **kwargs)
+            res = fn(*args, **kwargs)
         except gr.Error:
             raise
         except NotProvidedError as e:
@@ -54,6 +61,10 @@ def exception_harness(fn: Callable[P, T]) -> Callable[P, T]:
             raise gr.Error(str(msg)) from None
         except Exception as e:
             raise gr.Error(str(e)) from e
+        else:
+            if info_msg:
+                gr.Info(info_msg, duration=2)
+            return res
 
     return _wrapped_fn
 

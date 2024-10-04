@@ -1,9 +1,6 @@
 # TODO
 
-* test that app works through notebook
-
 * should specify in colab notebook which link in output of last cell should be clicked
-* we should make str enum for vocal separation model names and perhaps also for audio stem names?
 * should rename instances of "models" to "voice models"
 
 * have some default models available (ie.e do not need to be downloaded)
@@ -103,10 +100,6 @@
 * use `Block.queue` with parameter `max_size` set to a non-null value and `default_concurrency_limit` increased in order to improve user responsiveness
 * use `Block.launch()` with `max_file_size` to prevent too large uploads
 * experiment with `show_error` parameters on `Block.launch()`
-* have pop-up success after any kind of job is done ?
-  * We can use `gr.Info` for this
-  * We already have a helper function `frontend.common.render_msg` which could be used for this purpose (after some small tweaks)
-  * In this case we could also consider removing output message textbox components in the `manage_models` and `manage_audio` tabs
 * Persist state of app (currently selected settings etc.) across re-renders
   * This includes:
     * refreshing a browser windows

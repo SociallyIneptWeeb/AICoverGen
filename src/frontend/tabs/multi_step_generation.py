@@ -345,7 +345,10 @@ def render(
             )
             retrieve_song_btn.click(
                 partial(
-                    exception_harness(retrieve_song),
+                    exception_harness(
+                        retrieve_song,
+                        info_msg="Song retrieved successfully!",
+                    ),
                     progress_bar=PROGRESS_BAR,
                 ),
                 inputs=source,
@@ -419,7 +422,10 @@ def render(
             )
             separate_vocals_btn.click(
                 partial(
-                    exception_harness(separate_audio),
+                    exception_harness(
+                        separate_audio,
+                        info_msg="Vocals separated successfully!",
+                    ),
                     progress_bar=PROGRESS_BAR,
                 ),
                 inputs=[
@@ -567,7 +573,10 @@ def render(
             )
             convert_vocals_btn.click(
                 partial(
-                    exception_harness(convert),
+                    exception_harness(
+                        convert,
+                        info_msg="Vocals converted successfully!",
+                    ),
                     progress_bar=PROGRESS_BAR,
                 ),
                 inputs=[
@@ -658,7 +667,10 @@ def render(
             )
             postprocess_vocals_btn.click(
                 partial(
-                    exception_harness(postprocess),
+                    exception_harness(
+                        postprocess,
+                        info_msg="Vocals post-processed successfully!",
+                    ),
                     progress_bar=PROGRESS_BAR,
                 ),
                 inputs=[
@@ -740,7 +752,10 @@ def render(
             )
             pitch_shift_instrumentals_btn.click(
                 partial(
-                    exception_harness(pitch_shift),
+                    exception_harness(
+                        pitch_shift,
+                        info_msg="Instrumentals pitch-shifted successfully!",
+                    ),
                     progress_bar=PROGRESS_BAR,
                     display_msg="Pitch shifting instrumentals...",
                 ),
@@ -753,7 +768,10 @@ def render(
             )
             pitch_shift_backup_vocals_btn.click(
                 partial(
-                    exception_harness(pitch_shift),
+                    exception_harness(
+                        pitch_shift,
+                        info_msg="Backup vocals pitch-shifted successfully!",
+                    ),
                     progress_bar=PROGRESS_BAR,
                     display_msg="Pitch shifting backup vocals...",
                 ),
@@ -869,7 +887,13 @@ def render(
                 },
                 outputs=temp_audio_gains,
             ).then(
-                partial(exception_harness(mix_song), progress_bar=PROGRESS_BAR),
+                partial(
+                    exception_harness(
+                        mix_song,
+                        info_msg="Song cover succesfully generated.",
+                    ),
+                    progress_bar=PROGRESS_BAR,
+                ),
                 inputs=[
                     temp_audio_gains,
                     mix_dir,

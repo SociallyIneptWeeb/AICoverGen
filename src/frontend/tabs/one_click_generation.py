@@ -389,7 +389,10 @@ def render(
 
         generate_btn.click(
             partial(
-                exception_harness(run_pipeline),
+                exception_harness(
+                    run_pipeline,
+                    info_msg="Song cover generated successfully!",
+                ),
                 return_intermediate=True,
                 progress_bar=PROGRESS_BAR,
             ),

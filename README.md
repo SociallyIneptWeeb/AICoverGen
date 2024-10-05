@@ -87,6 +87,17 @@ Run the following command to download the required MDXNET vocal separation model
 python src/download_models.py
 ```
 
+### Docker setup
+
+Run the following command to build the dockerimage
+```
+docker build -t aicovergen .
+```
+
+To run the docker container, run the following command
+```
+docker run --gpus all -p 127.0.0.1:7860:7860 aicovergen
+```
 
 ## Usage with WebUI
 

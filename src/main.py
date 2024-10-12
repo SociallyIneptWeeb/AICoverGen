@@ -17,9 +17,14 @@ import yt_dlp
 from pedalboard import Pedalboard, Reverb, Compressor, HighpassFilter
 from pedalboard.io import AudioFile
 from pydub import AudioSegment
+from google.colab import files
 
 from mdx import run_mdx
 from rvc import Config, load_hubert, get_vc, rvc_infer
+
+import os
+import requests
+from bs4 import BeautifulSoup
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -353,3 +358,6 @@ if __name__ == '__main__':
                                      reverb_dry=args.reverb_dryness, reverb_damping=args.reverb_damping,
                                      output_format=args.output_format)
     print(f'[+] Cover generated at {cover_path}')
+def get_cover_path():
+    # Your logic to calculate the cover_path
+    return cover_path

@@ -1475,9 +1475,8 @@ def run_pipeline(
     output_sr: int = 44100,
     output_format: AudioExt = AudioExt.MP3,
     output_name: str | None = None,
-    return_intermediate: bool = False,
     progress_bar: gr.Progress | None = None,
-) -> Path | tuple[Path, ...]:
+) -> tuple[Path, ...]:
     """
     Run the song cover generation pipeline.
 
@@ -1531,18 +1530,14 @@ def run_pipeline(
         The audio format of the song cover.
     output_name : str, optional
         The name of the song cover.
-    return_intermediate : bool, default=False
-        Whether to return the paths of any intermediate audio
-        files generated during execution of the pipeline.
     progress_bar : gr.Progress, optional
         Gradio progress bar to update.
 
     Returns
     -------
-    Path | tuple[Path,...]
-        The path to the generated song cover and, if
-        `return_intermediate=True`, also the paths to any intermediate
-        audio files that were generated.
+    tuple[Path,...]
+        The path to the generated song cover and the paths to any
+        intermediate audio files that were generated.
 
     """
     _validate_exists(model_name, Entity.MODEL_NAME)
@@ -1637,19 +1632,17 @@ def run_pipeline(
         progress_bar=progress_bar,
         percentage=8 / 9,
     )
-    if return_intermediate:
-        return (
-            song,
-            vocals_track,
-            instrumentals_track,
-            main_vocals_track,
-            backup_vocals_track,
-            vocals_dereverb_track,
-            reverb_track,
-            converted_vocals_track,
-            effected_vocals_track,
-            shifted_instrumentals_track,
-            shifted_backup_vocals_track,
-            song_cover,
-        )
-    return song_cover
+    return (
+        song_cover,
+        song,
+        vocals_track,
+        instrumentals_track,
+        main_vocals_track,
+        backup_vocals_track,
+        vocals_dereverb_track,
+        reverb_track,
+        converted_vocals_track,
+        effected_vocals_track,
+        shifted_instrumentals_track,
+        shifted_backup_vocals_track,
+    )

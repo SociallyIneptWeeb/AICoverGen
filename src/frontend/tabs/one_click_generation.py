@@ -393,7 +393,6 @@ def render(
                     run_pipeline,
                     info_msg="Song cover generated successfully!",
                 ),
-                return_intermediate=True,
                 progress_bar=PROGRESS_BAR,
             ),
             inputs=[
@@ -418,7 +417,7 @@ def render(
                 output_format,
                 output_name,
             ],
-            outputs=[*intermediate_audio_tracks, song_cover],
+            outputs=[song_cover, *intermediate_audio_tracks],
             concurrency_limit=1,
             concurrency_id=ConcurrencyId.GPU,
         ).success(

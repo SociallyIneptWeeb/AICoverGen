@@ -5,6 +5,8 @@ RVC app.
 
 from pathlib import Path
 
+from rich import print as rprint
+
 import requests
 
 from common import RVC_MODELS_DIR
@@ -39,7 +41,7 @@ if __name__ == "__main__":
 
     model_names = ["hubert_base.pt", "rmvpe.pt"]
     for model_name in model_names:
-        print(f"Downloading {model_name}...")  # noqa: T201
+        rprint(f"Downloading {model_name}...")
         download_model(RVC_DOWNLOAD_URL, model_name, RVC_MODELS_DIR)
 
-    print("All models downloaded!")  # noqa: T201
+    rprint("All models downloaded!")

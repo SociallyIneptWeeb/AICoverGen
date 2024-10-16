@@ -7,6 +7,7 @@ from collections.abc import Sequence
 from pathlib import Path
 
 from pydantic import AnyHttpUrl, TypeAdapter, ValidationError
+from rich import print as rprint
 
 import gradio as gr
 
@@ -39,7 +40,7 @@ def display_progress(
 
     """
     if progress_bar is None:
-        print(message)  # noqa: T201
+        rprint(message)
     else:
         progress_bar(percentage, desc=message)
 

@@ -1,6 +1,7 @@
 # General
 lib==4.0.0
 pydantic==2.9.0
+typer==0.12.5
 
 # Networking
 requests==2.32.3 #NOTE upgraded from 2.32.0
@@ -21,9 +22,9 @@ gradio==4.43.0
 
 # Machine learning
 --find-links https://download.pytorch.org/whl/torch/
-torch==2.4.1+cu121
+torch==2.4.1+cu124
 --find-links https://download.pytorch.org/whl/torchaudio/
-torchaudio==2.4.1+cu121
+torchaudio==2.4.1+cu124
 torchcrepe==0.0.23 # NOTE upgraded from 0.0.20
 ./dependencies/fairseq-0.12.2-cp311-cp311-linux_x86_64.whl; sys_platform == 'linux'
 ./dependencies/fairseq-0.12.3.1-cp311-cp311-win_amd64.whl; sys_platform == 'win32'

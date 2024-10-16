@@ -5,6 +5,10 @@
 
 * have some default models available (ie.e do not need to be downloaded)
   * should be downloaded as part of init.py
+  * if one specific model exists this should be selected by default in all dropdowns (could be taylor swift)
+* update to python 3.12 (should be possible now)
+* test new changes on linux
+* organize src as a package and always import as src.module.submodule
 
 ## Project/task management
 
@@ -172,24 +176,13 @@
 
 ## CLI
 
+* consider making all calls to library functions be quiet (not print anything) by default
+* consider also printing status messages to terminal when running webapp (not just cli)
+
 ### Update `display_progress` function
 
 * Always log information message using standard python logging facilities
 * rename to `log_progress`?
-* use `tqdm` for generating progress bars (PRIORITY ?)
-  * by setting the global `gr.Progress` object to track tqdm in the frontend code we will not have to pass this object to the backend at all
-  * At the same time we can generate progress bars for CLI as well instead of using `print` to output progress messages
-  * have progress bars not be static (one bar shown at a given percentage) but instead show increase in progress up to the given percentage
-  * Potential problem: We have to define the tqdm object in each pipeline function
-    * This is verbose
-    * but more importantly, it might cause problem when we want to have one tqdm bar display when executing the `run_pipeline` function
-    * potential solution is to maintain a `progress` parameter for each backend function but instead have it be an instance of a tqdm object
-* support a `quiet` mode where no progress bars are displayed?
-
-### Replace `argparse` with `typer` (PRIORITY ?)
-
-* Replace other occurrences of `print` with `typer.echo`
-* look at other neat features of `typer`
 
 ### Potentially implement audio conversion
 
@@ -212,7 +205,6 @@
 
 ## Scripting
 
-* Fix linting errors in shell script
 * Convert batch script to powershell script
 * Add timer to  `./urvc install` command
 * Update setup scripts so all audio-separation models are downloaded then instead of at runtime
@@ -221,9 +213,6 @@
   * checking out to main after merging
   * pulling latest master
   * deleting local branch
-* Update shell scripts so that `./urvc run` and `./urvc dev` both take arbitrary arguments to initialize the Ultimate RVC app with
-    1. After pattern matching on the first command to `./urvc` then use `shift` to drop that command and preserve all commands to the right (i.e. shift left)
-    2. Then use `$BIN_PATH/python ./src/app.py "$@"`to pass on all the remaining options to the python script
 
 ## python package management
 

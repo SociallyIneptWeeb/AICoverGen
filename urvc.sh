@@ -5,6 +5,9 @@
 DEPS_PATH="./dependencies"
 VENV_PATH="$DEPS_PATH/.venv"
 BIN_PATH="$VENV_PATH/bin"
+ACTIVATE_PATH="$BIN_PATH/activate"
+PYTHON_PATH="$BIN_PATH/python"
+GRADIO_PATH="$BIN_PATH/gradio"
 main() {
     case $1 in
         install)
@@ -19,7 +22,8 @@ main() {
             curl -LJ -o ./dependencies/fairseq-0.12.2-cp311-cp311-linux_x86_64.whl --create-dirs \
                 https://huggingface.co/JackismyShephard/ultimate-rvc/resolve/main/fairseq-0.12.2-cp311-cp311-linux_x86_64.whl
             python3.11 -m venv $VENV_PATH --upgrade-deps
-            . $BIN_PATH/activate
+            # shellcheck disable=SC1090
+            . $ACTIVATE_PATH
             pip cache purge
             pip install -r requirements.txt
             pip install faiss-cpu==1.7.3
@@ -29,17 +33,13 @@ main() {
             echo "Ultimate RVC has been installed successfully"
             exit 0
             ;;
-        run)
-            echo "Starting Ultimate RVC"
-            $BIN_PATH/python ./src/app.py
-            exit 0
-            ;;
         update)
             echo "Updating Ultimate RVC"
             git pull
             rm -rf $VENV_PATH
             python3.11 -m venv $VENV_PATH --upgrade-deps
-            . $BIN_PATH/activate
+            # shellcheck disable=SC1090
+            . $ACTIVATE_PATH
             pip cache purge
             pip install -r requirements.txt
             pip install faiss-cpu==1.7.3
@@ -48,19 +48,38 @@ main() {
             echo "Ultimate RVC has been updated successfully"
             exit 0
             ;;
+        run)
+            echo "Starting Ultimate RVC"
+            shift
+            $PYTHON_PATH ./src/app.py "$@"
+            exit 0
+            ;;
         dev)
             echo "Starting Ultimate RVC in development mode"
-            $BIN_PATH/gradio ./src/app.py --demo-name app
+            $GRADIO_PATH ./src/app.py --demo-name app
+            exit 0
+            ;;
+        cli)
+            echo "Starting Ultimate RVC in CLI mode"
+            shift
+            $PYTHON_PATH ./src/cli.py "$@"
+            exit 0
+            ;;
+        docs)
+            cd src || exit 1
+            "../$PYTHON_PATH" -m typer "$2" utils docs --output "$3"
             exit 0
             ;;
         *)
-            echo "Usage ./urvc.sh [install|run|update|dev]"
+            show_help
             exit 1
             ;;
     esac
 }
 
+
 install_distro_specifics() {
+    # shellcheck disable=SC1091
     . /etc/lsb-release
     case $DISTRIB_ID in
         Ubuntu)
@@ -68,19 +87,22 @@ install_distro_specifics() {
                 24.04)
                     # Add Ubuntu 23.10 repository to sources.list so that we can install cuda 12.1 toolkit
 
-                    # sed command removes leading whitespace from subsequent lines
-                    TEXT=$(sed 's/^[[:space:]]*//' <<< "\
-                    ##
-                    ## Added by Ultimate RVC installer
-                    Types: deb
-                    URIs: http://archive.ubuntu.com/ubuntu/
-                    Suites: lunar
-                    Components: universe
-                    Signed-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg"
+                    # first define the text to append to the file. 
+                    # For this we use a heredoc with removal of leading tabs
+                    TEXT=$(
+                        cat <<- EOF
+						
+						## Added by Ultimate RVC installer
+						Types: deb
+						URIs: http://archive.ubuntu.com/ubuntu/
+						Suites: lunar
+						Components: universe
+						Signed-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg
+						EOF
                     )
                     FILE=/etc/apt/sources.list.d/ubuntu.sources
                     # Append to file if not already present
-                    grep -qxF "## Added by Ultimate RVC installer" "$FILE" || echo "$TEXT" | sudo tee -a "$FILE"
+                    grep -qxF "## Added by Ultimate RVC installer" $FILE || echo "$TEXT" | sudo tee -a $FILE
                     sudo apt update
                     ;;
                 22.04)
@@ -104,9 +126,33 @@ install_cuda_121() {
     wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/x86_64/cuda-keyring_1.0-1_all.deb
     sudo dpkg -i cuda-keyring_1.0-1_all.deb
     sudo apt-get update
-    sudo apt-get -y install cuda-toolkit-12-1
+    sudo apt-get -y install cuda-toolkit-12-4
     rm -rf cuda-keyring_1.0-1_all.deb
     echo "CUDA 12.1 has been installed successfully"
 }
 
-main $@
+show_help() {
+	cat <<- EOF
+
+	Usage: ./urvc.sh [OPTIONS] COMMAND [ARGS]...
+
+	Commands:
+	  install    Install dependencies and set up environment.
+	  update     Update application and dependencies.
+	  run        Start Ultimate RVC in run mode.
+	              Options:
+	                --help      Show help message and exit.
+	              [more information available, use --help to see all]
+	  dev        Start Ultimate RVC in development mode.
+	  cli        Start Ultimate RVC in CLI mode.
+	              Options:
+	                --help      Show help message and exit.
+	              [more information available, use --help to see all]
+	  docs       Generate documentation using Typer.
+	              Args:
+	                module     The module to generate documentation for.
+	                output     The output directory.
+	EOF
+}
+
+main "$@"

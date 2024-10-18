@@ -6,8 +6,7 @@
 * have some default models available (ie.e do not need to be downloaded)
   * should be downloaded as part of init.py
   * if one specific model exists this should be selected by default in all dropdowns (could be taylor swift)
-* update to python 3.12 (should be possible now)
-* test new changes on linux
+* update code to utilize new features from python 3.12
 * organize src as a package and always import as src.module.submodule
 
 ## Project/task management
@@ -234,8 +233,6 @@
     * Probably MDX models and MDXC models
     * Maybe also VR and demucs?
   * Revisit online guide for optimal models and settings
-  * Also need to decide whether we want function to consistently return the same type of stem in the same position in return tuple
-    * i.e. always return vocal part in first position of tuple
 * In multi-step generation tab
   * Expand audio-separation accordion so that model can be selected and appropriate settings for that model can then be selected.
     * Model specific settings should expand based on selected model

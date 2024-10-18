@@ -70,12 +70,11 @@ if "%1" == "install" (
         del "%CONDA_INSTALLER%"
     )
     echo Initializing conda environment...
-    call conda create --prefix "%VENV_ROOT%" --no-shortcuts -y -k -q python=3.11
+    call conda create --prefix "%VENV_ROOT%" --no-shortcuts -y -k -q python=3.12
     echo Conda environment initialized successfully.
 
     echo Installing Python packages..
     call activate.bat "%VENV_ROOT%"
-    call conda install --channel conda-forge -y -q faiss-cpu==1.7.3
     pip cache purge
     python -m pip install --upgrade pip setuptools
     pip install -r "%REQUIREMENTS_FILE%"
@@ -102,9 +101,8 @@ if "%1" == "update" (
     echo Updating Python packages...
     call activate.bat
     call conda remove --prefix "%VENV_ROOT%" --all -y -q
-    call conda create --prefix "%VENV_ROOT%" --no-shortcuts -y -k -q python=3.11
+    call conda create --prefix "%VENV_ROOT%" --no-shortcuts -y -k -q python=3.12
     call conda activate "%VENV_ROOT%"
-    call conda install --channel conda-forge -y -q faiss-cpu==1.7.3
     pip cache purge
     python -m pip install --upgrade pip setuptools
     pip install -r "%REQUIREMENTS_FILE%"

@@ -3,6 +3,8 @@
 # Launcher script for Ultimate RVC on Debian-based linux systems.
 # Currently only supports Ubuntu 22.04 and Ubuntu 24.04.
 DEPS_PATH="./dependencies"
+ZIP_FILE=dependencies.zip
+URL_MAIN="https://huggingface.co/JackismyShephard/ultimate-rvc/resolve/main/$ZIP_FILE"
 VENV_PATH="$DEPS_PATH/.venv"
 BIN_PATH="$VENV_PATH/bin"
 ACTIVATE_PATH="$BIN_PATH/activate"
@@ -12,21 +14,22 @@ main() {
     case $1 in
         install)
             echo "Installing Ultimate RVC"
-            sudo apt install -y build-essential software-properties-common
+            sudo apt install -y build-essential software-properties-common unzip
             install_distro_specifics
-            install_cuda_121
+            install_cuda_124
             sudo add-apt-repository -y ppa:deadsnakes/ppa
-            sudo apt install -y python3.11 python3.11-dev python3.11-venv
+            sudo apt install -y python3.12 python3.12-dev python3.12-venv
             sudo apt install -y sox libsox-dev ffmpeg
             rm -rf $DEPS_PATH
-            curl -LJ -o ./dependencies/fairseq-0.12.2-cp311-cp311-linux_x86_64.whl --create-dirs \
-                https://huggingface.co/JackismyShephard/ultimate-rvc/resolve/main/fairseq-0.12.2-cp311-cp311-linux_x86_64.whl
-            python3.11 -m venv $VENV_PATH --upgrade-deps
+            curl -s -LJO $URL_MAIN -o $ZIP_FILE
+            unzip -q $ZIP_FILE
+            rm $ZIP_FILE
+            rm -rf $DEPS_PATH/sox $DEPS_PATH/ffmpeg $DEPS_PATH/miniconda3_11.exe
+            python3.12 -m venv $VENV_PATH --upgrade-deps
             # shellcheck disable=SC1090
             . $ACTIVATE_PATH
             pip cache purge
             pip install -r requirements.txt
-            pip install faiss-cpu==1.7.3
             python ./src/init.py
             deactivate
             echo
@@ -37,12 +40,11 @@ main() {
             echo "Updating Ultimate RVC"
             git pull
             rm -rf $VENV_PATH
-            python3.11 -m venv $VENV_PATH --upgrade-deps
+            python3.12 -m venv $VENV_PATH --upgrade-deps
             # shellcheck disable=SC1090
             . $ACTIVATE_PATH
             pip cache purge
             pip install -r requirements.txt
-            pip install faiss-cpu==1.7.3
             deactivate
             echo
             echo "Ultimate RVC has been updated successfully"
@@ -121,14 +123,14 @@ install_distro_specifics() {
     esac
 }
 
-install_cuda_121() {
-    echo "Installing CUDA 12.1"
-    wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/x86_64/cuda-keyring_1.0-1_all.deb
-    sudo dpkg -i cuda-keyring_1.0-1_all.deb
+install_cuda_124() {
+    echo "Installing CUDA 12.4"
+    wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/x86_64/cuda-keyring_1.1-1_all.deb
+    sudo dpkg -i cuda-keyring_1.1-1_all.deb
     sudo apt-get update
     sudo apt-get -y install cuda-toolkit-12-4
-    rm -rf cuda-keyring_1.0-1_all.deb
-    echo "CUDA 12.1 has been installed successfully"
+    rm -rf cuda-keyring_1.1-1_all.deb
+    echo "CUDA 12.4 has been installed successfully"
 }
 
 show_help() {

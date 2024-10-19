@@ -6,7 +6,6 @@
 * have some default models available (ie.e do not need to be downloaded)
   * should be downloaded as part of init.py
   * if one specific model exists this should be selected by default in all dropdowns (could be taylor swift)
-* update code to utilize new features from python 3.12
 * organize src as a package and always import as src.module.submodule
 
 ## Project/task management

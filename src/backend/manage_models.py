@@ -1,6 +1,5 @@
 """Module which defines functions to manage voice models."""
 
-import os
 import re
 import shutil
 import urllib.request
@@ -157,7 +156,7 @@ def filter_public_models_table(
         return (
             query.lower()
             in (
-                f"{model.name} {model.description} {' '.join(model.tags)} "
+                f"{model.name} {model.description} {" ".join(model.tags)} "
                 f"{model.credit} {model.added}"
             ).lower()
             if query
@@ -207,7 +206,7 @@ def _extract_model(
             zip_ref.extractall(extraction_path)
         file_path_map = {
             ext: Path(root, name)
-            for root, _, files in os.walk(extraction_path)
+            for root, _, files in extraction_path.walk()
             for name in files
             for ext in [".index", ".pth"]
             if Path(name).suffix == ext

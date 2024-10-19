@@ -67,7 +67,6 @@ def _render_app() -> gr.Blocks:
         css=css,
         delete_cache=(cache_delete_frequency, cache_delete_cutoff),
     ) as app:
-
         gr.HTML("<h1>Ultimate RVC ❤️</h1>")
         song_dirs = [
             gr.Dropdown(
@@ -140,7 +139,6 @@ def _render_app() -> gr.Blocks:
                 model_multi,
             )
         with gr.Tab("Manage audio"):
-
             render_manage_audio_tab(
                 song_dirs,
                 cached_song_1click,

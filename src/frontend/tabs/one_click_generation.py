@@ -76,7 +76,6 @@ def render(
 
     """
     with gr.Tab("One-click generation"):
-
         with gr.Accordion("Main options"), gr.Row():
             with gr.Column():
                 source_type = gr.Dropdown(

@@ -38,7 +38,6 @@ def download_model(url: str, name: str, directory: StrPath) -> None:
 
 
 if __name__ == "__main__":
-
     model_names = ["hubert_base.pt", "rmvpe.pt"]
     for model_name in model_names:
         rprint(f"Downloading {model_name}...")

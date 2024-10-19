@@ -1,13 +1,4 @@
-from typing import (
-    Any,
-    Generic,
-    Literal,
-    NotRequired,
-    Protocol,
-    Self,
-    TypeAlias,
-    TypedDict,
-)
+from typing import Any, Literal, NotRequired, Protocol, Self, TypedDict
 
 import dataclasses
 from collections.abc import Callable, Sequence
@@ -19,13 +10,11 @@ from gradio.blocks import Block, BlockContext, Component
 from gradio.components import Timer
 from gradio.data_classes import FileData, FileDataDict
 
-from typing_extra import P, T, V
+type Dependency = _Dependency[Any, Any, Any]
+type EventListenerCallable = _EventListenerCallable[Any, Any, Any]
+type EventListener = _EventListener[Any, Any, Any]
 
-Dependency: TypeAlias = _Dependency[Any, Any, Any]
-EventListenerCallable: TypeAlias = _EventListenerCallable[Any, Any, Any]
-EventListener: TypeAlias = _EventListener[Any, Any, Any]
-
-class _EventListenerCallable(Protocol[P, T, V]):
+class _EventListenerCallable[T, V, **P](Protocol):
     def __call__(
         self,
         fn: Callable[P, T] | None | Literal["decorator"] = "decorator",
@@ -58,9 +47,9 @@ class _EventListenerCallable(Protocol[P, T, V]):
         concurrency_limit: int | None | Literal["default"] = "default",
         concurrency_id: str | None = None,
         show_api: bool = True,
-    ) -> _Dependency[P, T, V]: ...
+    ) -> _Dependency[T, V, P]: ...
 
-class _EventListenerCallableFull(Protocol[P, T, V]):
+class _EventListenerCallableFull[T, V, **P](Protocol):
     def __call__(
         self,
         target: Block | None,
@@ -94,15 +83,14 @@ class _EventListenerCallableFull(Protocol[P, T, V]):
         concurrency_limit: int | None | Literal["default"] = "default",
         concurrency_id: str | None = None,
         show_api: bool = True,
-    ) -> _Dependency[P, T, V]: ...
+    ) -> _Dependency[T, V, P]: ...
 
 def set_cancel_events(
     triggers: Sequence[EventListenerMethod],
     cancels: Dependency | list[Dependency] | None,
 ) -> None: ...
 
-class _Dependency(dict[str, V], Generic[P, T, V]):
-
+class _Dependency[T, V, **P](dict[str, V]):
     fn: Callable[P, T]
     associated_timer: Timer | None
     then: EventListenerCallable
@@ -118,19 +106,13 @@ class _Dependency(dict[str, V], Generic[P, T, V]):
     ) -> None: ...
     def __call__(self, *args: P.args, **kwargs: P.kwargs) -> T: ...
 
-class EventData(Generic[T]):
-
+class EventData[T]:
     target: Block | None
     _data: T
 
-    def __init__(
-        self,
-        target: Block | None,
-        _data: T,
-    ) -> None: ...
+    def __init__(self, target: Block | None, _data: T) -> None: ...
 
 class _SelectData(TypedDict):
-
     index: int | tuple[int, int]
     value: Any
     row_value: NotRequired[list[Any]]
@@ -138,21 +120,15 @@ class _SelectData(TypedDict):
     selected: NotRequired[bool]
 
 class SelectData(EventData[_SelectData]):
-
     index: int | tuple[int, int]
     value: Any
     row_value: list[Any] | None
     col_value: list[Any] | None
     selected: bool
 
-    def __init__(
-        self,
-        target: Block | None,
-        data: _SelectData,
-    ) -> None: ...
+    def __init__(self, target: Block | None, data: _SelectData) -> None: ...
 
 class _KeyUpData(TypedDict):
-
     key: str
     input_value: str
 
@@ -163,19 +139,16 @@ class KeyUpData(EventData[_KeyUpData]):
     def __init__(self, target: Block | None, data: _KeyUpData) -> None: ...
 
 class DeletedFileData(EventData[FileDataDict]):
-
     file: FileData
 
     def __init__(self, target: Block | None, data: FileDataDict) -> None: ...
 
 class _LikeData(TypedDict):
-
     index: int | tuple[int, int]
     value: Any
     liked: NotRequired[bool]
 
 class LikeData(EventData[_LikeData]):
-
     index: int | tuple[int, int]
     value: Any
     liked: bool
@@ -187,7 +160,7 @@ class EventListenerMethod:
     block: Block | None
     event_name: str
 
-class _EventListener(str, Generic[P, T, V]):
+class _EventListener[T, V, **P](str):
     __slots__ = (
         "callback",
         "config_data",
@@ -208,7 +181,7 @@ class _EventListener(str, Generic[P, T, V]):
     trigger_after: int | None
     trigger_only_on_success: bool
     doc: str
-    listener: _EventListenerCallableFull[P, T, V]
+    listener: _EventListenerCallableFull[T, V, P]
 
     def __new__(
         cls,
@@ -233,7 +206,7 @@ class _EventListener(str, Generic[P, T, V]):
         doc: str = "",
     ) -> None: ...
     def set_doc(self, component: str) -> None: ...
-    def copy(self) -> _EventListener[P, T, V]: ...
+    def copy(self) -> _EventListener[T, V, P]: ...
     @staticmethod
     def _setup(
         _event_name: str,
@@ -242,9 +215,9 @@ class _EventListener(str, Generic[P, T, V]):
         _callback: Callable[[Block], None] | None,
         _trigger_after: int | None,
         _trigger_only_on_success: bool,
-    ) -> _EventListenerCallableFull[P, T, V]: ...
+    ) -> _EventListenerCallableFull[T, V, P]: ...
 
-def on(
+def on[T, **P](
     triggers: Sequence[EventListenerCallable] | EventListenerCallable | None = None,
     fn: Callable[P, T] | None | Literal["decorator"] = None,
     inputs: (
@@ -277,7 +250,7 @@ def on(
     concurrency_limit: int | None | Literal["default"] = "default",
     concurrency_id: str | None = None,
     show_api: bool = True,
-) -> _Dependency[P, T, Any]: ...
+) -> _Dependency[T, Any, P]: ...
 
 class Events:
     change: EventListener

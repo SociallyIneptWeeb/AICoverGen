@@ -947,7 +947,7 @@ def retrieve_song(
 def separate_audio(
     audio_track: StrPath,
     song_dir: StrPath,
-    model_name: str,
+    model_name: SeparationModel,
     segment_size: int,
     primary_prefix: str = "1_Stem_Primary",
     secondary_prefix: str = "1_Stem_Secondary",

@@ -4,14 +4,14 @@ import numpy as np
 from numpy.typing import NDArray
 
 class AudioFile:
-    @staticmethod
+    @classmethod
     @overload
     def __new__(
         cls: object,
         filename: str,
         mode: Literal["r"] = "r",
     ) -> ReadableAudioFile: ...
-    @staticmethod
+    @classmethod
     @overload
     def __new__(
         cls: object,

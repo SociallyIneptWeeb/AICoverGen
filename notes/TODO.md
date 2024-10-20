@@ -3,10 +3,8 @@
 * should specify in colab notebook which link in output of last cell should be clicked
 * should rename instances of "models" to "voice models"
 
-* have some default models available (ie.e do not need to be downloaded)
-  * should be downloaded as part of init.py
-  * if one specific model exists this should be selected by default in all dropdowns (could be taylor swift)
 * organize src as a package and always import as src.module.submodule
+* upgrade gradio to version 5
 
 ## Project/task management
 
@@ -108,8 +106,6 @@
     * Opening app in new browser window
     * Maybe it should also include when app is started anew?
   * Possible solutions
-    * Set the `key` attribute of a component when initializing it, so that its state will persist across re-renders
-      * Problem is that this solution might not work with accordions or other types of blocks
     * Save any changes to components to a session dictionary and load from it upon refresh
       * See [here](https://github.com/gradio-app/gradio/issues/3106#issuecomment-1694704623)
       * Problem is that this solution might not work with accordions or other types of blocks
@@ -205,8 +201,6 @@
 
 * Convert batch script to powershell script
 * Add timer to  `./urvc install` command
-* Update setup scripts so all audio-separation models are downloaded then instead of at runtime
-* Synchronize wheel files in `./dependencies/wheels` with upstream repo instead of downloading them from external repo in shell scripts
 * Make script for automatic merging of PRs, including:
   * checking out to main after merging
   * pulling latest master

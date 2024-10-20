@@ -46,7 +46,9 @@ class Separator:
         model_file_dir: StrPath = "/tmp/audio-separator-models/",  # noqa: S108
         output_dir: StrPath | None = None,
         output_format: str = "WAV",
+        output_bitrate: str | None = None,
         normalization_threshold: float = 0.9,
+        amplification_threshold: float = 0.6,
         output_single_stem: str | None = None,
         invert_using_spec: bool = False,
         sample_rate: int = 44100,
@@ -58,7 +60,7 @@ class Separator:
             "enable_denoise": False,
         },
         vr_params: VRParams = {  # noqa:B006
-            "batch_size": 16,
+            "batch_size": 1,
             "window_size": 512,
             "aggression": 5,
             "enable_tta": False,
@@ -78,6 +80,10 @@ class Separator:
             "overlap": 8,
         },
     ) -> None: ...
+    def download_model_files(
+        self,
+        model_filename: str,
+    ) -> tuple[str, str, str, str, str | None]: ...
     def load_model(
         self,
         model_filename: str = "model_mel_band_roformer_ep_3005_sdr_11.4360.ckpt",

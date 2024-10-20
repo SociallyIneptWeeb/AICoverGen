@@ -80,7 +80,7 @@ if "%1" == "install" (
     pip install -r "%REQUIREMENTS_FILE%"
     echo Python packages installed successfully.
 
-    echo Installing base models...
+    echo installing models...
     python ./src/init.py
     call conda deactivate
 

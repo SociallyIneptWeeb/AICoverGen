@@ -1,11 +1,11 @@
-from typing import Literal, TypeAlias
+from typing import Literal
 
 from os import PathLike
 
 import numpy as np
 from numpy.typing import NDArray
 
-DEFAULT_NDARRAY: TypeAlias = NDArray[np.float64 | np.float32 | np.int32 | np.int16]
+type DEFAULT_NDARRAY = NDArray[np.float64 | np.float32 | np.int32 | np.int16]
 
 def read(
     file: int | str | PathLike[str] | PathLike[bytes],

@@ -11,8 +11,6 @@ import gradio as gr
 
 from exceptions import NotProvidedError
 
-from typing_extra import P, T
-
 from backend.generate_song_cover import get_named_song_dirs, get_song_cover_name
 from backend.manage_audio import get_saved_output_audio
 
@@ -27,7 +25,7 @@ from frontend.typing_extra import (
 PROGRESS_BAR = gr.Progress()
 
 
-def exception_harness(
+def exception_harness[T, **P](
     fn: Callable[P, T],
     info_msg: str | None = None,
 ) -> Callable[P, T]:
@@ -69,7 +67,9 @@ def exception_harness(
     return _wrapped_fn
 
 
-def confirmation_harness(fn: Callable[P, T]) -> Callable[Concatenate[bool, P], T]:
+def confirmation_harness[T, **P](
+    fn: Callable[P, T],
+) -> Callable[Concatenate[bool, P], T]:
     """
     Wrap a function in a harness that requires a confirmation before
     executing and catches exceptions, re-raising them as instances of
@@ -150,8 +150,7 @@ def confirm_box_js(msg: str) -> str:
         The JavaScript code snippet.
 
     """
-    formatted_msg = f"'{msg}'"
-    return f"(x, ...args) => [confirm({formatted_msg}), ...args]"
+    return f"(x, ...args) => [confirm('{msg}'), ...args]"
 
 
 def update_value(x: str) -> dict[str, Any]:
@@ -172,7 +171,7 @@ def update_value(x: str) -> dict[str, Any]:
     return gr.update(value=x)
 
 
-def update_dropdowns(
+def update_dropdowns[**P](
     fn: Callable[P, DropdownChoices],
     num_components: int,
     value: DropdownValue = None,

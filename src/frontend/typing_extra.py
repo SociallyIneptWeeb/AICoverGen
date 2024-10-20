@@ -5,9 +5,11 @@ from typing import Any, TypedDict
 from collections.abc import Callable, Sequence
 from enum import StrEnum, auto
 
-DropdownChoices = Sequence[str | int | float | tuple[str, str | int | float]] | None
+type DropdownChoices = (
+    Sequence[str | int | float | tuple[str, str | int | float]] | None
+)
 
-DropdownValue = (
+type DropdownValue = (
     str | int | float | Sequence[str | int | float] | Callable[..., Any] | None
 )
 

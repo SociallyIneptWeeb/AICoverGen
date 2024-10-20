@@ -1021,7 +1021,6 @@ def separate_audio(
     ) = paths
 
     if not all(path.exists() for path in paths):
-
         display_progress(display_msg, percentage, progress_bar)
         AUDIO_SEPARATOR.arch_specific_params["MDX"]["segment_size"] = segment_size
         AUDIO_SEPARATOR.load_model(model_name)
@@ -1279,7 +1278,6 @@ def pitch_shift(
     shifted_audio_path = audio_path
 
     if n_semitones != 0:
-
         args_dict = PitchShiftMetaData(
             audio_track=FileMetaData(
                 name=audio_path.name,

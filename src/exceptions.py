@@ -293,5 +293,5 @@ class UploadFormatError(ValueError):
         suffix = "by themselves" if not multiple else "together (at most one of each)"
         super().__init__(
             f"Only {entity} with the following formats can be uploaded {suffix}:"
-            f" {', '.join(formats)}.",
+            f" {", ".join(formats)}.",
         )

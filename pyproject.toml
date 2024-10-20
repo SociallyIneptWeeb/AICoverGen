@@ -1,24 +1,22 @@
 [tool.pyright]
 stubPath = "src/stubs"
-pythonVersion = "3.11"
+pythonVersion = "3.12"
 pythonPlatform = "All"
 typeCheckingMode = "strict"
 ignore = ["**/.venv"]
 
 [tool.black]
-target-version = ['py311']
+target-version = ['py312']
 preview = true
 enable-unstable-feature = ["string_processing"]
 
 [tool.ruff]
-extend-include = ["*.ipynb"]
-target-version = "py311"
+target-version = "py312"
 fix = true
 required-version = ">=0.5.7"
 
 [tool.ruff.format]
 docstring-code-format = true
-skip-magic-trailing-comma = true
 preview = true
 
 [tool.ruff.lint]

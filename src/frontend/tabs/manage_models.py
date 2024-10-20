@@ -160,9 +160,7 @@ def render(
 
     dummy_checkbox = gr.Checkbox(visible=False)
     with gr.Tab("Download model"):
-
         with gr.Accordion("View public models table", open=False):
-
             gr.Markdown("")
             gr.Markdown("*HOW TO USE*")
             gr.Markdown(

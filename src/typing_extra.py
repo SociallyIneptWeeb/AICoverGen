@@ -1,20 +1,12 @@
 """Extra typing for backend and frontend."""
 
-from typing import ParamSpec, TypeVar
-
 from collections.abc import Mapping, Sequence
 from enum import IntEnum, StrEnum
 from os import PathLike
 
-P = ParamSpec("P")
-T = TypeVar("T")
-K = TypeVar("K")
-V = TypeVar("V")
+type StrPath = str | PathLike[str]
 
-
-StrPath = str | PathLike[str]
-
-Json = Mapping[str, "Json"] | Sequence["Json"] | str | int | float | bool | None
+type Json = Mapping[str, Json] | Sequence[Json] | str | int | float | bool | None
 
 
 class SeparationModel(StrEnum):

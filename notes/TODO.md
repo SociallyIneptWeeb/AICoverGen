@@ -3,8 +3,9 @@
 * should specify in colab notebook which link in output of last cell should be clicked
 * should rename instances of "models" to "voice models"
 
-* organize src as a package and always import as src.module.submodule
 * upgrade gradio to version 5
+* use pyinstaller to install app into executable that also includes sox and ffmpeg as dependencies (DLLs)
+  * for now we can also use static_ffmpeg package to include ffmpeg in python without having to have it downloaded explicitly
 
 ## Project/task management
 
@@ -31,10 +32,10 @@
 
 ### Modularization
 
-* Improve modularization of frontend code using helper functions defined [here](https://huggingface.co/spaces/WoWoWoWololo/wrapping-layouts/blob/main/app.py)
+* Improve modularization of web code using helper functions defined [here](https://huggingface.co/spaces/WoWoWoWololo/wrapping-layouts/blob/main/app.py)
 * Split front-end modules into further sub-modules.
-  * Structure of frontend folder should be:
-    * `frontend`
+  * Structure of web folder should be:
+    * `web`
       * `manage_models`
         * `__init__.py`
         * `main.py`
@@ -193,28 +194,23 @@
 
 ### Add remaining CLI interfaces
 
-* Interface for `backend.manage_models`
-* Interface for `backend.manage_audio`
-* Interfaces for individual pipeline functions defined in `backend.generate_song_covers`
+* Interface for `core.manage_models`
+* Interface for `core.manage_audio`
+* Interfaces for individual pipeline functions defined in `core.generate_song_covers`
+* Interface for `core.main`, meaning setup/initialization of project
+  * could also consider compiling cli package with those dependencies so that we dont need to support this kind of initialization
+  * need to look into uv and hatch for this
 
-## Scripting
+### Support making CLI into redistributable package (served on PyPI)
 
-* Convert batch script to powershell script
-* Add timer to  `./urvc install` command
-* Make script for automatic merging of PRs, including:
-  * checking out to main after merging
-  * pulling latest master
-  * deleting local branch
+* fix current errors which maybe due to the current project structure
+  * name of folder for cli library is not ultimate-rvc
 
 ## python package management
 
-* update `requirements.txt`
+* update dependencies in pyproject.toml
   * use latest compatible version of all packages
   * remove commented out code, unless strictly necessary
-* replace pip with poetry or uv
-
-  * poetry is the standard
-  * uv is new and ultra fast (written in rust)
 
 ## Audio separation
 
@@ -263,6 +259,7 @@
 
 * linting with Ruff
 * typechecking with Pyright
+*or use pre-commit?
 
 ### README
 

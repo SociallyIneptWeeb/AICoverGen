@@ -6,7 +6,7 @@ from functools import partial
 import gradio as gr
 import pandas as pd
 
-from backend.manage_models import (
+from core.manage_models import (
     delete_all_models,
     delete_models,
     download_model,
@@ -16,7 +16,7 @@ from backend.manage_models import (
     upload_model,
 )
 
-from frontend.common import (
+from web.common import (
     PROGRESS_BAR,
     confirm_box_js,
     confirmation_harness,
@@ -24,7 +24,7 @@ from frontend.common import (
     render_msg,
     update_dropdowns,
 )
-from frontend.typing_extra import DropdownValue
+from web.typing_extra import DropdownValue
 
 
 def _update_models(

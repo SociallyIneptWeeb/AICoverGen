@@ -1,4 +1,4 @@
-"""Extra typing for backend and frontend."""
+"""Extra typing for the Ultimate RVC project."""
 
 from collections.abc import Mapping, Sequence
 from enum import IntEnum, StrEnum

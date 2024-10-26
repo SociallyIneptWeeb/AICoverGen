@@ -4,9 +4,9 @@ from functools import partial
 
 import gradio as gr
 
-from backend.other_settings import delete_temp_files
+from core.other_settings import delete_temp_files
 
-from frontend.common import (
+from web.common import (
     PROGRESS_BAR,
     confirm_box_js,
     confirmation_harness,

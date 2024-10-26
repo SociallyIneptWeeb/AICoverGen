@@ -2,7 +2,7 @@
 Web application for the Ultimate RVC project.
 
 Each tab of the application is defined in its own module in the
-`frontend/tabs` directory.Components that are accessed across multiple
+`web/tabs` directory.Components that are accessed across multiple
 tabs are passed as arguments to the render functions in the respective
 modules.
 """
@@ -17,15 +17,15 @@ import gradio as gr
 
 from common import AUDIO_DIR, MODELS_DIR, TEMP_DIR
 
-from backend.generate_song_cover import get_named_song_dirs
-from backend.manage_audio import get_saved_output_audio
-from backend.manage_models import get_saved_model_names
+from core.generate_song_cover import get_named_song_dirs
+from core.manage_audio import get_saved_output_audio
+from core.manage_models import get_saved_model_names
 
-from frontend.tabs.manage_audio import render as render_manage_audio_tab
-from frontend.tabs.manage_models import render as render_manage_models_tab
-from frontend.tabs.multi_step_generation import render as render_multi_step_tab
-from frontend.tabs.one_click_generation import render as render_one_click_tab
-from frontend.tabs.other_settings import render as render_other_settings_tab
+from web.tabs.manage_audio import render as render_manage_audio_tab
+from web.tabs.manage_models import render as render_manage_models_tab
+from web.tabs.multi_step_generation import render as render_multi_step_tab
+from web.tabs.one_click_generation import render as render_one_click_tab
+from web.tabs.other_settings import render as render_other_settings_tab
 
 
 def _init_app() -> list[gr.Dropdown]:
@@ -46,7 +46,7 @@ def _init_app() -> list[gr.Dropdown]:
     return models + cached_songs + output_audio
 
 
-def _render_app() -> gr.Blocks:
+def render_app() -> gr.Blocks:
     """
     Render the Ultimate RVC web application.
 
@@ -166,10 +166,10 @@ def _render_app() -> gr.Blocks:
     return app
 
 
-app = _render_app()
+app = render_app()
 
 
-def main(
+def start_app(
     share: Annotated[
         bool,
         typer.Option("--share", "-s", help="Enable sharing"),
@@ -211,4 +211,4 @@ def main(
 
 
 if __name__ == "__main__":
-    typer.run(main)
+    typer.run(start_app)

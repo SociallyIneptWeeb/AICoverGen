@@ -1,37 +1,35 @@
 """
-Script which downloads the models required for running the Ultimate
-RVC app.
+Module which defines initialization of the core components of the
+Ultimate RVC project.
 """
 
-from logging import WARNING
 from pathlib import Path
 
 from rich import print as rprint
 
 import requests
 
-from audio_separator.separator import Separator
-
-from common import RVC_MODELS_DIR, SEPARATOR_MODELS_DIR
+from common import RVC_MODELS_DIR
 from typing_extra import SeparationModel, StrPath
 
-from backend.manage_models import download_model
+from core.generate_song_cover import AUDIO_SEPARATOR
+from core.manage_models import download_model
 
 RVC_DOWNLOAD_URL = "https://huggingface.co/lj1995/VoiceConversionWebUI/resolve/main/"
 
 
-def download_base_model(url: str, name: str, directory: StrPath) -> None:
+def _download_base_model(url: str, name: str, directory: StrPath) -> None:
     """
-    Download a model and save it to a directory.
+    Download a base model and save it to a directory.
 
     Parameters
     ----------
     url : str
-        An URL pointing to a location where a model is hosted.
+        An URL pointing to a location where a base model is hosted.
     name : str
-        The name of the model to download.
+        The name of the base model to download.
     directory : str
-        The path to the directory where the model should be saved.
+        The path to the directory where the base model should be saved.
 
     """
     dir_path = Path(directory)
@@ -42,19 +40,16 @@ def download_base_model(url: str, name: str, directory: StrPath) -> None:
                 f.write(chunk)
 
 
-if __name__ == "__main__":
-    separator = Separator(
-        log_level=WARNING,
-        model_file_dir=SEPARATOR_MODELS_DIR,
-    )
+def initialize() -> None:
+    """Initialize the core components of the Ultimate RVC project."""
     for separator_model in SeparationModel:
         rprint(f"Downloading {separator_model}...")
-        separator.download_model_files(separator_model)
+        AUDIO_SEPARATOR.download_model_files(separator_model)
 
     base_model_names = ["hubert_base.pt", "rmvpe.pt"]
     for base_model_name in base_model_names:
         rprint(f"Downloading {base_model_name}...")
-        download_base_model(RVC_DOWNLOAD_URL, base_model_name, RVC_MODELS_DIR)
+        _download_base_model(RVC_DOWNLOAD_URL, base_model_name, RVC_MODELS_DIR)
 
     named_model_links = [
         (

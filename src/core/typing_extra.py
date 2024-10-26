@@ -1,4 +1,7 @@
-"""Module which defines extra types for the backend."""
+"""
+Module which defines extra types for the core of the Ultimate RVC
+project.
+"""
 
 from collections.abc import Callable
 from enum import StrEnum, auto

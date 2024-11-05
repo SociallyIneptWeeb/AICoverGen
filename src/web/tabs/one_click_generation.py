@@ -7,9 +7,9 @@ import gradio as gr
 
 from typing_extra import AudioExt, F0Method, SampleRate
 
-from backend.generate_song_cover import run_pipeline
+from core.generate_song_cover import run_pipeline
 
-from frontend.common import (
+from web.common import (
     PROGRESS_BAR,
     exception_harness,
     toggle_visible_component,
@@ -18,7 +18,7 @@ from frontend.common import (
     update_song_cover_name,
     update_value,
 )
-from frontend.typing_extra import ConcurrencyId, SourceType
+from web.typing_extra import ConcurrencyId, SourceType
 
 
 def _toggle_intermediate_audio(

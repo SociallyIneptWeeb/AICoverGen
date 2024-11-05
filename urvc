@@ -1,0 +1,189 @@
+#!/bin/bash
+# shellcheck shell=bash
+#
+# Licensed under the MIT license
+# <LICENSE-MIT or https://opensource.org/licenses/MIT>, at your
+# option. This file may not be copied, modified, or distributed
+# except according to those terms.
+
+# Launcher script for Ultimate RVC on Debian-based linux systems.
+# Currently only supports Ubuntu 22.04 and Ubuntu 24.04.
+
+ZIP_FILE=dependencies.zip
+ZIP_URL="https://huggingface.co/JackismyShephard/ultimate-rvc/resolve/main/$ZIP_FILE"
+
+UV_PATH=$(pwd)/dependencies/uv
+
+export UV_UNMANAGED_INSTALL=$UV_PATH
+export UV_PYTHON_INSTALL_DIR="$UV_PATH/python"
+export UV_TOOL_DIR="$UV_PATH/tools"
+export UV_TOOL_BIN_DIR="$UV_PATH/tools/bin"
+export PATH="$UV_PATH:$PATH"
+
+
+main() {
+    command=$1
+    shift
+    case $command in
+        install)
+            sudo apt install -y python3-dev unzip
+            install_distro_specifics
+            install_cuda_124
+            curl -s -LJO $ZIP_URL
+            unzip -qo $ZIP_FILE
+            rm $ZIP_FILE
+            curl -LsSf https://astral.sh/uv/install.sh | sh
+            uv run ./src/core.py
+            ;;
+        update)
+            git pull
+            ;;
+        uninstall)
+            confirmation_msg=$(
+                cat <<- EOF
+				Are you sure you want to uninstall?
+				This will delete all dependencies and user-generated data [Y/n]:
+				EOF
+            )
+            read -r -p "$confirmation_msg" confirmation
+            if [[ "$confirmation" =~ ^([Yy]|)$ ]]; then
+                git clean -dfX
+                echo "Uninstallation complete."
+            else
+                echo "Uninstallation canceled."
+            fi
+            ;;
+        run)
+            check_dependencies
+            uv run ./src/web.py "$@"
+            ;;
+        dev)
+            check_dependencies
+            uv run gradio ./src/web.py --demo-name app
+            ;;
+        cli)
+            check_dependencies
+            uv run ./src/cli.py "$@"
+            ;;
+        docs)
+            check_dependencies
+            if [ "$#" -ne 2 ]; then
+                echo "The 'docs' command requires two arguments."
+                exit 1
+            fi
+            pushd src > /dev/null || exit 1
+            uv run python -m typer "$1" utils docs --output "$2"
+            popd > /dev/null || exit 1
+            ;;
+        uv)
+            check_dependencies
+            uv "$@"
+            ;;
+        help)
+            show_help
+            ;;
+        *)
+            cat <<- EOF
+			Invalid command. 
+			Use './urvc help' to see available commands.
+			EOF
+            exit 1
+            ;;
+    esac
+}
+
+
+install_distro_specifics() {
+    # shellcheck disable=SC1091
+    . /etc/lsb-release
+    case $DISTRIB_ID in
+        Ubuntu)
+            case $DISTRIB_RELEASE in
+                24.04)
+                    # Add Ubuntu 23.10 repository to sources.list so that we can install cuda 12.1 toolkit
+
+                    # first define the text to append to the file. 
+                    # For this we use a heredoc with removal of leading tabs
+                    TEXT=$(
+                        cat <<- EOF
+						
+						## Added by Ultimate RVC installer
+						Types: deb
+						URIs: http://archive.ubuntu.com/ubuntu/
+						Suites: lunar
+						Components: universe
+						Signed-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg
+						EOF
+                    )
+                    FILE=/etc/apt/sources.list.d/ubuntu.sources
+                    # Append to file if not already present
+                    grep -qxF "## Added by Ultimate RVC installer" $FILE || echo "$TEXT" | sudo tee -a $FILE
+                    sudo apt update
+                    ;;
+                22.04)
+                    ;;
+                *)
+                    echo "Unsupported Ubuntu version"
+                    exit 1
+                    ;;
+            esac
+            ;;
+        *)
+            echo "Unsupported debian distribution"
+            exit 1
+            ;;
+    esac
+}
+
+install_cuda_124() {
+    echo "Installing CUDA 12.4"
+    wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/x86_64/cuda-keyring_1.1-1_all.deb
+    sudo dpkg -i cuda-keyring_1.1-1_all.deb
+    sudo apt-get update
+    sudo apt-get -y install cuda-toolkit-12-4
+    rm -rf cuda-keyring_1.1-1_all.deb
+    echo "CUDA 12.4 has been installed successfully"
+}
+
+check_dependencies() {
+    if [ ! -d "./dependencies" ]; then
+        echo "Dependencies not found. Please run './urvc install' first."
+        exit 1
+    fi
+}
+
+show_help() {
+	cat <<- EOF
+
+	Usage: ./urvc.sh [OPTIONS] COMMAND [ARGS]...
+
+	Commands:
+	  install      Install dependencies and set up environment.
+	  update       Update Ultimate RVC to the latest version.
+	  uninstall    Uninstall dependencies and user generated data.
+	  run          Start Ultimate RVC.
+	                 options:
+	                   --help     Show help message and exit.
+	                   [more information available, use --help to see all]
+	  dev          Start Ultimate RVC in development mode.
+	  cli          Start Ultimate RVC in CLI mode.
+	                 options:
+	                   --help     Show help message and exit.
+	                   [more information available, use --help to see all]
+	  docs         Generate documentation using Typer.
+	                 arguments:
+	                   0          The module to generate documentation for.
+	                   1          The output directory.
+	  uv           Run an arbitary command using uv.
+	                 arguments:
+	                   0          The command to run.
+	                   [more information available, use --help to see all]
+	                 options:
+	                   --help     Show help message and exit.
+	                   [more information available, use --help to see all]
+	  help         Show this message and exit.
+
+	EOF
+}
+
+main "$@"

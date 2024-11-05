@@ -7,21 +7,20 @@ from pathlib import Path
 
 import gradio as gr
 
-from exceptions import (
+from typing_extra import StrPath
+
+from core.common import (
+    INTERMEDIATE_AUDIO_BASE_DIR,
+    OUTPUT_AUDIO_DIR,
+    display_progress,
+)
+from core.exceptions import (
     Entity,
     InvalidLocationError,
     Location,
     NotFoundError,
     NotProvidedError,
     UIMessage,
-)
-
-from typing_extra import StrPath
-
-from backend.common import (
-    INTERMEDIATE_AUDIO_BASE_DIR,
-    OUTPUT_AUDIO_DIR,
-    display_progress,
 )
 
 

@@ -6,7 +6,7 @@ import gradio as gr
 
 from common import TEMP_DIR
 
-from backend.common import display_progress
+from core.common import display_progress
 
 
 def delete_temp_files(

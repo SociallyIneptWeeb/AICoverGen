@@ -2,6 +2,7 @@
 dependencies
 audio
 temp
+uv.lock
 
 # Audio separation models
 models/audio_separator

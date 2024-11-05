@@ -41,7 +41,7 @@ class Location(StrEnum):
 class UIMessage(StrEnum):
     """
     Enumeration of messages that can be displayed in the UI
-    in place of backend exception messages.
+    in place of core exception messages.
     """
 
     NO_AUDIO_TRACK = "No audio tracks provided."
@@ -293,5 +293,5 @@ class UploadFormatError(ValueError):
         suffix = "by themselves" if not multiple else "together (at most one of each)"
         super().__init__(
             f"Only {entity} with the following formats can be uploaded {suffix}:"
-            f" {", ".join(formats)}.",
+            f" {', '.join(formats)}.",
         )

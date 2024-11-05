@@ -7,9 +7,15 @@ from functools import partial
 
 import gradio as gr
 
-from typing_extra import AudioExt, F0Method, SampleRate, SegmentSize, SeparationModel
+from typing_extra import (
+    AudioExt,
+    F0Method,
+    SampleRate,
+    SegmentSize,
+    SeparationModel,
+)
 
-from backend.generate_song_cover import (
+from core.generate_song_cover import (
     convert,
     mix_song,
     pitch_shift,
@@ -18,7 +24,7 @@ from backend.generate_song_cover import (
     separate_audio,
 )
 
-from frontend.common import (
+from web.common import (
     PROGRESS_BAR,
     exception_harness,
     toggle_visible_component,
@@ -27,10 +33,10 @@ from frontend.common import (
     update_song_cover_name,
     update_value,
 )
-from frontend.typing_extra import ConcurrencyId, SourceType
+from web.typing_extra import ConcurrencyId, SourceType
 
 if TYPE_CHECKING:
-    from frontend.typing_extra import UpdateAudioKwArgs
+    from web.typing_extra import UpdateAudioKwArgs
 
 
 def _update_audio(

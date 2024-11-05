@@ -9,7 +9,16 @@ from pathlib import Path
 
 import gradio as gr
 
-from exceptions import (
+from common import RVC_MODELS_DIR
+from typing_extra import StrPath
+
+from core.common import (
+    copy_files_to_new_dir,
+    display_progress,
+    json_load,
+    validate_url,
+)
+from core.exceptions import (
     Entity,
     Location,
     NotFoundError,
@@ -20,17 +29,7 @@ from exceptions import (
     VoiceModelExistsError,
     VoiceModelNotFoundError,
 )
-
-from common import RVC_MODELS_DIR
-from typing_extra import StrPath
-
-from backend.common import (
-    copy_files_to_new_dir,
-    display_progress,
-    json_load,
-    validate_url,
-)
-from backend.typing_extra import (
+from core.typing_extra import (
     ModelMetaData,
     ModelMetaDataList,
     ModelMetaDataPredicate,
@@ -40,6 +39,74 @@ from backend.typing_extra import (
 
 PUBLIC_MODELS_JSON = json_load(RVC_MODELS_DIR / "public_models.json")
 PUBLIC_MODELS_TABLE = ModelMetaDataTable.model_validate(PUBLIC_MODELS_JSON)
+
+
+def _extract_model(
+    zip_file: StrPath,
+    extraction_dir: StrPath,
+    remove_incomplete: bool = True,
+    remove_zip: bool = False,
+) -> None:
+    """
+    Extract a zipped voice model to a directory.
+
+    Parameters
+    ----------
+    zip_file : StrPath
+        The path to a zip file containing the voice model to extract.
+    extraction_dir : StrPath
+        The path to the directory to extract the voice model to.
+
+    remove_incomplete : bool, default=True
+        Whether to remove the extraction directory if the extraction
+        process fails.
+    remove_zip : bool, default=False
+        Whether to remove the zip file once the extraction process is
+        complete.
+
+    Raises
+    ------
+    NotFoundError
+        If no model file is found in the extracted zip file.
+
+    """
+    extraction_path = Path(extraction_dir)
+    zip_path = Path(zip_file)
+    extraction_completed = False
+    try:
+        extraction_path.mkdir(parents=True)
+        with zipfile.ZipFile(zip_path, "r") as zip_ref:
+            zip_ref.extractall(extraction_path)
+        file_path_map = {
+            ext: Path(root, name)
+            for root, _, files in extraction_path.walk()
+            for name in files
+            for ext in [".index", ".pth"]
+            if Path(name).suffix == ext
+            and Path(root, name).stat().st_size
+            > 1024 * (100 if ext == ".index" else 1024 * 40)
+        }
+        if ".pth" not in file_path_map:
+            raise NotFoundError(
+                entity=Entity.MODEL_FILE,
+                location=Location.EXTRACTED_ZIP_FILE,
+                is_path=False,
+            )
+
+        # move model and index file to root of the extraction directory
+        for file_path in file_path_map.values():
+            file_path.rename(extraction_path / file_path.name)
+
+        # remove any sub-directories within the extraction directory
+        for path in extraction_path.iterdir():
+            if path.is_dir():
+                shutil.rmtree(path)
+        extraction_completed = True
+    finally:
+        if not extraction_completed and remove_incomplete and extraction_path.is_dir():
+            shutil.rmtree(extraction_path)
+        if remove_zip and zip_path.exists():
+            zip_path.unlink()
 
 
 def get_saved_model_names() -> list[str]:
@@ -156,7 +223,7 @@ def filter_public_models_table(
         return (
             query.lower()
             in (
-                f"{model.name} {model.description} {" ".join(model.tags)} "
+                f"{model.name} {model.description} {' '.join(model.tags)} "
                 f"{model.credit} {model.added}"
             ).lower()
             if query
@@ -166,74 +233,6 @@ def filter_public_models_table(
     filter_fns = [_tags_predicate, _query_predicate]
 
     return load_public_models_table(filter_fns, progress_bar, percentage)
-
-
-def _extract_model(
-    zip_file: StrPath,
-    extraction_dir: StrPath,
-    remove_incomplete: bool = True,
-    remove_zip: bool = False,
-) -> None:
-    """
-    Extract a zipped voice model to a directory.
-
-    Parameters
-    ----------
-    zip_file : StrPath
-        The path to a zip file containing the voice model to extract.
-    extraction_dir : StrPath
-        The path to the directory to extract the voice model to.
-
-    remove_incomplete : bool, default=True
-        Whether to remove the extraction directory if the extraction
-        process fails.
-    remove_zip : bool, default=False
-        Whether to remove the zip file once the extraction process is
-        complete.
-
-    Raises
-    ------
-    NotFoundError
-        If no model file is found in the extracted zip file.
-
-    """
-    extraction_path = Path(extraction_dir)
-    zip_path = Path(zip_file)
-    extraction_completed = False
-    try:
-        extraction_path.mkdir(parents=True)
-        with zipfile.ZipFile(zip_path, "r") as zip_ref:
-            zip_ref.extractall(extraction_path)
-        file_path_map = {
-            ext: Path(root, name)
-            for root, _, files in extraction_path.walk()
-            for name in files
-            for ext in [".index", ".pth"]
-            if Path(name).suffix == ext
-            and Path(root, name).stat().st_size
-            > 1024 * (100 if ext == ".index" else 1024 * 40)
-        }
-        if ".pth" not in file_path_map:
-            raise NotFoundError(
-                entity=Entity.MODEL_FILE,
-                location=Location.EXTRACTED_ZIP_FILE,
-                is_path=False,
-            )
-
-        # move model and index file to root of the extraction directory
-        for file_path in file_path_map.values():
-            file_path.rename(extraction_path / file_path.name)
-
-        # remove any sub-directories within the extraction directory
-        for path in extraction_path.iterdir():
-            if path.is_dir():
-                shutil.rmtree(path)
-        extraction_completed = True
-    finally:
-        if not extraction_completed and remove_incomplete and extraction_path.is_dir():
-            shutil.rmtree(extraction_path)
-        if remove_zip and zip_path.exists():
-            zip_path.unlink()
 
 
 def download_model(

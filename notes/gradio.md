@@ -216,13 +216,13 @@ demo.launch()
 
 ### Progress bars
 
-Instead of doing `gr.progress(percentage, desc= "...")` in backend helper functions you can just use tqdm directly in your code by instantiating `gr.progress(track_tqdm = true)` in a frontend helper function/harness.
+Instead of doing `gr.progress(percentage, desc= "...")` in core helper functions you can just use tqdm directly in your code by instantiating `gr.progress(track_tqdm = true)` in a web helper function/harness.
 
 Alternatively, you can also do `gr.Progress().tqdm(iterable, description, total, unit)` to attach a tqdm iterable to the progress bar
 
 Benefits of either approach is:
 
-* we do not have to supply a `gr.Progress` object to backend functions.
+* we do not have to supply a `gr.Progress` object to core functions.
 * Perhaps it will also be possible to get a progress bar that automatically generates several update steps for a given caption, rather than just one step as is the case when using `gr.Progress`
 
 ### State
@@ -235,7 +235,7 @@ So when deploying app in future need to use `gr.State()` for all variables decla
 
 * `Blocks.launch()`
   * `prevent_thread_lock` can be used to have an easier way of shutting down app?
-  * `show_error`: if `True`can allow us not to have to reraise backend exceptions as `gr.Error`?
+  * `show_error`: if `True`can allow us not to have to reraise core exceptions as `gr.Error`?
 * `Tab`
   * event listener triggered when tab is selected could be useful?
 * `File`

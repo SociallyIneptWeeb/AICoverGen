@@ -1,6 +1,6 @@
 """
 Module defining common utility functions and classes for the
-frontend.
+web application of the Ultimate RVC project.
 """
 
 from typing import Any, Concatenate
@@ -9,12 +9,11 @@ from collections.abc import Callable, Sequence
 
 import gradio as gr
 
-from exceptions import NotProvidedError
+from core.exceptions import NotProvidedError
+from core.generate_song_cover import get_named_song_dirs, get_song_cover_name
+from core.manage_audio import get_saved_output_audio
 
-from backend.generate_song_cover import get_named_song_dirs, get_song_cover_name
-from backend.manage_audio import get_saved_output_audio
-
-from frontend.typing_extra import (
+from web.typing_extra import (
     ComponentVisibilityKwArgs,
     DropdownChoices,
     DropdownValue,

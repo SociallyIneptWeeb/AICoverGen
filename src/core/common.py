@@ -1,4 +1,4 @@
-"""Common utility functions for the backend."""
+"""Common utility functions for the core of the Ultimate RVC project."""
 
 import hashlib
 import json
@@ -11,10 +11,10 @@ from rich import print as rprint
 
 import gradio as gr
 
-from exceptions import Entity, HttpUrlError, NotFoundError
-
 from common import AUDIO_DIR
 from typing_extra import Json, StrPath
+
+from core.exceptions import Entity, HttpUrlError, NotFoundError
 
 INTERMEDIATE_AUDIO_BASE_DIR = AUDIO_DIR / "intermediate"
 OUTPUT_AUDIO_DIR = AUDIO_DIR / "output"

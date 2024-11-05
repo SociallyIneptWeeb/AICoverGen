@@ -5,7 +5,7 @@ from functools import partial
 
 import gradio as gr
 
-from backend.manage_audio import (
+from core.manage_audio import (
     delete_all_audio,
     delete_all_intermediate_audio,
     delete_all_output_audio,
@@ -13,7 +13,7 @@ from backend.manage_audio import (
     delete_output_audio,
 )
 
-from frontend.common import (
+from web.common import (
     PROGRESS_BAR,
     confirm_box_js,
     confirmation_harness,

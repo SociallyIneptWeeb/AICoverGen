@@ -30,23 +30,19 @@ from pedalboard.io import AudioFile
 from pydub import AudioSegment
 from pydub import utils as pydub_utils
 
-from exceptions import (
-    Entity,
-    InvalidLocationError,
-    Location,
-    NotFoundError,
-    NotProvidedError,
-    UIMessage,
-    VoiceModelNotFoundError,
-    YoutubeUrlError,
-)
-
 from common import RVC_MODELS_DIR, SEPARATOR_MODELS_DIR
-from typing_extra import AudioExt, F0Method, Json, SegmentSize, SeparationModel, StrPath
+from typing_extra import (
+    AudioExt,
+    F0Method,
+    Json,
+    SegmentSize,
+    SeparationModel,
+    StrPath,
+)
 
 from vc.rvc import Config, get_vc, load_hubert, rvc_infer
 
-from backend.common import (
+from core.common import (
     INTERMEDIATE_AUDIO_BASE_DIR,
     OUTPUT_AUDIO_DIR,
     copy_file_safe,
@@ -57,7 +53,17 @@ from backend.common import (
     json_load,
     validate_url,
 )
-from backend.typing_extra import (
+from core.exceptions import (
+    Entity,
+    InvalidLocationError,
+    Location,
+    NotFoundError,
+    NotProvidedError,
+    UIMessage,
+    VoiceModelNotFoundError,
+    YoutubeUrlError,
+)
+from core.typing_extra import (
     AudioExtInternal,
     ConvertedVocalsMetaData,
     EffectedVocalsMetaData,

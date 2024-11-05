@@ -1,5 +1,5 @@
 """
-Frontend package for the Ultimate RVC project.
+web package for the Ultimate RVC project.
 
 This package contains a module which defines helpful utility functions
 for rendering the gradio-based UI of the Ultimate RVC project as well as

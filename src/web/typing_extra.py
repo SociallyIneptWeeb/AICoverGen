@@ -1,4 +1,7 @@
-"""Module which defines extra types for the frontend."""
+"""
+Module which defines extra types for the web application of the Ultimate
+RVC project.
+"""
 
 from typing import Any, TypedDict
 

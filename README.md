@@ -10,7 +10,7 @@ Ultimate RVC is under constant development and testing, but you can try it out r
 
 ## New Features
 
-* Easy and automated setup using launcher scripts for both windows and debian-based linux systems
+* Easy and automated setup using launcher scripts for both windows and Debian-based linux systems
 * Caching system which saves intermediate audio files as needed, thereby reducing inference time as much as possible. For example, if song A has already been converted using model B and now you want to convert song A using model C, then vocal extraction can be skipped and inference time reduced drastically
 * Ability to listen to intermediate audio files in the UI. This is useful for getting an idea of what is happening in each step of the song cover generation pipeline
 * A "multi-step" song cover generation tab: here you can try out each step of the song cover generation pipeline in isolation. For example, if you already have extracted vocals available and only want to convert these using your voice model, then you can do that here. Besides, this tab is useful for experimenting with settings for each step of the song cover generation pipeline
@@ -31,7 +31,7 @@ For those who want to run the Ultimate RVC project locally, follow the setup gui
 
 The Ultimate RVC project currently supports Windows and Debian-based Linux distributions, namely Ubuntu 22.04 and Ubuntu 24.04. Support for other platforms is not guaranteed.
 
-To setup the project follow the steps below and execute the provided commands in an appropriate terminal. On windows this terminal should be **powershell**, while on debian-based linux distributions it should be a **bash**-compliant shell.
+To setup the project follow the steps below and execute the provided commands in an appropriate terminal. On windows this terminal should be **powershell**, while on Debian-based linux distributions it should be a **bash**-compliant shell.
 
 ### Install Git
 
@@ -40,7 +40,7 @@ Follow the instructions [here](https://git-scm.com/book/en/v2/Getting-Started-In
 ### Set execution policy (Windows only)
 
 To execute the subsequent commands on Windows, it is necessary to first grant
-powershell permission to run scripts. This can be done on a user-level as follows:
+powershell permission to run scripts. This can be done at a user level as follows:
 
 ```console
 Set-ExecutionPolicy RemoteSigned -Scope CurrentUser
@@ -183,6 +183,39 @@ When developing new features or debugging, it is recommended to run the app in d
 ```console
 ./urvc dev
 ```
+
+## PyPI package
+
+The Ultimate RVC project is also available as a [distributable package](https://pypi.org/project/ultimate-rvc/) on [PyPI](https://pypi.org/).
+
+### Installation
+
+The package can be installed with pip in a **Python 3.12**-based environment. To do so requires first installing PyTorch with Cuda support:
+
+```console
+pip install torch==2.4.1+cu124 torchaudio==2.4.1+cu124 --index-url https://download.pytorch.org/whl/cu124
+```
+
+Additionally, on Windows the `diffq` package must be installed manually as follows:
+
+```console
+pip install https://huggingface.co/JackismyShephard/ultimate-rvc/resolve/main/diffq-0.2.4-cp312-cp312-win_amd64.whl
+```
+
+The Ultimate RVC project package can then be installed as follows:
+
+```console
+pip install ultimate-rvc
+```
+
+### Usage
+
+The `ultimate-rvc` package exposes two commands:
+
+* `urvc-web` which starts a local instance of the Ultimate RVC web application
+* `urvc` which exposes a traditional CLI application allowing the user to generate song covers directly from their terminal.
+
+For more information on either command supply the option `--help`.
 
 ## Terms of Use
 

@@ -4,37 +4,42 @@ build-backend = "hatchling.build"
 
 [project]
 name = "ultimate-rvc"
-version = "0.1.1"
+version = "0.1.22"
 description = "Ultimate RVC"
 readme = "README.md"
 requires-python = "==3.12.*"
 dependencies = [
     # General
     "lib==4.0.0",
+
+    #Validation
     "pydantic==2.9.2",
+
+    # CLI
     "typer==0.12.5",
     
     # Networking
     "requests==2.32.3",
-    "yt_dlp==2024.8.6",
+    "yt_dlp==2024.11.4",
     # TODO add these later
     # "deemix",
     # "wget",
     # "flask",
     # "beautifulsoup4",
     # "pypresence",
+
     # Data science
     "numpy==1.26.4",
     "scipy==1.14.1",
     "matplotlib==3.9.2",
-    "tqdm==4.66.5",
+    "tqdm==4.66.6",
     "gradio==4.44.1",
     
     # Machine learning
     "torch==2.4.1+cu124",
     "torchaudio==2.4.1+cu124",
     "torchcrepe==0.0.23",
-    "fairseq",
+    "fairseq-fixed==0.12.3.1",
     "faiss-cpu==1.9.0",
     "tensorboardX==2.6.2.2",
     # TODO add these later
@@ -49,17 +54,17 @@ dependencies = [
     # Audio
     "static-ffmpeg==2.7",
     "static-sox==1.0.1",
-    "typed-ffmpeg==2.0.0",
+    "typed-ffmpeg==2.1.0",
     "soundfile==0.12.1",
     "librosa==0.10.2",
     "sox==1.5.0",
     "pydub==0.25.1",
-    "pydub-stubs==0.25.1.1",
+    "pydub-stubs==0.25.1.2",
     "pedalboard==0.9.16",
-    "audio-separator[gpu]==0.21.2",
+    "audio-separator[gpu]==0.24.1",
     "praat-parselmouth==0.4.5",
-    "pyworld==0.3.4",
-    "diffq==0.2.4",
+    "pyworld-fixed==0.3.8",
+    "diffq==0.2.4"
     # TODO add the later
     # "noisereduce",
     # "audio_upscaler==0.1.4",
@@ -69,25 +74,18 @@ dependencies = [
 ]
 
 [project.scripts]
-urvc = "cli.main:app"
-
-[tool.hatch.build.targets.wheel]
-packages = ["src/cli"]
+urvc = "ultimate_rvc.cli.main:app"
+urvc-web = "ultimate_rvc.web.main:app_wrapper"
 
 [tool.uv]
 environments = ["sys_platform == 'win32'", "sys_platform == 'linux'"]
-cache-dir = "./dependencies/uv/cache"
+cache-dir = "./uv/cache"
 compile-bytecode = true
 
 [tool.uv.sources]
 torch = { index = "torch-cu124"}
 torchaudio = { index = "torch-cu124"}
-fairseq = [
-    { path = "./dependencies/wheels/fairseq-0.12.3.1-cp312-cp312-win_amd64.whl", marker = "sys_platform == 'win32'" },
-    { path = "./dependencies/wheels/fairseq-0.12.3.1-cp312-cp312-linux_x86_64.whl", marker = "sys_platform == 'linux'" },
-]
-diffq = { path = "./dependencies/wheels/diffq-0.2.4-cp312-cp312-win_amd64.whl", marker = "sys_platform == 'win32'"}
-pyworld = { path = "./dependencies/wheels/pyworld-0.3.4-cp312-cp312-win_amd64.whl", marker = "sys_platform == 'win32'"}
+diffq = { url = "https://huggingface.co/JackismyShephard/ultimate-rvc/resolve/main/diffq-0.2.4-cp312-cp312-win_amd64.whl", marker = "sys_platform == 'win32'"}
 
 [[tool.uv.index]]
 name = "torch-cu124"
@@ -95,12 +93,12 @@ url = "https://download.pytorch.org/whl/cu124"
 explicit = true
 
 [tool.pyright]
-stubPath = "src/stubs"
+stubPath = "src/ultimate_rvc/stubs"
 pythonVersion = "3.12"
 pythonPlatform = "All"
 typeCheckingMode = "strict"
 ignore = ["**/.venv"]
-exclude = ["./dependencies"]
+exclude = ["./uv"]
 
 [tool.black]
 target-version = ['py312']
@@ -157,16 +155,13 @@ section-order = [
     "standard-library",
     "third-party",
     "networking",
+    "validation",
     "data-science",
     "machine-learning",
     "audio",
-    "visualisation",
-    "first-party",
-    "base",
-    "vc",
-    "core",
-    "web",
     "cli",
+    "first-party",
+    "ultimate_rvc",
     "local-folder",
 ]
 
@@ -181,6 +176,7 @@ section-order = [
     "beautifulsoup4",
     "pypresence",
 ]
+"validation" = ["pydantic"]
 "data-science" = [
     "numpy", 
     "scipy", 
@@ -203,6 +199,8 @@ section-order = [
     "numba",
 ]
 "audio" = [
+    "static_ffmpeg",
+    "static_sox",
     "ffmpeg",
     "soundfile",
     "librosa",
@@ -217,11 +215,7 @@ section-order = [
     "edge_tts",
     "ffmpy",
 ]
-"base" = ["common", "typing_extra"]
-"vc" = ["vc"]
-"core" = ["core"]
-"web" = ["web"]
-"cli" = ["cli"]
-
+"cli" = ["typer", "rich"]
+"ultimate_rvc" = ["ultimate_rvc"]
 [tool.ruff.lint.pycodestyle]
 max-doc-length = 72

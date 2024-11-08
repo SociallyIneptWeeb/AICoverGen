@@ -7,6 +7,23 @@
 * use pyinstaller to install app into executable that also includes sox and ffmpeg as dependencies (DLLs)
   * for now we can also use static_ffmpeg package to include ffmpeg in python without having to have it downloaded explicitly
 
+* make note about having to possibly do refresh (f5) when using colab to make default models appear
+  * should also try to fix this
+* make note about audio component resetting sometimes when hitting press play
+  * should also try to fix this
+  * might be related some error messages on the terminal with broken communication?
+
+* update stubs
+
+* figure out way of making ./urvc commands execute faster
+  * when ultimate rvc is downloaded as a pypi package the exposed commands are much faster so investigate this
+
+## optimization of package installation
+
+* once diffq-fixed is used by audio-separator we can remove the url dependency on windows
+* we will still need to wait for uv to make it easy to install package with torch dependency
+  * it is still necessary to install pytorch first as it is not on pypi index
+
 ## Project/task management
 
 * Should find tool for project/task management

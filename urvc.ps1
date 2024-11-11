@@ -28,7 +28,7 @@ help:      Print help.
 
 .PARAMETER Arguments
 The arguments and options to run the command with. 
-These are only used for the 'run', 'cli', and 'docs' commands.
+These are only used for the 'run', 'cli', 'docs' and 'uv' commands.
 
 run:
     options:
@@ -60,12 +60,10 @@ param (
     [string[]]$Arguments
 )
 
-$ZipFile = "dependencies.zip"
-$ZipUrl = "https://huggingface.co/JackismyShephard/ultimate-rvc/resolve/main/$ZipFile"
-
-$UvPath = "$(Get-location)\dependencies\uv"
+$UvPath = "$(Get-location)\uv"
 $env:UV_UNMANAGED_INSTALL = $UvPath
 $env:UV_PYTHON_INSTALL_DIR = "$UvPath\python"
+$env:UV_PYTHON_BIN_DIR = "$UV_PATH\python\bin"
 $env:UV_TOOL_DIR = "$UvPath\tools"
 $env:UV_TOOL_BIN_DIR = "$UvPath\tools\bin"
 $env:PATH = "$UvPath;$env:PATH"
@@ -78,11 +76,8 @@ function Main {
 
     switch ($Command) {
         "install" {
-            curl.exe -s -LJO $ZipUrl
-            tar -xf $ZipFile
-            Remove-Item $ZipFile
-            Invoke-RestMethod https://astral.sh/uv/install.ps1 | Invoke-Expression
-            uv run ./src/core.py
+            Invoke-RestMethod https://astral.sh/uv/0.5.0/install.ps1 | Invoke-Expression
+            uv run ./src/ultimate_rvc/core/main.py
         }
         "update" {
             git pull
@@ -101,15 +96,15 @@ function Main {
         }
         "run" {
             Assert-Dependencies
-            uv run ./src/web.py @Arguments
+            uv run ./src/ultimate_rvc/web/main.py @Arguments
         }
         "dev" {
             Assert-Dependencies
-            uv run gradio ./src/web.py --demo-name app
+            uv run gradio ./src/ultimate_rvc/web/main.py --demo-name app
         }
         "cli" {
             Assert-Dependencies
-            uv run ./src/cli.py @Arguments
+            uv run ./src/ultimate_rvc/cli/main.py @Arguments
         }
         "docs" {
             Assert-Dependencies
@@ -117,9 +112,7 @@ function Main {
                 Write-Host "The 'docs' command requires at least two arguments."
                 Exit 1
             }
-            Push-Location -Path "src"
             uv run python -m typer $Arguments[0] utils docs --output $Arguments[1]
-            Pop-Location
         }
         "uv" {
             Assert-Dependencies

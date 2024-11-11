@@ -1,17 +1,41 @@
 # TODO
 
+* need to make project version (in `pyproject.toml`) dynamic so that it is updated automatically when a new release is made
 * should specify in colab notebook which link in output of last cell should be clicked
+* start logging in modules from the ultimate_rvc project
+  * might not need to log in every module but start doing it for relevant operations such as
+    * when catching errors
+    * when significant events happen
+
 * should rename instances of "models" to "voice models"
 
 * upgrade gradio to version 5
 * use pyinstaller to install app into executable that also includes sox and ffmpeg as dependencies (DLLs)
-  * for now we can also use static_ffmpeg package to include ffmpeg in python without having to have it downloaded explicitly
 
 * make note about having to possibly do refresh (f5) when using colab to make default models appear
   * should also try to fix this
 * make note about audio component resetting sometimes when hitting press play
   * should also try to fix this
-  * might be related some error messages on the terminal with broken communication?
+  * might be related some error messages on the terminal with broken communication:
+  
+    ``` console
+    2024-11-11 21:02:34 | ERROR | asyncio | Exception in callback _ProactorBasePipeTransport._call_connection_lost(None)
+    handle: <Handle _ProactorBasePipeTransport._call_connection_lost(None)>
+    Traceback (most recent call last):
+      File "C:\Users\Jacki\AppData\Local\Programs\Python\Python312\Lib\asyncio\events.py", line 88, in _run
+        self._context.run(self._callback, *self._args)
+      File "C:\Users\Jacki\AppData\Local\Programs\Python\Python312\Lib\asyncio\proactor_events.py", line 165, in _call_connection_lost
+        self._sock.shutdown(socket.SHUT_RDWR)
+    ConnectionResetError: [WinError 10054] An existing connection was forcibly closed by the remote host
+    2024-11-11 21:02:35 | ERROR | asyncio | Exception in callback _ProactorBasePipeTransport._call_connection_lost(None)
+    handle: <Handle _ProactorBasePipeTransport._call_connection_lost(None)>
+    Traceback (most recent call last):
+      File "C:\Users\Jacki\AppData\Local\Programs\Python\Python312\Lib\asyncio\events.py", line 88, in _run
+        self._context.run(self._callback, *self._args)
+      File "C:\Users\Jacki\AppData\Local\Programs\Python\Python312\Lib\asyncio\proactor_events.py", line 165, in _call_connection_lost
+        self._sock.shutdown(socket.SHUT_RDWR)
+    ConnectionResetError: [WinError 10054] An existing connection was forcibly closed by the remote host
+    ```
 
 * update stubs
 
@@ -97,15 +121,15 @@
 * should also have the possiblity to add more tracks to the pitch shift accordion.
 
 * add a confirmation box with warning if trying to transfer output track to input track that is not empty.
-  * could also have the possibility to ask the user to transfer to create a new input track and transfer the output track to it. 
-  * this would just be the same pop up confirmation box as before but in addition to yes and cancel options it will also have a "transfer to new input track" option. 
+  * could also have the possibility to ask the user to transfer to create a new input track and transfer the output track to it.
+  * this would just be the same pop up confirmation box as before but in addition to yes and cancel options it will also have a "transfer to new input track" option.
   * we need custom javasctip for this.
 
 * Fix hashes of identical files being different for one-click and multi-step generation (DIFFICULT TO IMPLEMENT)
   * Seems to work except for when first running one click generation and then multi-step generation
     * What happens is that when transferring an output track in multi-step generation the transferred output track is re-encoded (or possibly just re-saved) on disk which causes the hash to be different after transfering
     * This happens only when transfering from the output of step 0 (song retrieval) and step 4 (vocal postprocessing)
-    * curiously, these steps were also the ones causing problems with loading output tracks before when we were auto transfering output tracks. 
+    * curiously, these steps were also the ones causing problems with loading output tracks before when we were auto transfering output tracks.
       * Hence the problem with hashing seems to be related to the gradio bug where loading into audio components does not work after a while when using too many consecutive event listeners.
     * Also, it should be noted that transfering a manually uploaded file from step 0 does not result in reencoding (and hence a new hash)
       * perhaps this is because a manually uplaoded audio file is already in the correct wav format while a downloaded song might be in a wrong wav format?
@@ -188,14 +212,6 @@
 
 ## CLI
 
-* consider making all calls to library functions be quiet (not print anything) by default
-* consider also printing status messages to terminal when running webapp (not just cli)
-
-### Update `display_progress` function
-
-* Always log information message using standard python logging facilities
-* rename to `log_progress`?
-
 ### Potentially implement audio conversion
 
 * When using CLI input files might not be .wave format. This is a problem because
@@ -214,14 +230,6 @@
 * Interface for `core.manage_models`
 * Interface for `core.manage_audio`
 * Interfaces for individual pipeline functions defined in `core.generate_song_covers`
-* Interface for `core.main`, meaning setup/initialization of project
-  * could also consider compiling cli package with those dependencies so that we dont need to support this kind of initialization
-  * need to look into uv and hatch for this
-
-### Support making CLI into redistributable package (served on PyPI)
-
-* fix current errors which maybe due to the current project structure
-  * name of folder for cli library is not ultimate-rvc
 
 ## python package management
 

@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "ultimate-rvc"
-version = "0.1.22"
+version = "0.1.23"
 description = "Ultimate RVC"
 readme = "README.md"
 requires-python = "==3.12.*"

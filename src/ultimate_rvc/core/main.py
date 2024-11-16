@@ -40,7 +40,6 @@ def initialize() -> None:
     download_base_models()
     download_sample_models()
     initialize_audio_separator()
-    rprint("Initialization complete.")
 
 
 if __name__ == "__main__":

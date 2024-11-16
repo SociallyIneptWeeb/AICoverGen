@@ -29,8 +29,8 @@ def display_progress(
     progress_bar: gr.Progress | None = None,
 ) -> None:
     """
-    Display progress message and percentage in console or Gradio
-    progress bar.
+    Display progress message and percentage in console and potentially
+    also Gradio progress bar.
 
     Parameters
     ----------
@@ -42,9 +42,8 @@ def display_progress(
         The Gradio progress bar to update.
 
     """
-    if progress_bar is None:
-        rprint(message)
-    else:
+    rprint(message)
+    if progress_bar is not None:
         progress_bar(percentage, desc=message)
 
 

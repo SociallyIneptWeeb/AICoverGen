@@ -217,6 +217,15 @@ The `ultimate-rvc` package exposes two commands:
 
 For more information on either command supply the option `--help`.
 
+### Environment Variables
+
+The behaviour of the Ultimate RVC package can be customized via a number of environment variables. Currently these environment variables control only logging behaviour. They are as follows:
+
+* `URVC_CONSOLE_LOG_LEVEL`: The log level for console logging. If not set, defaults to `ERROR`.
+* `URVC_FILE_LOG_LEVEL`: The log level for file logging. If not set, defaults to `INFO`.
+* `URVC_LOGS_DIR`: The directory in which log files will be stored. If not set, logs will be stored in a `logs` directory in the current working directory.
+* `URVC_NO_LOGGING`: If set to `1`, logging will be disabled.
+
 ## Terms of Use
 
 The use of the converted voice for the following purposes is prohibited.

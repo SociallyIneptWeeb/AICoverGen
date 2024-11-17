@@ -1,6 +1,9 @@
+import json
+
 from gradio import (
     _simple_templates,
     components,
+    image_utils,
     layouts,
     processing_utils,
     templates,
@@ -15,6 +18,7 @@ from gradio.components import (
     Annotatedimage,
     Audio,
     BarPlot,
+    BrowserState,
     Button,
     Chatbot,
     ChatMessage,
@@ -43,7 +47,6 @@ from gradio.components import (
     Label,
     LinePlot,
     LoginButton,
-    LogoutButton,
     Markdown,
     MessageDict,
     Model3D,
@@ -67,10 +70,13 @@ from gradio.components.image_editor import Brush, Eraser
 from gradio.data_classes import FileData
 from gradio.events import (
     DeletedFileData,
+    DownloadData,
     EventData,
     KeyUpData,
     LikeData,
+    RetryData,
     SelectData,
+    UndoData,
     on,
 )
 from gradio.exceptions import Error
@@ -78,14 +84,12 @@ from gradio.external import load
 from gradio.flagging import (
     CSVLogger,
     FlaggingCallback,
-    HuggingFaceDatasetSaver,
     SimpleCSVLogger,
 )
 from gradio.helpers import (
     Info,
     Progress,
     Warning,
-    make_waveform,
     skip,
     update,
 )
@@ -128,6 +132,7 @@ __all__ = [
     "Audio",
     "BarPlot",
     "Blocks",
+    "BrowserState",
     "Brush",
     "Button",
     "CSVLogger",
@@ -147,6 +152,7 @@ __all__ = [
     "DateTime",
     "DeletedFileData",
     "DownloadButton",
+    "DownloadData",
     "Dropdown",
     "DuplicateButton",
     "Eraser",
@@ -164,7 +170,6 @@ __all__ = [
     "Highlight",
     "HighlightedText",
     "Highlightedtext",
-    "HuggingFaceDatasetSaver",
     "Image",
     "ImageEditor",
     "ImageMask",
@@ -177,7 +182,6 @@ __all__ = [
     "LinePlot",
     "List",
     "LoginButton",
-    "LogoutButton",
     "Markdown",
     "Matrix",
     "MessageDict",
@@ -196,6 +200,7 @@ __all__ = [
     "Progress",
     "Radio",
     "Request",
+    "RetryData",
     "Row",
     "ScatterPlot",
     "SelectData",
@@ -212,6 +217,7 @@ __all__ = [
     "Textbox",
     "Theme",
     "Timer",
+    "UndoData",
     "UploadButton",
     "Video",
     "Warning",
@@ -222,10 +228,11 @@ __all__ = [
     "components",
     "deploy",
     "get_package_version",
+    "image_utils",
+    "json",
     "layouts",
     "load",
     "load_ipython_extension",
-    "make_waveform",
     "mount_gradio_app",
     "on",
     "processing_utils",

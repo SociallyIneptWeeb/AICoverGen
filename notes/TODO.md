@@ -9,7 +9,37 @@
 
 * should rename instances of "models" to "voice models"
 
-* upgrade gradio to version 5
+* set `format= .wav` potentially for all audio components
+
+* enable server side rendering (requires installing node and setting ssr_mode = true in .launch) (DIFFICULT TO IMPLEMENT)
+  * Also needs to set GRADIO_NODE_PATH to point to the node executable
+  * and set node_port to a port that is not already in use
+  * problem is that on windows there is a ERR_UNSUPPORTED_ESM_URL_SCHEME which needs to be fixed by gradio
+    * see here https://github.com/nodejs/node/issues/31710
+    * Might still work on linux though
+
+* fix problem with typing of block.launch()
+  * problem stems from doing from gradio import routes
+  * so instead should import from gradio.routes directly
+  * open a pr with changes
+
+* need to fix the `INFO: Could not find files for the given pattern(s)` on startup of web application (DIFFICULT TO IMPLEMENT)
+  * this is an error that gradio needs to fix
+
+* Remove reset button on slider components (DIFFICULT TO IMPLEMENT)
+  * this is a gradio feature that needs to be removed.
+
+* should use .expand() and .collapse() event listeners on accordions to programmatically reset the state of accordions to what they were before after user has refreshed the page
+* use gr.browserstate to allow state to be preserved acrross page loads.
+
+* rework other settings tab
+  * this should also contain other settings such as the ability to change the theme of the app
+  * there should be a button to apply settings which will reload the app with the new settings
+
+* fix module initialization so that sample models are not downloaded every time the app is started
+  * only way to do this is to force the users themselves to manually download sample models
+  * by calling the initialize function (which in that case should be exposed via the cli)
+
 * use pyinstaller to install app into executable that also includes sox and ffmpeg as dependencies (DLLs)
 
 * make note about having to possibly do refresh (f5) when using colab to make default models appear
@@ -425,6 +455,7 @@
 ## Custom UI
 
 * Experiment with new themes including [Building new ones](https://www.gradio.app/guides/theming-guid)
+  * first of all make new theme that is like the default gradio 4 theme in terms of using semi transparent orange as the main color and semi-transparent grey for secondary color. The new gradio 5 theme is good apart from using solid colors so maybe use that as base theme.
   * Support both dark and light theme in app?
   * Add Support for changing theme in app?
   * Use Applio theme as inspiration for default theme?

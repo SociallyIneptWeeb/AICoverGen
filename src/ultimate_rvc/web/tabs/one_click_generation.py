@@ -74,24 +74,30 @@ def render(
 
     """
     with gr.Tab("One-click generation"):
-        with gr.Accordion("Main options"), gr.Row():
-            with gr.Column():
-                source_type = gr.Dropdown(
-                    list(SourceType),
-                    value=SourceType.PATH,
-                    label="Source type",
-                    type="index",
-                    info="The type of source to retrieve a song from.",
-                )
-                source = gr.Textbox(
-                    label="Source",
-                    info=(
-                        "Link to a song on YouTube or the full path of a local"
-                        " audio file."
-                    ),
-                )
-                local_file = gr.Audio(label="Source", type="filepath", visible=False)
-                cached_song_1click.render()
+        with gr.Accordion("Main options"):
+            with gr.Row():
+                with gr.Column():
+                    source_type = gr.Dropdown(
+                        list(SourceType),
+                        value=SourceType.PATH,
+                        label="Source type",
+                        type="index",
+                        info="The type of source to retrieve a song from.",
+                    )
+                with gr.Column():
+                    source = gr.Textbox(
+                        label="Source",
+                        info=(
+                            "Link to a song on YouTube or the full path of a local"
+                            " audio file."
+                        ),
+                    )
+                    local_file = gr.Audio(
+                        label="Source",
+                        type="filepath",
+                        visible=False,
+                    )
+                    cached_song_1click.render()
                 source_type.input(
                     partial(toggle_visible_component, 3),
                     inputs=source_type,
@@ -111,11 +117,8 @@ def render(
                     outputs=source,
                     show_progress="hidden",
                 )
-
-            with gr.Column():
+            with gr.Row():
                 model_1click.render()
-
-            with gr.Column():
                 n_octaves = gr.Slider(
                     -3,
                     3,
@@ -171,6 +174,7 @@ def render(
                     info=(
                         "How much to mimic the loudness (0) of the input vocals or a"
                         " fixed loudness (1)."
+                        "<br><br>"
                     ),
                 )
             with gr.Row():
@@ -183,6 +187,7 @@ def render(
                         "Protection of voiceless consonants and breath sounds. Decrease"
                         " to increase protection at the cost of indexing accuracy. Set"
                         " to 0.5 to disable."
+                        "<br><br>"
                     ),
                 )
                 f0_method = gr.Dropdown(
@@ -192,6 +197,7 @@ def render(
                     info=(
                         "The method to use for pitch detection. Best option is RMVPE"
                         " (clarity in vocals), then Mangio-CREPE (smoother vocals)."
+                        "<br><br>"
                     ),
                 )
                 hop_length = gr.Slider(
@@ -379,7 +385,7 @@ def render(
             show_progress="hidden",
         )
 
-        with gr.Row():
+        with gr.Row(equal_height=True):
             reset_btn = gr.Button(value="Reset settings", scale=2)
             generate_btn = gr.Button("Generate", scale=2, variant="primary")
             song_cover = gr.Audio(label="Song cover", scale=3)

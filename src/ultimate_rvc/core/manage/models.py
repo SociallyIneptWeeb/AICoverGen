@@ -129,8 +129,6 @@ def get_saved_model_names() -> list[str]:
 
 def load_public_models_table(
     predicates: Sequence[ModelMetaDataPredicate],
-    progress_bar: gr.Progress | None = None,
-    percentage: float = 0.5,
 ) -> ModelMetaDataList:
     """
     Load table containing metadata of public voice models, optionally
@@ -140,10 +138,6 @@ def load_public_models_table(
     ----------
     predicates : Sequence[ModelMetaDataPredicate]
         Predicates to filter the metadata table by.
-    progress_bar : gr.Progress, optional
-        Gradio progress bar to update.
-    percentage : float, default=0.5
-        Percentage to display in the progress bar.
 
     Returns
     -------
@@ -152,7 +146,6 @@ def load_public_models_table(
         satisfies the given predicates.
 
     """
-    display_progress("[~] Loading public models table ...", percentage, progress_bar)
     return [
         [
             model.name,
@@ -183,8 +176,6 @@ def get_public_model_tags() -> list[ModelTagName]:
 def filter_public_models_table(
     tags: Sequence[str],
     query: str,
-    progress_bar: gr.Progress | None = None,
-    percentage: float = 0.5,
 ) -> ModelMetaDataList:
     """
     Filter table containing metadata of public voice models by tags and
@@ -202,10 +193,6 @@ def filter_public_models_table(
         Tags to filter the metadata table by.
     query : str
         Search query to filter the metadata table by.
-    progress_bar : gr.Progress, optional
-        Gradio progress bar to update.
-    percentage : float, default=0.5
-        Percentage to display in the progress bar.
 
     Returns
     -------
@@ -231,7 +218,7 @@ def filter_public_models_table(
 
     filter_fns = [_tags_predicate, _query_predicate]
 
-    return load_public_models_table(filter_fns, progress_bar, percentage)
+    return load_public_models_table(filter_fns)
 
 
 def download_model(

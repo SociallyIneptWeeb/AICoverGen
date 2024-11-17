@@ -387,12 +387,10 @@ def update_song_cover_name(
     update_args: TextBoxKwArgs = {}
     update_key = "placeholder" if update_placeholder else "value"
     if effected_vocals_track or song_dir or model_name:
-        harness_fn = exception_harness(get_song_cover_name)
-        song_cover_name = harness_fn(
+        song_cover_name = get_song_cover_name(
             effected_vocals_track,
             song_dir,
             model_name,
-            progress_bar=PROGRESS_BAR,
         )
         update_args[update_key] = song_cover_name
     else:

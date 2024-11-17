@@ -1,6 +1,7 @@
 from typing import Any, Literal, NotRequired, Protocol, Self, TypedDict
 
 import dataclasses
+from collections import UserString
 from collections.abc import Callable, Sequence
 from collections.abc import Set as AbstractSet
 
@@ -17,7 +18,7 @@ type EventListener = _EventListener[Any, Any, Any]
 class _EventListenerCallable[T, V, **P](Protocol):
     def __call__(
         self,
-        fn: Callable[P, T] | None | Literal["decorator"] = "decorator",
+        fn: Callable[P, T] | Literal["decorator"] | None = "decorator",
         inputs: (
             Component
             | BlockContext
@@ -32,7 +33,7 @@ class _EventListenerCallable[T, V, **P](Protocol):
             | AbstractSet[Component | BlockContext]
             | None
         ) = None,
-        api_name: str | None | Literal[False] = None,
+        api_name: str | Literal[False] | None = None,
         scroll_to_output: bool = False,
         show_progress: Literal["full", "minimal", "hidden"] = "full",
         queue: bool = True,
@@ -42,18 +43,19 @@ class _EventListenerCallable[T, V, **P](Protocol):
         postprocess: bool = True,
         cancels: Dependency | list[Dependency] | None = None,
         trigger_mode: Literal["once", "multiple", "always_last"] | None = None,
-        every: float | None = None,
         js: str | None = None,
-        concurrency_limit: int | None | Literal["default"] = "default",
+        concurrency_limit: int | Literal["default"] | None = "default",
         concurrency_id: str | None = None,
         show_api: bool = True,
+        stream_every: float = 0.5,
+        like_user_message: bool = False,
     ) -> _Dependency[T, V, P]: ...
 
 class _EventListenerCallableFull[T, V, **P](Protocol):
     def __call__(
         self,
-        target: Block | None,
-        fn: Callable[P, T] | None | Literal["decorator"] = "decorator",
+        block: Block | None,
+        fn: Callable[P, T] | Literal["decorator"] | None = "decorator",
         inputs: (
             Component
             | BlockContext
@@ -68,7 +70,7 @@ class _EventListenerCallableFull[T, V, **P](Protocol):
             | AbstractSet[Component | BlockContext]
             | None
         ) = None,
-        api_name: str | None | Literal[False] = None,
+        api_name: str | Literal[False] | None = None,
         scroll_to_output: bool = False,
         show_progress: Literal["full", "minimal", "hidden"] = "full",
         queue: bool = True,
@@ -78,11 +80,13 @@ class _EventListenerCallableFull[T, V, **P](Protocol):
         postprocess: bool = True,
         cancels: Dependency | list[Dependency] | None = None,
         trigger_mode: Literal["once", "multiple", "always_last"] | None = None,
-        every: float | None = None,
         js: str | None = None,
-        concurrency_limit: int | None | Literal["default"] = "default",
+        concurrency_limit: int | Literal["default"] | None = "default",
         concurrency_id: str | None = None,
         show_api: bool = True,
+        time_limit: int | None = None,
+        stream_every: float = 0.5,
+        like_user_message: bool = False,
     ) -> _Dependency[T, V, P]: ...
 
 def set_cancel_events(
@@ -100,7 +104,7 @@ class _Dependency[T, V, **P](dict[str, V]):
         self,
         trigger: Block | None,
         key_vals: SupportsKeysAndGetItem[str, V],
-        dep_index: int,
+        dep_index: int | None,
         fn: Callable[P, T],
         associated_timer: Timer | None = None,
     ) -> None: ...
@@ -155,17 +159,44 @@ class LikeData(EventData[_LikeData]):
 
     def __init__(self, target: Block | None, data: _LikeData) -> None: ...
 
+class _RetryData(TypedDict):
+    index: int | tuple[int, int]
+    value: Any
+
+class RetryData(EventData[_RetryData]):
+    index: int | tuple[int, int]
+    value: Any
+
+    def __init__(self, target: Block | None, data: _RetryData) -> None: ...
+
+class _UndoData(TypedDict):
+    index: int | tuple[int, int]
+    value: Any
+
+class UndoData(EventData[_UndoData]):
+    index: int | tuple[int, int]
+    value: Any
+
+    def __init__(self, target: Block | None, data: _UndoData) -> None: ...
+
+class DownloadData(EventData[FileDataDict]):
+    file: FileData
+
+    def __init__(self, target: Block | None, data: FileDataDict) -> None: ...
+
 @dataclasses.dataclass
 class EventListenerMethod:
     block: Block | None
     event_name: str
 
-class _EventListener[T, V, **P](str):
+class _EventListener[T, V, **P](UserString):
     __slots__ = (
         "callback",
         "config_data",
+        "connection",
         "doc",
         "event_name",
+        "event_specific_args",
         "has_trigger",
         "listener",
         "show_progress",
@@ -181,6 +212,8 @@ class _EventListener[T, V, **P](str):
     trigger_after: int | None
     trigger_only_on_success: bool
     doc: str
+    connection: Literal["sse", "stream"]
+    event_specific_args: list[dict[str, str]]
     listener: _EventListenerCallableFull[T, V, P]
 
     def __new__(
@@ -193,6 +226,8 @@ class _EventListener[T, V, **P](str):
         trigger_after: int | None = None,
         trigger_only_on_success: bool = False,
         doc: str = "",
+        connection: Literal["sse", "stream"] = "sse",
+        event_specific_args: list[dict[str, str]] | None = None,
     ) -> Self: ...
     def __init__(
         self,
@@ -204,6 +239,8 @@ class _EventListener[T, V, **P](str):
         trigger_after: int | None = None,
         trigger_only_on_success: bool = False,
         doc: str = "",
+        connection: Literal["sse", "stream"] = "sse",
+        event_specific_args: list[dict[str, str]] | None = None,
     ) -> None: ...
     def set_doc(self, component: str) -> None: ...
     def copy(self) -> _EventListener[T, V, P]: ...
@@ -215,11 +252,13 @@ class _EventListener[T, V, **P](str):
         _callback: Callable[[Block], None] | None,
         _trigger_after: int | None,
         _trigger_only_on_success: bool,
+        _event_specific_args: list[dict[str, str]],
+        _connection: Literal["sse", "stream"] = "sse",
     ) -> _EventListenerCallableFull[T, V, P]: ...
 
 def on[T, **P](
     triggers: Sequence[EventListenerCallable] | EventListenerCallable | None = None,
-    fn: Callable[P, T] | None | Literal["decorator"] = None,
+    fn: Callable[P, T] | Literal["decorator"] | None = "decorator",
     inputs: (
         Component
         | BlockContext
@@ -235,7 +274,7 @@ def on[T, **P](
         | None
     ) = None,
     *,
-    api_name: str | None | Literal[False] = None,
+    api_name: str | Literal[False] | None = None,
     scroll_to_output: bool = False,
     show_progress: Literal["full", "minimal", "hidden"] = "full",
     queue: bool = True,
@@ -245,11 +284,12 @@ def on[T, **P](
     postprocess: bool = True,
     cancels: Dependency | list[Dependency] | None = None,
     trigger_mode: Literal["once", "multiple", "always_last"] | None = None,
-    every: float | None = None,
     js: str | None = None,
-    concurrency_limit: int | None | Literal["default"] = "default",
+    concurrency_limit: int | Literal["default"] | None = "default",
     concurrency_id: str | None = None,
     show_api: bool = True,
+    time_limit: int | None = None,
+    stream_every: float = 0.5,
 ) -> _Dependency[T, Any, P]: ...
 
 class Events:
@@ -274,22 +314,31 @@ class Events:
     select: EventListener
     stream: EventListener
     like: EventListener
+    example_select: EventListener
     load: EventListener
     key_up: EventListener
     apply: EventListener
     delete: EventListener
     tick: EventListener
+    undo: EventListener
+    retry: EventListener
+    expand: EventListener
+    collapse: EventListener
+    download: EventListener
 
 __all__ = [
     "DeletedFileData",
     "Dependency",
+    "DownloadData",
     "EventData",
     "EventListener",
     "EventListenerMethod",
     "Events",
     "KeyUpData",
     "LikeData",
+    "RetryData",
     "SelectData",
+    "UndoData",
     "on",
     "set_cancel_events",
 ]

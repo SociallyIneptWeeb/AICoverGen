@@ -20,7 +20,7 @@ def render() -> None:
     gr.Markdown("")
     with gr.Accordion("Temporary files", open=True):
         gr.Markdown("")
-        with gr.Row():
+        with gr.Row(equal_height=True):
             temporary_files_btn = gr.Button("Delete all", variant="primary")
             temporary_files_msg = gr.Textbox(label="Output message", interactive=False)
 

@@ -40,10 +40,26 @@ def _init_app() -> list[gr.Dropdown]:
         and output audio files.
 
     """
-    models = [gr.Dropdown(choices=get_saved_model_names()) for _ in range(3)]
-    cached_songs = [gr.Dropdown(choices=get_named_song_dirs()) for _ in range(8)]
+    model_names = get_saved_model_names()
+    named_song_dirs = get_named_song_dirs()
+    models = [
+        gr.Dropdown(
+            choices=model_names,
+            value=None if not model_names else model_names[0],
+        )
+        for _ in range(2)
+    ]
+    model_delete = [gr.Dropdown(choices=model_names)]
+    cached_songs = [gr.Dropdown(choices=named_song_dirs) for _ in range(3)]
+    song_dirs = [
+        gr.Dropdown(
+            choices=named_song_dirs,
+            value=None if not named_song_dirs else named_song_dirs[0][1],
+        )
+        for _ in range(5)
+    ]
     output_audio = [gr.Dropdown(choices=get_saved_output_audio())]
-    return models + cached_songs + output_audio
+    return models + model_delete + cached_songs + song_dirs + output_audio
 
 
 def render_app() -> gr.Blocks:
@@ -67,7 +83,7 @@ def render_app() -> gr.Blocks:
         css=css,
         delete_cache=(cache_delete_frequency, cache_delete_cutoff),
     ) as app:
-        gr.HTML("<h1>Ultimate RVC ❤️</h1>")
+        gr.HTML("<h1>Ultimate RVC 🧡</h1>")
         song_dirs = [
             gr.Dropdown(
                 label="Song directory",

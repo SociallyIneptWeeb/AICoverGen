@@ -672,6 +672,44 @@ def get_named_song_dirs() -> list[tuple[str, str]]:
     )
 
 
+def get_song_cover_name(
+    effected_vocals_track: StrPath | None = None,
+    song_dir: StrPath | None = None,
+    model_name: str | None = None,
+) -> str:
+    """
+    Generate a suitable name for a cover of a song based on the name
+    of that song and the voice model used for vocal conversion.
+
+    If the path of an existing song directory is provided, the name
+    of the song is inferred from that directory. If a voice model is not
+    provided but the path of an existing song directory and the path of
+    an effected vocals track in that directory are provided, then the
+    voice model is inferred from the effected vocals track.
+
+    Parameters
+    ----------
+    effected_vocals_track : StrPath, optional
+        The path to an effected vocals track.
+    song_dir : StrPath, optional
+        The path to a song directory.
+    model_name : str, optional
+        The name of a voice model.
+
+    Returns
+    -------
+    str
+        The song cover name
+
+    """
+    song_name = "Unknown"
+    if song_dir and (song_path := _get_input_audio_path(song_dir)):
+        song_name = song_path.stem.removeprefix("0_")
+    model_name = model_name or _get_model_name(effected_vocals_track, song_dir)
+
+    return f"{song_name} ({model_name} Ver)"
+
+
 def initialize_audio_separator(progress_bar: gr.Progress | None = None) -> None:
     """
     Initialize the audio separator by downloading the models it uses.
@@ -1331,52 +1369,6 @@ def pitch_shift(
     return shifted_audio_path
 
 
-def get_song_cover_name(
-    effected_vocals_track: StrPath | None = None,
-    song_dir: StrPath | None = None,
-    model_name: str | None = None,
-    progress_bar: gr.Progress | None = None,
-    percentage: float = 0.5,
-) -> str:
-    """
-    Generate a suitable name for a cover of a song based on the name
-    of that song and the voice model used for vocal conversion.
-
-    If the path of an existing song directory is provided, the name
-    of the song is inferred from that directory. If a voice model is not
-    provided but the path of an existing song directory and the path of
-    an effected vocals track in that directory are provided, then the
-    voice model is inferred from the effected vocals track.
-
-    Parameters
-    ----------
-    effected_vocals_track : StrPath, optional
-        The path to an effected vocals track.
-    song_dir : StrPath, optional
-        The path to a song directory.
-    model_name : str, optional
-        The name of a voice model.
-    progress_bar : gr.Progress, optional
-        Gradio progress bar to update.
-    percentage : float, default=0.5
-        Percentage to display in the progress bar.
-
-    Returns
-    -------
-    str
-        The song cover name
-
-    """
-    display_progress("[~] Getting song cover name...", percentage, progress_bar)
-
-    song_name = "Unknown"
-    if song_dir and (song_path := _get_input_audio_path(song_dir)):
-        song_name = song_path.stem.removeprefix("0_")
-    model_name = model_name or _get_model_name(effected_vocals_track, song_dir)
-
-    return f"{song_name} ({model_name} Ver)"
-
-
 def mix_song(
     audio_track_gain_pairs: Sequence[tuple[StrPath, int]],
     song_dir: StrPath,
@@ -1469,8 +1461,6 @@ def mix_song(
         audio_path_gain_pairs[0][0],
         song_dir_path,
         None,
-        progress_bar,
-        percentage,
     )
     song_path = OUTPUT_AUDIO_DIR / f"{output_name}.{output_format}"
     return copy_file_safe(mix_path, song_path)

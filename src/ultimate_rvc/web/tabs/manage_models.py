@@ -56,11 +56,7 @@ def _update_models(
     return update_dropdowns(get_saved_model_names, num_components, value, value_indices)
 
 
-def _filter_public_models_table(
-    tags: Sequence[str],
-    query: str,
-    progress_bar: gr.Progress,
-) -> gr.Dataframe:
+def _filter_public_models_table(tags: Sequence[str], query: str) -> gr.Dataframe:
     """
     Filter table containing metadata of public voice models by tags and
     a search query.
@@ -71,8 +67,6 @@ def _filter_public_models_table(
         Tags to filter the metadata table by.
     query : str
         Search query to filter the metadata table by.
-    progress_bar : gr.Progress
-        Progress bar to display progress.
 
     Returns
     -------
@@ -80,7 +74,7 @@ def _filter_public_models_table(
         The filtered table rendered in a Gradio dataframe.
 
     """
-    models_table = filter_public_models_table(tags, query, progress_bar)
+    models_table = filter_public_models_table(tags, query)
     return gr.Dataframe(value=models_table)
 
 
@@ -171,19 +165,16 @@ def render(
                 " URL for the given voice model in the form fields below.",
             )
             gr.Markdown("")
-            with gr.Row(equal_height=False):
+            with gr.Row():
+                search_query = gr.Textbox(label="Search query")
                 tags = gr.CheckboxGroup(
                     value=[],
                     label="Tags",
                     choices=get_public_model_tags(),
                 )
-                search_query = gr.Textbox(label="Search query")
             with gr.Row():
                 public_models_table = gr.Dataframe(
-                    value=partial(
-                        exception_harness(_filter_public_models_table),
-                        progress_bar=PROGRESS_BAR,
-                    ),
+                    value=_filter_public_models_table,
                     inputs=[tags, search_query],
                     headers=["Name", "Description", "Tags", "Credit", "Added", "URL"],
                     label="Public models table",
@@ -203,7 +194,7 @@ def render(
                 info="Enter a unique name for the voice model.",
             )
 
-        with gr.Row():
+        with gr.Row(equal_height=True):
             download_btn = gr.Button("Download 🌐", variant="primary", scale=19)
             download_msg = gr.Textbox(
                 label="Output message",
@@ -251,7 +242,7 @@ def render(
             gr.Markdown("3. Enter a unique name for the uploaded model")
             gr.Markdown("4. Click 'Upload'")
 
-        with gr.Row(equal_height=False):
+        with gr.Row():
             model_files = gr.File(
                 label="Files",
                 file_count="multiple",
@@ -260,7 +251,7 @@ def render(
 
             local_model_name = gr.Textbox(label="Model name")
 
-        with gr.Row():
+        with gr.Row(equal_height=True):
             upload_btn = gr.Button("Upload", variant="primary", scale=19)
             upload_msg = gr.Textbox(
                 label="Output message",

@@ -33,7 +33,7 @@ dependencies = [
     "scipy==1.14.1",
     "matplotlib==3.9.2",
     "tqdm==4.66.6",
-    "gradio==4.44.1",
+    "gradio==5.6.0",
     
     # Machine learning
     "torch==2.4.1+cu124",

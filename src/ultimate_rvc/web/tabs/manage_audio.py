@@ -53,7 +53,7 @@ def render(
     """
     dummy_checkbox = gr.Checkbox(visible=False)
     with gr.Tab("Delete audio"):
-        with gr.Accordion("Intermediate audio", open=False), gr.Row(equal_height=False):
+        with gr.Accordion("Intermediate audio", open=False), gr.Row():
             with gr.Column():
                 intermediate_audio.render()
                 intermediate_audio_btn = gr.Button(
@@ -69,7 +69,7 @@ def render(
                     label="Output message",
                     interactive=False,
                 )
-        with gr.Accordion("Output audio", open=False), gr.Row(equal_height=False):
+        with gr.Accordion("Output audio", open=False), gr.Row():
             with gr.Column():
                 output_audio.render()
                 output_audio_btn = gr.Button(
@@ -85,7 +85,7 @@ def render(
                     label="Output message",
                     interactive=False,
                 )
-        with gr.Accordion("All audio", open=True), gr.Row():
+        with gr.Accordion("All audio", open=True), gr.Row(equal_height=True):
             all_audio_btn = gr.Button("Delete", variant="primary")
             all_audio_msg = gr.Textbox(label="Output message", interactive=False)
 

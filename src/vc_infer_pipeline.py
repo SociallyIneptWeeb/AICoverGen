@@ -1,23 +1,21 @@
 from functools import lru_cache
+import numpy as np, parselmouth, torch, pdb, sys, os
 from time import time as ttime
-
-import faiss
-import librosa
-import numpy as np
-import os
-import parselmouth
-import pyworld
-import sys
-import torch
 import torch.nn.functional as F
 import torchcrepe
-import traceback
 from scipy import signal
 from torch import Tensor
+import pyworld, os, faiss, librosa, torchcrepe
+import random
+import gc
+import re
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 now_dir = os.path.join(BASE_DIR, 'src')
 sys.path.append(now_dir)
+
+from infer_pack.predictor.FCPE import FCPEF0Predictor
+from infer_pack.predictor.RMVPE import RMVPE
 
 bh, ah = signal.butter(N=5, Wn=48, btype="high", fs=16000)
 
@@ -38,21 +36,21 @@ def cache_harvest_f0(input_audio_path, fs, f0max, f0min, frame_period):
     return f0
 
 
-def change_rms(data1, sr1, data2, sr2, rate):  # 1是输入音频，2是输出音频,rate是2的占比
-    # print(data1.max(),data2.max())
-    rms1 = librosa.feature.rms(
-        y=data1, frame_length=sr1 // 2 * 2, hop_length=sr1 // 2
-    )  # 每半秒一个点
+def change_rms(data1, sr1, data2, sr2, rate):
+    rms1 = librosa.feature.rms(y=data1, frame_length=sr1 // 2 * 2, hop_length=sr1 // 2)
     rms2 = librosa.feature.rms(y=data2, frame_length=sr2 // 2 * 2, hop_length=sr2 // 2)
+
     rms1 = torch.from_numpy(rms1)
     rms1 = F.interpolate(
         rms1.unsqueeze(0), size=data2.shape[0], mode="linear"
     ).squeeze()
+
     rms2 = torch.from_numpy(rms2)
     rms2 = F.interpolate(
         rms2.unsqueeze(0), size=data2.shape[0], mode="linear"
     ).squeeze()
     rms2 = torch.max(rms2, torch.zeros_like(rms2) + 1e-6)
+
     data2 *= (
         torch.pow(rms1, torch.tensor(1 - rate))
         * torch.pow(rms2, torch.tensor(rate - 1))
@@ -69,42 +67,34 @@ class VC(object):
             config.x_max,
             config.is_half,
         )
-        self.sr = 16000  # hubert输入采样率
-        self.window = 160  # 每帧点数
-        self.t_pad = self.sr * self.x_pad  # 每条前后pad时间
+        self.sr = 16000
+        self.window = 160
+        self.t_pad = self.sr * self.x_pad
         self.t_pad_tgt = tgt_sr * self.x_pad
         self.t_pad2 = self.t_pad * 2
-        self.t_query = self.sr * self.x_query  # 查询切点前后查询时间
-        self.t_center = self.sr * self.x_center  # 查询切点位置
-        self.t_max = self.sr * self.x_max  # 免查询时长阈值
+        self.t_query = self.sr * self.x_query
+        self.t_center = self.sr * self.x_center
+        self.t_max = self.sr * self.x_max
         self.device = config.device
+        
 
-    # Fork Feature: Get the best torch device to use for f0 algorithms that require a torch device. Will return the type (torch.device)
     def get_optimal_torch_device(self, index: int = 0) -> torch.device:
-        # Get cuda device
         if torch.cuda.is_available():
-            return torch.device(
-                f"cuda:{index % torch.cuda.device_count()}"
-            )  # Very fast
+            return torch.device(f"cuda:{index % torch.cuda.device_count()}")
         elif torch.backends.mps.is_available():
             return torch.device("mps")
-        # Insert an else here to grab "xla" devices if available. TO DO later. Requires the torch_xla.core.xla_model library
-        # Else wise return the "cpu" as a torch device,
         return torch.device("cpu")
 
-    # Fork Feature: Compute f0 with the crepe method
     def get_f0_crepe_computation(
         self,
         x,
         f0_min,
         f0_max,
         p_len,
-        hop_length=160,  # 512 before. Hop length changes the speed that the voice jumps to a different dramatic pitch. Lower hop lengths means more pitch accuracy but longer inference time.
-        model="full",  # Either use crepe-tiny "tiny" or crepe "full". Default is full
+        hop_length=160,
+        model="full",
     ):
-        x = x.astype(
-            np.float32
-        )  # fixes the F.conv2D exception. We needed to convert double to float.
+        x = x.astype(np.float32)
         x /= np.quantile(np.abs(x), 0.999)
         torch_device = self.get_optimal_torch_device()
         audio = torch.from_numpy(x).to(torch_device, copy=True)
@@ -112,7 +102,6 @@ class VC(object):
         if audio.ndim == 2 and audio.shape[0] > 1:
             audio = torch.mean(audio, dim=0, keepdim=True).detach()
         audio = audio.detach()
-        print("Initiating prediction with a crepe_hop_length of: " + str(hop_length))
         pitch: Tensor = torchcrepe.predict(
             audio,
             self.sr,
@@ -125,7 +114,6 @@ class VC(object):
             pad=True,
         )
         p_len = p_len or x.shape[0] // hop_length
-        # Resize the pitch for final f0
         source = np.array(pitch.squeeze(0).cpu().float().numpy())
         source[source < 0.001] = np.nan
         target = np.interp(
@@ -134,7 +122,7 @@ class VC(object):
             source,
         )
         f0 = np.nan_to_num(target)
-        return f0  # Resized f0
+        return f0
 
     def get_f0_official_crepe_computation(
         self,
@@ -143,9 +131,7 @@ class VC(object):
         f0_max,
         model="full",
     ):
-        # Pick a batch size that doesn't cause memory errors on your gpu
         batch_size = 512
-        # Compute pitch using first gpu
         audio = torch.tensor(np.copy(x))[None].float()
         f0, pd = torchcrepe.predict(
             audio,
@@ -164,14 +150,6 @@ class VC(object):
         f0 = f0[0].cpu().numpy()
         return f0
 
-    # Fork Feature: Compute pYIN f0 method
-    def get_f0_pyin_computation(self, x, f0_min, f0_max):
-        y, sr = librosa.load("saudio/Sidney.wav", self.sr, mono=True)
-        f0, _, _ = librosa.pyin(y, sr=self.sr, fmin=f0_min, fmax=f0_max)
-        f0 = f0[1:]  # Get rid of extra first frame
-        return f0
-
-    # Fork Feature: Acquire median hybrid f0 estimation calculation
     def get_f0_hybrid_computation(
         self,
         methods_str,
@@ -184,74 +162,48 @@ class VC(object):
         crepe_hop_length,
         time_step,
     ):
-        # Get various f0 methods from input to use in the computation stack
-        s = methods_str
-        s = s.split("hybrid")[1]
-        s = s.replace("[", "").replace("]", "")
-        methods = s.split("+")
+        methods_str = re.search("hybrid\[(.+)\]", methods_str)
+        if methods_str:
+            methods = [method.strip() for method in methods_str.group(1).split("+")]
         f0_computation_stack = []
-
-        print("Calculating f0 pitch estimations for methods: %s" % str(methods))
+        print(f"Calculating f0 pitch estimations for methods {str(methods)}")
         x = x.astype(np.float32)
         x /= np.quantile(np.abs(x), 0.999)
-        # Get f0 calculations for all methods specified
         for method in methods:
             f0 = None
-            if method == "pm":
-                f0 = (
-                    parselmouth.Sound(x, self.sr)
-                    .to_pitch_ac(
-                        time_step=time_step / 1000,
-                        voicing_threshold=0.6,
-                        pitch_floor=f0_min,
-                        pitch_ceiling=f0_max,
-                    )
-                    .selected_array["frequency"]
+            if method == "crepe":
+                f0 = self.get_f0_crepe_computation(
+                    x, f0_min, f0_max, p_len
                 )
-                pad_size = (p_len - len(f0) + 1) // 2
-                if pad_size > 0 or p_len - len(f0) - pad_size > 0:
-                    f0 = np.pad(
-                        f0, [[pad_size, p_len - len(f0) - pad_size]], mode="constant"
-                    )
-            elif method == "crepe":
-                f0 = self.get_f0_official_crepe_computation(x, f0_min, f0_max)
-                f0 = f0[1:]  # Get rid of extra first frame
-            elif method == "crepe-tiny":
-                f0 = self.get_f0_official_crepe_computation(x, f0_min, f0_max, "tiny")
-                f0 = f0[1:]  # Get rid of extra first frame
             elif method == "mangio-crepe":
                 f0 = self.get_f0_crepe_computation(
                     x, f0_min, f0_max, p_len, crepe_hop_length
                 )
-            elif method == "mangio-crepe-tiny":
-                f0 = self.get_f0_crepe_computation(
-                    x, f0_min, f0_max, p_len, crepe_hop_length, "tiny"
-                )
-            elif method == "harvest":
-                f0 = cache_harvest_f0(input_audio_path, self.sr, f0_max, f0_min, 10)
-                if filter_radius > 2:
-                    f0 = signal.medfilt(f0, 3)
-                f0 = f0[1:]  # Get rid of first frame.
-            elif method == "dio":  # Potentially buggy?
-                f0, t = pyworld.dio(
-                    x.astype(np.double),
-                    fs=self.sr,
-                    f0_ceil=f0_max,
-                    f0_floor=f0_min,
-                    frame_period=10,
-                )
-                f0 = pyworld.stonemask(x.astype(np.double), f0, t, self.sr)
-                f0 = signal.medfilt(f0, 3)
+            elif method == "rmvpe":
+                if hasattr(self, "model_rmvpe") == False:
+
+                    self.model_rmvpe = RMVPE(
+                        os.path.join(BASE_DIR, 'rvc_models', 'rmvpe.pt'), is_half=self.is_half, device=self.device
+                    )
+                f0 = self.model_rmvpe.infer_from_audio(x, thred=0.03)
                 f0 = f0[1:]
-            # elif method == "pyin": Not Working just yet
-            #    f0 = self.get_f0_pyin_computation(x, f0_min, f0_max)
-            # Push method to the stack
+            elif method == "fcpe":
+                self.model_fcpe = FCPEF0Predictor(
+                    os.path.join(BASE_DIR, 'rvc_models', 'fcpe.pt'),
+                    f0_min=int(f0_min),
+                    f0_max=int(f0_max),
+                    dtype=torch.float32,
+                    device=self.device,
+                    sampling_rate=self.sr,
+                    threshold=0.03,
+                )
+                f0 = self.model_fcpe.compute_f0(x, p_len=p_len)
+                del self.model_fcpe
+                gc.collect()
             f0_computation_stack.append(f0)
 
-        for fc in f0_computation_stack:
-            print(len(fc))
-
-        print("Calculating hybrid median f0 from the stack of: %s" % str(methods))
+        print(f"Calculating hybrid median f0 from the stack of {str(methods)}")
+        f0_computation_stack = [fc for fc in f0_computation_stack if fc is not None]
         f0_median_hybrid = None
         if len(f0_computation_stack) == 1:
             f0_median_hybrid = f0_computation_stack[0]
@@ -269,11 +221,13 @@ class VC(object):
         filter_radius,
         crepe_hop_length,
         inp_f0=None,
+        f0_min=50,
+        f0_max=1100,
     ):
         global input_audio_path2wav
         time_step = self.window / self.sr * 1000
-        f0_min = 50
-        f0_max = 1100
+        #f0_min = 50
+        #f0_max = 1100
         f0_mel_min = 1127 * np.log(1 + f0_min / 700)
         f0_mel_max = 1127 * np.log(1 + f0_max / 700)
         if f0_method == "pm":
@@ -289,15 +243,15 @@ class VC(object):
             )
             pad_size = (p_len - len(f0) + 1) // 2
             if pad_size > 0 or p_len - len(f0) - pad_size > 0:
-                f0 = np.pad(
-                    f0, [[pad_size, p_len - len(f0) - pad_size]], mode="constant"
-                )
+                f0 = np.pad(f0, [[pad_size, p_len - len(f0) - pad_size]], mode="constant")
+        
         elif f0_method == "harvest":
             input_audio_path2wav[input_audio_path] = x.astype(np.double)
             f0 = cache_harvest_f0(input_audio_path, self.sr, f0_max, f0_min, 10)
-            if filter_radius > 2:
+            if int(filter_radius) > 2:
                 f0 = signal.medfilt(f0, 3)
-        elif f0_method == "dio":  # Potentially Buggy?
+        
+        elif f0_method == "dio":
             f0, t = pyworld.dio(
                 x.astype(np.double),
                 fs=self.sr,
@@ -307,29 +261,43 @@ class VC(object):
             )
             f0 = pyworld.stonemask(x.astype(np.double), f0, t, self.sr)
             f0 = signal.medfilt(f0, 3)
+
         elif f0_method == "crepe":
-            f0 = self.get_f0_official_crepe_computation(x, f0_min, f0_max)
-        elif f0_method == "crepe-tiny":
-            f0 = self.get_f0_official_crepe_computation(x, f0_min, f0_max, "tiny")
+            f0 = self.get_f0_crepe_computation(x, f0_min, f0_max, p_len)
+        
         elif f0_method == "mangio-crepe":
-            f0 = self.get_f0_crepe_computation(
-                x, f0_min, f0_max, p_len, crepe_hop_length
-            )
-        elif f0_method == "mangio-crepe-tiny":
-            f0 = self.get_f0_crepe_computation(
-                x, f0_min, f0_max, p_len, crepe_hop_length, "tiny"
-            )
+            f0 = self.get_f0_crepe_computation(x, f0_min, f0_max, p_len, crepe_hop_length)
+        
         elif f0_method == "rmvpe":
             if hasattr(self, "model_rmvpe") == False:
-                from rmvpe import RMVPE
 
                 self.model_rmvpe = RMVPE(
                     os.path.join(BASE_DIR, 'rvc_models', 'rmvpe.pt'), is_half=self.is_half, device=self.device
                 )
             f0 = self.model_rmvpe.infer_from_audio(x, thred=0.03)
-
+        
+        elif f0_method == "rmvpe+":
+            params = {'x': x, 'p_len': p_len, 'f0_up_key': f0_up_key, 'f0_min': f0_min, 
+                      'f0_max': f0_max, 'time_step': time_step, 'filter_radius': filter_radius, 
+                      'crepe_hop_length': crepe_hop_length, 'model': "full"
+                      }
+            f0 = self.get_pitch_dependant_rmvpe(**params)
+        
+        elif f0_method == "fcpe":
+            self.model_fcpe = FCPEF0Predictor(
+                os.path.join(BASE_DIR, 'rvc_models', 'fcpe.pt'),
+                f0_min=int(f0_min),
+                f0_max=int(f0_max),
+                dtype=torch.float32,
+                device=self.device,
+                sampling_rate=self.sr,
+                threshold=0.03,
+            )
+            f0 = self.model_fcpe.compute_f0(x, p_len=p_len)
+            del self.model_fcpe
+            gc.collect()
+        
         elif "hybrid" in f0_method:
-            # Perform hybrid median pitch estimation
             input_audio_path2wav[input_audio_path] = x.astype(np.double)
             f0 = self.get_f0_hybrid_computation(
                 f0_method,
@@ -344,8 +312,7 @@ class VC(object):
             )
 
         f0 *= pow(2, f0_up_key / 12)
-        # with open("test.txt","w")as f:f.write("\n".join([str(i)for i in f0.tolist()]))
-        tf0 = self.sr // self.window  # 每秒f0点数
+        tf0 = self.sr // self.window
         if inp_f0 is not None:
             delta_t = np.round(
                 (inp_f0[:, 0].max() - inp_f0[:, 0].min()) * tf0 + 1
@@ -357,7 +324,6 @@ class VC(object):
             f0[self.x_pad * tf0 : self.x_pad * tf0 + len(replace_f0)] = replace_f0[
                 :shape
             ]
-        # with open("test_opt.txt","w")as f:f.write("\n".join([str(i)for i in f0.tolist()]))
         f0bak = f0.copy()
         f0_mel = 1127 * np.log(1 + f0 / 700)
         f0_mel[f0_mel > 0] = (f0_mel[f0_mel > 0] - f0_mel_min) * 254 / (
@@ -365,10 +331,24 @@ class VC(object):
         ) + 1
         f0_mel[f0_mel <= 1] = 1
         f0_mel[f0_mel > 255] = 255
-        f0_coarse = np.rint(f0_mel).astype(np.int)
+        f0_coarse = np.rint(f0_mel).astype(int)
 
-        return f0_coarse, f0bak  # 1-0
+        return f0_coarse, f0bak
 
+    def get_pitch_dependant_rmvpe(self, x, f0_min=1, f0_max=40000, *args, **kwargs):
+        if not hasattr(self, "model_rmvpe"):
+            
+            self.model_rmvpe = RMVPE(
+                os.path.join(BASE_DIR, 'rvc_models', 'rmvpe.pt'),
+                is_half=self.is_half,
+                device=self.device,
+            )
+            
+        f0 = self.model_rmvpe.infer_from_audio_with_pitch(x, thred=0.03, f0_min=f0_min, f0_max=f0_max)   
+            
+        return f0
+
+    
     def vc(
         self,
         model,
@@ -383,13 +363,13 @@ class VC(object):
         index_rate,
         version,
         protect,
-    ):  # ,file_index,file_big_npy
+    ):
         feats = torch.from_numpy(audio0)
         if self.is_half:
             feats = feats.half()
         else:
             feats = feats.float()
-        if feats.dim() == 2:  # double channels
+        if feats.dim() == 2:
             feats = feats.mean(-1)
         assert feats.dim() == 1, feats.dim()
         feats = feats.view(1, -1)
@@ -414,9 +394,6 @@ class VC(object):
             npy = feats[0].cpu().numpy()
             if self.is_half:
                 npy = npy.astype("float32")
-
-            # _, I = index.search(npy, 1)
-            # npy = big_npy[I.squeeze()]
 
             score, ix = index.search(npy, k=8)
             weight = np.square(1 / score)
@@ -482,7 +459,6 @@ class VC(object):
         f0_up_key,
         f0_method,
         file_index,
-        # file_big_npy,
         index_rate,
         if_f0,
         filter_radius,
@@ -493,20 +469,15 @@ class VC(object):
         protect,
         crepe_hop_length,
         f0_file=None,
+        f0_min=50,
+        f0_max=1100,
     ):
-        if (
-            file_index != ""
-            # and file_big_npy != ""
-            # and os.path.exists(file_big_npy) == True
-            and os.path.exists(file_index) == True
-            and index_rate != 0
-        ):
+        if file_index != "" and os.path.exists(file_index) == True and index_rate != 0:
             try:
                 index = faiss.read_index(file_index)
-                # big_npy = np.load(file_big_npy)
                 big_npy = index.reconstruct_n(0, index.ntotal)
-            except:
-                traceback.print_exc()
+            except Exception as error:
+                print(error)
                 index = big_npy = None
         else:
             index = big_npy = None
@@ -541,8 +512,8 @@ class VC(object):
                 for line in lines:
                     inp_f0.append([float(i) for i in line.split(",")])
                 inp_f0 = np.array(inp_f0, dtype="float32")
-            except:
-                traceback.print_exc()
+            except Exception as error:
+                print(error)
         sid = torch.tensor(sid, device=self.device).unsqueeze(0).long()
         pitch, pitchf = None, None
         if if_f0 == 1:
@@ -555,6 +526,8 @@ class VC(object):
                 filter_radius,
                 crepe_hop_length,
                 inp_f0,
+                f0_min,
+                f0_max,
             )
             pitch = pitch[:p_len]
             pitchf = pitchf[:p_len]

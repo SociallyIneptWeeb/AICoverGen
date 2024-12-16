@@ -168,6 +168,8 @@ def clear_components():
     return "", "", False  # Replace with default values of your components
 
 
+def clear_inputs():
+    return None, None, None  # Return appropriate default values for your components
 
 
 if __name__ == '__main__':
@@ -196,6 +198,7 @@ with gr.Blocks(theme=gr.themes.Base(), title=" Easy GUI v2 (rejekts) - adapted t
                         pitch = gr.Slider(-12, 12, value=0, step=1, label='Pitch Change (Vocals ONLY)')
                         pitch_all = gr.Slider(-12, 12, value=0, step=1, label='Overall Pitch Change')
             with gr.Row():
+                clear_btn = gr.Button(value='Clear')
                 generate_btn = gr.Button("Generate", variant='primary')
             with gr.Row():
                 with gr.Column():
@@ -228,10 +231,14 @@ with gr.Blocks(theme=gr.themes.Base(), title=" Easy GUI v2 (rejekts) - adapted t
                         gr.Markdown('### Audio Output Format')
                         output_format = gr.Dropdown(['mp3', 'wav'], value='mp3', label='Output file type', info='mp3: small file size, decent quality. wav: Large file size, best quality')
 
-                    ai_cover = gr.Audio(label='AI Cover | Output Audio (Click on the Three Dots in the Right Corner to Download)', show_share_button=False)
+                    ai_cover = gr.Audio(label='Output Audio (Click on the Three Dots in the Right Corner to Download)', show_share_button=False)
                    
-                    clear_btn = gr.ClearButton(value='Clear', components=[song_input, rvc_model, keep_files])
-                
+                    
+                clear_btn.click(
+                    clear_inputs,  
+                    inputs=[],     
+                    outputs=[song_input, rvc_model, keep_files]  
+                )               
                 ref_btn.click(update_models_list, None, outputs=rvc_model)
                 is_webui = gr.Number(value=1, visible=False)
                 generate_btn.click(song_cover_pipeline,
